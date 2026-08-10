@@ -276,7 +276,10 @@ function AddTaskDialog() {
           <Button variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
           <Button
             onClick={() => {
-              if (f.title.trim().length < 3) return toast.error("Add a task title");
+              if (f.title.trim().length < 3) {
+                toast.error("Add a task title");
+                return;
+              }
               ws.addTask({
                 title: f.title.trim(),
                 description: f.description,
