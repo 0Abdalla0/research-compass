@@ -95,6 +95,7 @@ export type VoiceNote = {
   description: string;
   paperId?: string;
   taskId?: string;
+  url?: string;
 };
 
 export type ResearchFile = {

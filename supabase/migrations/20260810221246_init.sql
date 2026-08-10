@@ -87,7 +87,8 @@ CREATE TABLE IF NOT EXISTS "voiceNotes" (
   "date" TEXT NOT NULL,
   "description" TEXT NOT NULL,
   "paperId" TEXT,
-  "taskId" TEXT
+  "taskId" TEXT,
+  "url" TEXT
 );
 
 CREATE TABLE IF NOT EXISTS "files" (
