@@ -1,0 +1,150 @@
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Member {
+  id               String   @id
+  name             String
+  initials         String
+  role             String
+  email            String
+  responsibilities String
+  color            String
+}
+
+model Paper {
+  id        String   @id
+  title     String
+  authors   String
+  year      Int
+  venue     String
+  doi       String
+  url       String
+  category  String
+  keywords  String   // JSON serialized string[]
+  abstract  String
+  status    String
+  ownerId   String
+  progress  Int
+  analysis  String   // JSON serialized Record<string, string>
+}
+
+model Task {
+  id          String   @id
+  title       String
+  description String
+  status      String
+  priority    String
+  assigneeId  String
+  due         String
+  labels      String   // JSON serialized string[]
+  checklist   String   // JSON serialized { text: string; done: boolean }[]
+  paperId     String?
+  phaseId     String?
+  comments    Int
+  attachments Int
+}
+
+model Note {
+  id       String   @id
+  title    String
+  type     String
+  authorId String
+  updated  String
+  tags     String   // JSON serialized string[]
+  body     String
+  paperId  String?
+  taskId   String?
+}
+
+model Shot {
+  id          String   @id
+  title       String
+  description String
+  tags        String   // JSON serialized string[]
+  source      String
+  uploadedBy  String
+  date        String
+  paperId     String?
+  hue         Int
+  comments    String   // JSON serialized { author: string; text: string }[]
+}
+
+model VoiceNote {
+  id          String   @id
+  title       String
+  seconds     Int
+  authorId    String
+  date        String
+  description String
+  paperId     String?
+  taskId      String?
+}
+
+model ResearchFile {
+  id         String   @id
+  name       String
+  ext        String
+  folder     String
+  size       String
+  uploadedBy String
+  date       String
+}
+
+model ResourceLink {
+  id          String   @id
+  title       String
+  url         String
+  description String
+  category    String
+  tags        String   // JSON serialized string[]
+  addedBy     String
+  paperId     String?
+}
+
+model Meeting {
+  id           String   @id
+  title        String
+  date         String
+  time         String
+  participants String   // JSON serialized string[]
+  agenda       String   // JSON serialized string[]
+  decisions    String   // JSON serialized string[]
+  actionItems  String   // JSON serialized { text: string; ownerId: string }[]
+  notes        String
+}
+
+model CalEvent {
+  id          String   @id
+  title       String
+  date        String
+  time        String
+  kind        String
+  description String
+  attendees   String   // JSON serialized string[]
+}
+
+model Phase {
+  id           String   @id
+  index        Int
+  name         String
+  start        String
+  end          String
+  progress     Int
+  members      String   // JSON serialized string[]
+  deliverables String   // JSON serialized string[]
+}
+
+model Activity {
+  id       String   @id
+  memberId String
+  action   String
+  object   String
+  time     String
+  kind     String
+}

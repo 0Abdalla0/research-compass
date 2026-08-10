@@ -21,6 +21,32 @@ import type {
   TaskStatus,
   VoiceNote,
 } from "@/data/workspace";
+import {
+  getWorkspaceDataServer,
+  addPaperServer,
+  updatePaperServer,
+  setAnalysisServer,
+  addTaskServer,
+  moveTaskServer,
+  updateTaskServer,
+  toggleCheckServer,
+  addNoteServer,
+  updateNoteServer,
+  addShotServer,
+  commentShotServer,
+  addVoiceNoteServer,
+  removeVoiceNoteServer,
+  renameVoiceNoteServer,
+  addFileServer,
+  removeFileServer,
+  addLinkServer,
+  addEventServer,
+  updateEventServer,
+  removeEventServer,
+  addMeetingServer,
+  updateMeetingServer,
+  addActivityServer,
+} from "@/lib/db-server";
 
 const uid = () => Math.random().toString(36).slice(2, 9);
 
@@ -68,17 +94,35 @@ type Ctx = {
 const WorkspaceContext = createContext<Ctx | null>(null);
 
 export function WorkspaceProvider({ children }: { children: ReactNode }) {
-  const [papers, setPapers] = useState<Paper[]>(seed.papers);
-  const [tasks, setTasks] = useState<Task[]>(seed.tasks);
-  const [notes, setNotes] = useState<Note[]>(seed.notes);
-  const [shots, setShots] = useState<Shot[]>(seed.shots);
-  const [voiceNotes, setVoiceNotes] = useState<VoiceNote[]>(seed.voiceNotes);
-  const [files, setFiles] = useState<ResearchFile[]>(seed.files);
-  const [links, setLinks] = useState<ResourceLink[]>(seed.links);
-  const [meetings, setMeetings] = useState<Meeting[]>(seed.meetings);
-  const [events, setEvents] = useState<CalEvent[]>(seed.events);
-  const [activity, setActivity] = useState<Activity[]>(seed.activity);
+  const [papers, setPapers] = useState<Paper[]>([]);
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [notes, setNotes] = useState<Note[]>([]);
+  const [shots, setShots] = useState<Shot[]>([]);
+  const [voiceNotes, setVoiceNotes] = useState<VoiceNote[]>([]);
+  const [files, setFiles] = useState<ResearchFile[]>([]);
+  const [links, setLinks] = useState<ResourceLink[]>([]);
+  const [meetings, setMeetings] = useState<Meeting[]>([]);
+  const [events, setEvents] = useState<CalEvent[]>([]);
+  const [activity, setActivity] = useState<Activity[]>([]);
   const [theme, setTheme] = useState<"light" | "dark">("light");
+
+  // Load from database on mount
+  useEffect(() => {
+    getWorkspaceDataServer()
+      .then((data) => {
+        setPapers(data.papers);
+        setTasks(data.tasks);
+        setNotes(data.notes);
+        setShots(data.shots);
+        setVoiceNotes(data.voiceNotes);
+        setFiles(data.files);
+        setLinks(data.links);
+        setMeetings(data.meetings);
+        setEvents(data.events);
+        setActivity(data.activity);
+      })
+      .catch((err) => console.error("Error loading initial DB workspace data:", err));
+  }, []);
 
   useEffect(() => {
     document.documentElement.classList.toggle("dark", theme === "dark");
@@ -88,10 +132,12 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
 
   const log = useCallback(
     (action: string, object: string, kind: Activity["kind"]) => {
-      setActivity((a) => [
-        { id: uid(), memberId: currentUser.id, action, object, time: "just now", kind },
-        ...a,
-      ]);
+      const actId = uid();
+      const newActivity = { id: actId, memberId: currentUser.id, action, object, time: "just now", kind };
+      setActivity((a) => [newActivity, ...a]);
+      addActivityServer({ data: newActivity }).catch((err) =>
+        console.error("Error logging activity to DB:", err),
+      );
     },
     [currentUser.id],
   );
@@ -115,26 +161,48 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       currentUser,
       member: (id?: string) => seed.members.find((m) => m.id === id),
       addPaper: (p) => {
-        setPapers((prev) => [{ ...p, id: uid(), progress: 0, analysis: {} }, ...prev]);
+        const id = uid();
+        const newPaper = { ...p, id, progress: 0, analysis: {} };
+        setPapers((prev) => [newPaper, ...prev]);
+        addPaperServer({ data: newPaper }).catch((err) => console.error("Error saving paper to DB:", err));
         log("added a paper", p.title, "paper");
       },
-      updatePaper: (id, patch) =>
-        setPapers((prev) => prev.map((p) => (p.id === id ? { ...p, ...patch } : p))),
-      setAnalysis: (paperId, section, val) =>
+      updatePaper: (id, patch) => {
+        setPapers((prev) => prev.map((p) => (p.id === id ? { ...p, ...patch } : p)));
+        updatePaperServer({ data: { id, patch } }).catch((err) =>
+          console.error("Error updating paper in DB:", err),
+        );
+      },
+      setAnalysis: (paperId, section, val) => {
         setPapers((prev) =>
           prev.map((p) =>
             p.id === paperId ? { ...p, analysis: { ...p.analysis, [section]: val } } : p,
           ),
-        ),
+        );
+        setAnalysisServer({ data: { paperId, section, value: val } }).catch((err) =>
+          console.error("Error saving paper analysis section to DB:", err),
+        );
+      },
       addTask: (t) => {
-        setTasks((prev) => [{ ...t, id: uid(), comments: 0, attachments: 0, checklist: [] }, ...prev]);
+        const id = uid();
+        const newTask = { ...t, id, comments: 0, attachments: 0, checklist: [] };
+        setTasks((prev) => [newTask, ...prev]);
+        addTaskServer({ data: newTask }).catch((err) => console.error("Error saving task to DB:", err));
         log("created a task", t.title, "task");
       },
-      moveTask: (id, status) =>
-        setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, status } : t))),
-      updateTask: (id, patch) =>
-        setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, ...patch } : t))),
-      toggleCheck: (taskId, index) =>
+      moveTask: (id, status) => {
+        setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, status } : t)));
+        moveTaskServer({ data: { id, status } }).catch((err) =>
+          console.error("Error moving task status in DB:", err),
+        );
+      },
+      updateTask: (id, patch) => {
+        setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, ...patch } : t)));
+        updateTaskServer({ data: { id, patch } }).catch((err) =>
+          console.error("Error updating task in DB:", err),
+        );
+      },
+      toggleCheck: (taskId, index) => {
         setTasks((prev) =>
           prev.map((t) =>
             t.id === taskId
@@ -144,52 +212,122 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
                 }
               : t,
           ),
-        ),
+        );
+        toggleCheckServer({ data: { taskId, index } }).catch((err) =>
+          console.error("Error toggling task checklist in DB:", err),
+        );
+      },
       addNote: (n) => {
-        setNotes((prev) => [{ ...n, id: uid(), updated: today() }, ...prev]);
+        const id = uid();
+        const newNote = { ...n, id, updated: today() };
+        setNotes((prev) => [newNote, ...prev]);
+        addNoteServer({ data: newNote }).catch((err) => console.error("Error saving note to DB:", err));
         log("created a note", n.title, "note");
       },
-      updateNote: (id, patch) =>
-        setNotes((prev) => prev.map((n) => (n.id === id ? { ...n, ...patch, updated: today() } : n))),
+      updateNote: (id, patch) => {
+        const updatedDate = today();
+        setNotes((prev) => prev.map((n) => (n.id === id ? { ...n, ...patch, updated: updatedDate } : n)));
+        updateNoteServer({ data: { id, patch: { ...patch, updated: updatedDate } } }).catch((err) =>
+          console.error("Error updating note in DB:", err),
+        );
+      },
       addShot: (s) => {
-        setShots((prev) => [{ ...s, id: uid(), date: today(), comments: [] }, ...prev]);
+        const id = uid();
+        const newShot = { ...s, id, date: today(), comments: [] };
+        setShots((prev) => [newShot, ...prev]);
+        addShotServer({ data: newShot }).catch((err) =>
+          console.error("Error saving screenshot to DB:", err),
+        );
         log("added a screenshot", s.title, "image");
       },
-      commentShot: (id, text) =>
+      commentShot: (id, text) => {
+        const comment = { author: currentUser.name, text };
         setShots((prev) =>
           prev.map((s) =>
-            s.id === id ? { ...s, comments: [...s.comments, { author: currentUser.name, text }] } : s,
+            s.id === id ? { ...s, comments: [...s.comments, comment] } : s,
           ),
-        ),
+        );
+        commentShotServer({ data: { id, comment } }).catch((err) =>
+          console.error("Error adding screenshot comment to DB:", err),
+        );
+      },
       addVoiceNote: (v) => {
-        setVoiceNotes((prev) => [{ ...v, id: uid(), date: today() }, ...prev]);
+        const id = uid();
+        const newVoiceNote = { ...v, id, date: today() };
+        setVoiceNotes((prev) => [newVoiceNote, ...prev]);
+        addVoiceNoteServer({ data: newVoiceNote }).catch((err) =>
+          console.error("Error saving voice note to DB:", err),
+        );
         log("added a voice note", v.title, "voice");
       },
-      removeVoiceNote: (id) => setVoiceNotes((prev) => prev.filter((v) => v.id !== id)),
-      renameVoiceNote: (id, title) =>
-        setVoiceNotes((prev) => prev.map((v) => (v.id === id ? { ...v, title } : v))),
+      removeVoiceNote: (id) => {
+        setVoiceNotes((prev) => prev.filter((v) => v.id !== id));
+        removeVoiceNoteServer({ data: id }).catch((err) =>
+          console.error("Error deleting voice note in DB:", err),
+        );
+      },
+      renameVoiceNote: (id, title) => {
+        setVoiceNotes((prev) => prev.map((v) => (v.id === id ? { ...v, title } : v)));
+        renameVoiceNoteServer({ data: { id, title } }).catch((err) =>
+          console.error("Error renaming voice note in DB:", err),
+        );
+      },
       addFile: (f) => {
-        setFiles((prev) => [{ ...f, id: uid(), date: today() }, ...prev]);
+        const id = uid();
+        const newFile = { ...f, id, date: today() };
+        setFiles((prev) => [newFile, ...prev]);
+        addFileServer({ data: newFile }).catch((err) => console.error("Error saving file to DB:", err));
         log("uploaded", f.name, "file");
       },
-      removeFile: (id) => setFiles((prev) => prev.filter((f) => f.id !== id)),
+      removeFile: (id) => {
+        setFiles((prev) => prev.filter((f) => f.id !== id));
+        removeFileServer({ data: id }).catch((err) => console.error("Error deleting file in DB:", err));
+      },
       addLink: (l) => {
-        setLinks((prev) => [{ ...l, id: uid() }, ...prev]);
+        const id = uid();
+        const newLink = { ...l, id };
+        setLinks((prev) => [newLink, ...prev]);
+        addLinkServer({ data: newLink }).catch((err) =>
+          console.error("Error saving resource link to DB:", err),
+        );
         log("added a link", l.title, "file");
       },
       addEvent: (e) => {
-        setEvents((prev) => [...prev, { ...e, id: uid() }]);
+        const id = uid();
+        const newEvent = { ...e, id };
+        setEvents((prev) => [...prev, newEvent]);
+        addEventServer({ data: newEvent }).catch((err) =>
+          console.error("Error saving calendar event to DB:", err),
+        );
         log("scheduled", e.title, "task");
       },
-      updateEvent: (id, patch) =>
-        setEvents((prev) => prev.map((e) => (e.id === id ? { ...e, ...patch } : e))),
-      removeEvent: (id) => setEvents((prev) => prev.filter((e) => e.id !== id)),
+      updateEvent: (id, patch) => {
+        setEvents((prev) => prev.map((e) => (e.id === id ? { ...e, ...patch } : e)));
+        updateEventServer({ data: { id, patch } }).catch((err) =>
+          console.error("Error updating calendar event in DB:", err),
+        );
+      },
+      removeEvent: (id) => {
+        setEvents((prev) => prev.filter((e) => e.id !== id));
+        removeEventServer({ data: id }).catch((err) =>
+          console.error("Error deleting calendar event in DB:", err),
+        );
+      },
       addMeeting: (m) => {
-        setMeetings((prev) => [{ ...m, id: uid() }, ...prev]);
+        const id = uid();
+        const newMeeting = { ...m, id };
+        setMeetings((prev) => [newMeeting, ...prev]);
+        addMeetingServer({ data: newMeeting }).catch((err) =>
+          console.error("Error saving meeting to DB:", err),
+        );
         log("scheduled a meeting", m.title, "task");
       },
-      updateMeeting: (id, patch) =>
-        setMeetings((prev) => prev.map((m) => (m.id === id ? { ...m, ...patch } : m))),
+      updateMeeting: (id, patch) => {
+        setMeetings((prev) => prev.map((m) => (m.id === id ? { ...m, ...patch } : m)));
+        updateMeetingServer({ data: { id, patch } }).catch((err) =>
+          console.error("Error updating meeting in DB:", err),
+        );
+      },
       theme,
       toggleTheme: () => setTheme((t) => (t === "light" ? "dark" : "light")),
     }),
