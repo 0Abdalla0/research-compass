@@ -32,8 +32,6 @@ const kindTone: Record<EventKind, string> = {
   personal: "bg-secondary text-secondary-foreground border-border",
 };
 
-export default function noop() {}
-
 function CalendarPage() {
   const ws = useWorkspace();
   const year = 2026;
