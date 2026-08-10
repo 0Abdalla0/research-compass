@@ -10,33 +10,219 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ActivityRouteImport } from './routes/activity'
+import { Route as CalendarRouteImport } from './routes/calendar'
+import { Route as FilesRouteImport } from './routes/files'
+import { Route as LinksRouteImport } from './routes/links'
+import { Route as MediaRouteImport } from './routes/media'
+import { Route as MeetingsRouteImport } from './routes/meetings'
+import { Route as NotesRouteImport } from './routes/notes'
+import { Route as RoadmapRouteImport } from './routes/roadmap'
+import { Route as SettingsRouteImport } from './routes/settings'
+import { Route as TasksRouteImport } from './routes/tasks'
+import { Route as TeamRouteImport } from './routes/team'
+import { Route as VoiceRouteImport } from './routes/voice'
+import { Route as PapersIndexRouteImport } from './routes/papers.index'
+import { Route as PapersIdRouteImport } from './routes/papers.$id'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ActivityRoute = ActivityRouteImport.update({
+  id: '/activity',
+  path: '/activity',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CalendarRoute = CalendarRouteImport.update({
+  id: '/calendar',
+  path: '/calendar',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FilesRoute = FilesRouteImport.update({
+  id: '/files',
+  path: '/files',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LinksRoute = LinksRouteImport.update({
+  id: '/links',
+  path: '/links',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MediaRoute = MediaRouteImport.update({
+  id: '/media',
+  path: '/media',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MeetingsRoute = MeetingsRouteImport.update({
+  id: '/meetings',
+  path: '/meetings',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const NotesRoute = NotesRouteImport.update({
+  id: '/notes',
+  path: '/notes',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RoadmapRoute = RoadmapRouteImport.update({
+  id: '/roadmap',
+  path: '/roadmap',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SettingsRoute = SettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TasksRoute = TasksRouteImport.update({
+  id: '/tasks',
+  path: '/tasks',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TeamRoute = TeamRouteImport.update({
+  id: '/team',
+  path: '/team',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const VoiceRoute = VoiceRouteImport.update({
+  id: '/voice',
+  path: '/voice',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PapersIndexRoute = PapersIndexRouteImport.update({
+  id: '/papers/',
+  path: '/papers/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PapersIdRoute = PapersIdRouteImport.update({
+  id: '/papers/$id',
+  path: '/papers/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/activity': typeof ActivityRoute
+  '/calendar': typeof CalendarRoute
+  '/files': typeof FilesRoute
+  '/links': typeof LinksRoute
+  '/media': typeof MediaRoute
+  '/meetings': typeof MeetingsRoute
+  '/notes': typeof NotesRoute
+  '/roadmap': typeof RoadmapRoute
+  '/settings': typeof SettingsRoute
+  '/tasks': typeof TasksRoute
+  '/team': typeof TeamRoute
+  '/voice': typeof VoiceRoute
+  '/papers/$id': typeof PapersIdRoute
+  '/papers/': typeof PapersIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/activity': typeof ActivityRoute
+  '/calendar': typeof CalendarRoute
+  '/files': typeof FilesRoute
+  '/links': typeof LinksRoute
+  '/media': typeof MediaRoute
+  '/meetings': typeof MeetingsRoute
+  '/notes': typeof NotesRoute
+  '/roadmap': typeof RoadmapRoute
+  '/settings': typeof SettingsRoute
+  '/tasks': typeof TasksRoute
+  '/team': typeof TeamRoute
+  '/voice': typeof VoiceRoute
+  '/papers/$id': typeof PapersIdRoute
+  '/papers': typeof PapersIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/activity': typeof ActivityRoute
+  '/calendar': typeof CalendarRoute
+  '/files': typeof FilesRoute
+  '/links': typeof LinksRoute
+  '/media': typeof MediaRoute
+  '/meetings': typeof MeetingsRoute
+  '/notes': typeof NotesRoute
+  '/roadmap': typeof RoadmapRoute
+  '/settings': typeof SettingsRoute
+  '/tasks': typeof TasksRoute
+  '/team': typeof TeamRoute
+  '/voice': typeof VoiceRoute
+  '/papers/$id': typeof PapersIdRoute
+  '/papers/': typeof PapersIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/activity'
+    | '/calendar'
+    | '/files'
+    | '/links'
+    | '/media'
+    | '/meetings'
+    | '/notes'
+    | '/roadmap'
+    | '/settings'
+    | '/tasks'
+    | '/team'
+    | '/voice'
+    | '/papers/$id'
+    | '/papers/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/'
+    | '/activity'
+    | '/calendar'
+    | '/files'
+    | '/links'
+    | '/media'
+    | '/meetings'
+    | '/notes'
+    | '/roadmap'
+    | '/settings'
+    | '/tasks'
+    | '/team'
+    | '/voice'
+    | '/papers/$id'
+    | '/papers'
+  id:
+    | '__root__'
+    | '/'
+    | '/activity'
+    | '/calendar'
+    | '/files'
+    | '/links'
+    | '/media'
+    | '/meetings'
+    | '/notes'
+    | '/roadmap'
+    | '/settings'
+    | '/tasks'
+    | '/team'
+    | '/voice'
+    | '/papers/$id'
+    | '/papers/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  ActivityRoute: typeof ActivityRoute
+  CalendarRoute: typeof CalendarRoute
+  FilesRoute: typeof FilesRoute
+  LinksRoute: typeof LinksRoute
+  MediaRoute: typeof MediaRoute
+  MeetingsRoute: typeof MeetingsRoute
+  NotesRoute: typeof NotesRoute
+  RoadmapRoute: typeof RoadmapRoute
+  SettingsRoute: typeof SettingsRoute
+  TasksRoute: typeof TasksRoute
+  TeamRoute: typeof TeamRoute
+  VoiceRoute: typeof VoiceRoute
+  PapersIdRoute: typeof PapersIdRoute
+  PapersIndexRoute: typeof PapersIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -48,22 +234,124 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/activity': {
+      id: '/activity'
+      path: '/activity'
+      fullPath: '/activity'
+      preLoaderRoute: typeof ActivityRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/calendar': {
+      id: '/calendar'
+      path: '/calendar'
+      fullPath: '/calendar'
+      preLoaderRoute: typeof CalendarRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/files': {
+      id: '/files'
+      path: '/files'
+      fullPath: '/files'
+      preLoaderRoute: typeof FilesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/links': {
+      id: '/links'
+      path: '/links'
+      fullPath: '/links'
+      preLoaderRoute: typeof LinksRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/media': {
+      id: '/media'
+      path: '/media'
+      fullPath: '/media'
+      preLoaderRoute: typeof MediaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/meetings': {
+      id: '/meetings'
+      path: '/meetings'
+      fullPath: '/meetings'
+      preLoaderRoute: typeof MeetingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/notes': {
+      id: '/notes'
+      path: '/notes'
+      fullPath: '/notes'
+      preLoaderRoute: typeof NotesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/roadmap': {
+      id: '/roadmap'
+      path: '/roadmap'
+      fullPath: '/roadmap'
+      preLoaderRoute: typeof RoadmapRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/settings': {
+      id: '/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof SettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/tasks': {
+      id: '/tasks'
+      path: '/tasks'
+      fullPath: '/tasks'
+      preLoaderRoute: typeof TasksRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/team': {
+      id: '/team'
+      path: '/team'
+      fullPath: '/team'
+      preLoaderRoute: typeof TeamRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/voice': {
+      id: '/voice'
+      path: '/voice'
+      fullPath: '/voice'
+      preLoaderRoute: typeof VoiceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/papers/': {
+      id: '/papers/'
+      path: '/papers'
+      fullPath: '/papers/'
+      preLoaderRoute: typeof PapersIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/papers/$id': {
+      id: '/papers/$id'
+      path: '/papers/$id'
+      fullPath: '/papers/$id'
+      preLoaderRoute: typeof PapersIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  ActivityRoute: ActivityRoute,
+  CalendarRoute: CalendarRoute,
+  FilesRoute: FilesRoute,
+  LinksRoute: LinksRoute,
+  MediaRoute: MediaRoute,
+  MeetingsRoute: MeetingsRoute,
+  NotesRoute: NotesRoute,
+  RoadmapRoute: RoadmapRoute,
+  SettingsRoute: SettingsRoute,
+  TasksRoute: TasksRoute,
+  TeamRoute: TeamRoute,
+  VoiceRoute: VoiceRoute,
+  PapersIdRoute: PapersIdRoute,
+  PapersIndexRoute: PapersIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
