@@ -558,3 +558,75 @@ export const addActivityServer = createServerFn({ method: "POST" })
       return data;
     }
   });
+
+export const removePaperServer = createServerFn({ method: "POST" })
+  .validator((id: string) => id)
+  .handler(async ({ data: id }) => {
+    if (!hasSupabaseKeys) return;
+    try {
+      const { error } = await supabase.from("papers").delete().eq("id", id);
+      if (error) throw error;
+    } catch (e) {
+      console.error("Supabase delete paper error:", e);
+    }
+  });
+
+export const removeTaskServer = createServerFn({ method: "POST" })
+  .validator((id: string) => id)
+  .handler(async ({ data: id }) => {
+    if (!hasSupabaseKeys) return;
+    try {
+      const { error } = await supabase.from("tasks").delete().eq("id", id);
+      if (error) throw error;
+    } catch (e) {
+      console.error("Supabase delete task error:", e);
+    }
+  });
+
+export const removeNoteServer = createServerFn({ method: "POST" })
+  .validator((id: string) => id)
+  .handler(async ({ data: id }) => {
+    if (!hasSupabaseKeys) return;
+    try {
+      const { error } = await supabase.from("notes").delete().eq("id", id);
+      if (error) throw error;
+    } catch (e) {
+      console.error("Supabase delete note error:", e);
+    }
+  });
+
+export const removeShotServer = createServerFn({ method: "POST" })
+  .validator((id: string) => id)
+  .handler(async ({ data: id }) => {
+    if (!hasSupabaseKeys) return;
+    try {
+      const { error } = await supabase.from("shots").delete().eq("id", id);
+      if (error) throw error;
+    } catch (e) {
+      console.error("Supabase delete screenshot error:", e);
+    }
+  });
+
+export const removeLinkServer = createServerFn({ method: "POST" })
+  .validator((id: string) => id)
+  .handler(async ({ data: id }) => {
+    if (!hasSupabaseKeys) return;
+    try {
+      const { error } = await supabase.from("links").delete().eq("id", id);
+      if (error) throw error;
+    } catch (e) {
+      console.error("Supabase delete resource link error:", e);
+    }
+  });
+
+export const removeMeetingServer = createServerFn({ method: "POST" })
+  .validator((id: string) => id)
+  .handler(async ({ data: id }) => {
+    if (!hasSupabaseKeys) return;
+    try {
+      const { error } = await supabase.from("meetings").delete().eq("id", id);
+      if (error) throw error;
+    } catch (e) {
+      console.error("Supabase delete meeting error:", e);
+    }
+  });

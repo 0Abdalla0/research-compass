@@ -83,6 +83,7 @@ export type Shot = {
   paperId?: string;
   hue: number;
   comments: { author: string; text: string }[];
+  url?: string;
 };
 
 export type VoiceNote = {
@@ -104,6 +105,7 @@ export type ResearchFile = {
   size: string;
   uploadedBy: string;
   date: string;
+  url?: string;
 };
 
 export type ResourceLink = {

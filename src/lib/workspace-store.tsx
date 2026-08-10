@@ -46,6 +46,12 @@ import {
   addMeetingServer,
   updateMeetingServer,
   addActivityServer,
+  removePaperServer,
+  removeTaskServer,
+  removeNoteServer,
+  removeShotServer,
+  removeLinkServer,
+  removeMeetingServer,
 } from "@/lib/db-server";
 
 import { supabase, hasSupabaseKeys } from "./supabase";
@@ -112,6 +118,14 @@ type Ctx = {
   removeEvent: (id: string) => void;
   addMeeting: (m: Omit<Meeting, "id">) => void;
   updateMeeting: (id: string, patch: Partial<Meeting>) => void;
+  project: typeof seed.project;
+  updateProject: (name: string, topic: string, institution: string) => void;
+  removePaper: (id: string) => void;
+  removeTask: (id: string) => void;
+  removeNote: (id: string) => void;
+  removeShot: (id: string) => void;
+  removeLink: (id: string) => void;
+  removeMeeting: (id: string) => void;
   theme: "light" | "dark";
   toggleTheme: () => void;
 };
@@ -132,6 +146,19 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
   const [activity, setActivity] = useState<Activity[]>([]);
   const [theme, setTheme] = useState<"light" | "dark">("light");
   const [currentUser, setCurrentUser] = useState<(typeof seed.members)[number] | null>(null);
+  const [project, setProject] = useState<typeof seed.project>(seed.project);
+
+  // Load project details on mount
+  useEffect(() => {
+    const savedProject = localStorage.getItem("research_hub_project");
+    if (savedProject) {
+      try {
+        setProject(JSON.parse(savedProject));
+      } catch (e) {
+        console.error("Failed to load project details:", e);
+      }
+    }
+  }, []);
 
   // Load user session on mount
   useEffect(() => {
@@ -431,10 +458,53 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
           console.error("Error updating meeting in DB:", err),
         );
       },
+      project,
+      updateProject: (name, topic, institution) => {
+        const updated = { ...project, name, topic, institution };
+        setProject(updated);
+        localStorage.setItem("research_hub_project", JSON.stringify(updated));
+        log("updated project settings", name, "task");
+      },
+      removePaper: (id) => {
+        const p = papers.find((x) => x.id === id);
+        setPapers((prev) => prev.filter((x) => x.id !== id));
+        removePaperServer({ data: id }).catch((err) => console.error("Error deleting paper in DB:", err));
+        if (p) log("deleted paper", p.title, "paper");
+      },
+      removeTask: (id) => {
+        const t = tasks.find((x) => x.id === id);
+        setTasks((prev) => prev.filter((x) => x.id !== id));
+        removeTaskServer({ data: id }).catch((err) => console.error("Error deleting task in DB:", err));
+        if (t) log("deleted task", t.title, "task");
+      },
+      removeNote: (id) => {
+        const n = notes.find((x) => x.id === id);
+        setNotes((prev) => prev.filter((x) => x.id !== id));
+        removeNoteServer({ data: id }).catch((err) => console.error("Error deleting note in DB:", err));
+        if (n) log("deleted note", n.title, "note");
+      },
+      removeShot: (id) => {
+        const s = shots.find((x) => x.id === id);
+        setShots((prev) => prev.filter((x) => x.id !== id));
+        removeShotServer({ data: id }).catch((err) => console.error("Error deleting screenshot in DB:", err));
+        if (s) log("deleted screenshot", s.title, "image");
+      },
+      removeLink: (id) => {
+        const l = links.find((x) => x.id === id);
+        setLinks((prev) => prev.filter((x) => x.id !== id));
+        removeLinkServer({ data: id }).catch((err) => console.error("Error deleting link in DB:", err));
+        if (l) log("deleted link", l.title, "file");
+      },
+      removeMeeting: (id) => {
+        const m = meetings.find((x) => x.id === id);
+        setMeetings((prev) => prev.filter((x) => x.id !== id));
+        removeMeetingServer({ data: id }).catch((err) => console.error("Error deleting meeting in DB:", err));
+        if (m) log("deleted meeting", m.title, "task");
+      },
       theme,
       toggleTheme: () => setTheme((t) => (t === "light" ? "dark" : "light")),
     }),
-    [members, papers, tasks, notes, shots, voiceNotes, files, links, meetings, events, activity, theme, currentUser, log],
+    [members, papers, tasks, notes, shots, voiceNotes, files, links, meetings, events, activity, theme, currentUser, project, log],
   );
 
   return <WorkspaceContext.Provider value={value}>{children}</WorkspaceContext.Provider>;

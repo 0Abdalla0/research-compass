@@ -24,7 +24,6 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { useWorkspace } from "@/lib/workspace-store";
-import { project } from "@/data/workspace";
 import { Initials, Meter, Panel, StatusPill, Stack, Tag } from "@/components/ui-bits";
 
 export const Route = createFileRoute("/")({
@@ -75,24 +74,24 @@ function Dashboard() {
                 Research Workspace
               </p>
               <h1 className="font-display mt-2 text-2xl font-bold leading-tight sm:text-3xl">
-                {project.name}
+                {ws.project.name}
               </h1>
-              <p className="mt-2 max-w-2xl text-sm text-white/80">{project.topic}</p>
+              <p className="mt-2 max-w-2xl text-sm text-white/80">{ws.project.topic}</p>
               <div className="mt-4 flex flex-wrap items-center gap-3">
                 <Stack ids={ws.members.map((m) => m.id)} members={ws.members} />
                 <span className="rounded-full bg-white/15 px-3 py-1 text-xs font-medium text-white">
-                  {project.phase}
+                  {ws.project.phase}
                 </span>
-                <span className="text-xs text-white/70">{project.institution}</span>
+                <span className="text-xs text-white/70">{ws.project.institution}</span>
               </div>
             </div>
             <div className="w-full lg:w-64">
               <div className="flex items-end justify-between text-white">
                 <span className="text-xs font-medium text-white/75">Overall progress</span>
-                <span className="font-display text-3xl font-bold">{project.progress}%</span>
+                <span className="font-display text-3xl font-bold">{ws.project.progress}%</span>
               </div>
               <div className="mt-2 h-2 overflow-hidden rounded-full bg-white/20">
-                <div className="h-full rounded-full bg-white transition-all duration-1000" style={{ width: `${project.progress}%` }} />
+                <div className="h-full rounded-full bg-white transition-all duration-1000" style={{ width: `${ws.project.progress}%` }} />
               </div>
             </div>
           </div>

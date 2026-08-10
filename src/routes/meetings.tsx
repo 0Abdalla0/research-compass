@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { toast } from "sonner";
+import { Trash2 } from "lucide-react";
 import { useWorkspace } from "@/lib/workspace-store";
 import { PageHeader, Panel, Stack } from "@/components/ui-bits";
 import { Button } from "@/components/ui/button";
@@ -24,9 +25,22 @@ function MeetingsPage() {
       <div className="grid gap-4 lg:grid-cols-2">
         {ws.meetings.map((m) => (
           <Panel key={m.id} className="p-5">
-            <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex flex-wrap items-start justify-between gap-2">
               <h2 className="font-display text-base font-semibold">{m.title}</h2>
-              <span className="text-xs text-muted-foreground">{m.date} · {m.time}</span>
+              <div className="flex items-center gap-2 shrink-0">
+                <span className="text-xs text-muted-foreground">{m.date} · {m.time}</span>
+                <button
+                  onClick={() => {
+                    if (confirm(`Are you sure you want to delete meeting "${m.title}"?`)) {
+                      ws.removeMeeting(m.id);
+                    }
+                  }}
+                  className="p-1 rounded-lg text-destructive hover:bg-destructive/10 transition-colors cursor-pointer"
+                  title="Delete Meeting"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
+              </div>
             </div>
             <div className="mt-3"><Stack ids={m.participants} members={ws.members} /></div>
             <Section title="Agenda" items={m.agenda} />

@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
-import { Plus } from "lucide-react";
+import { Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { useWorkspace } from "@/lib/workspace-store";
 import { Initials, PageHeader, Panel, Tag } from "@/components/ui-bits";
@@ -57,11 +57,29 @@ function NotesPage() {
         <Panel className="p-6">
           {note ? (
             <article>
-              <div className="flex flex-wrap items-center gap-2">
-                <Tag>{note.type}</Tag>
-                {note.tags.map((t) => (<Tag key={t}>#{t}</Tag>))}
+              <div className="flex items-start justify-between gap-4 border-b border-border/40 pb-3">
+                <div className="flex flex-wrap items-center gap-2">
+                  <Tag>{note.type}</Tag>
+                  {note.tags.map((t) => (<Tag key={t}>#{t}</Tag>))}
+                </div>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => {
+                    if (confirm(`Are you sure you want to delete note "${note.title}"?`)) {
+                      ws.removeNote(note.id);
+                      setActive("");
+                      toast.success("Note deleted successfully");
+                    }
+                  }}
+                  className="text-destructive hover:bg-destructive/10 shrink-0 cursor-pointer"
+                  title="Delete Note"
+                >
+                  <Trash2 className="h-4 w-4 mr-1.5" />
+                  Delete
+                </Button>
               </div>
-              <h2 className="font-display mt-3 text-xl font-bold">{note.title}</h2>
+              <h2 className="font-display mt-4 text-xl font-bold">{note.title}</h2>
               <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
                 <Initials member={ws.member(note.authorId)} size={22} />
                 {ws.member(note.authorId)?.name} · updated {note.updated}

@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { LayoutGrid, Plus, Rows3, Search } from "lucide-react";
+import { LayoutGrid, Plus, Rows3, Search, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { useWorkspace } from "@/lib/workspace-store";
 import type { PaperStatus } from "@/data/workspace";
@@ -144,7 +144,22 @@ function PapersPage() {
               <Panel className="flex h-full flex-col p-5 transition-all hover:-translate-y-0.5 hover:border-brand/40">
                 <div className="flex items-start justify-between gap-3">
                   <StatusPill status={p.status} />
-                  <span className="text-xs font-medium text-muted-foreground">{p.year}</span>
+                  <div className="flex items-center gap-1.5" onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}>
+                    <span className="text-xs font-medium text-muted-foreground">{p.year}</span>
+                    <button
+                      type="button"
+                      className="p-1 rounded-lg text-destructive hover:bg-destructive/10 transition-colors cursor-pointer"
+                      onClick={() => {
+                        if (confirm(`Are you sure you want to delete the paper "${p.title}"?`)) {
+                          ws.removePaper(p.id);
+                          toast.success("Paper deleted successfully");
+                        }
+                      }}
+                      title="Delete Paper"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
                 </div>
                 <h3 className="font-display mt-3 line-clamp-3 text-[15px] font-semibold leading-snug">{p.title}</h3>
                 <p className="mt-1.5 line-clamp-1 text-xs text-muted-foreground">{p.authors}</p>
@@ -180,6 +195,7 @@ function PapersPage() {
                 <th className="px-4 py-3 font-semibold">Status</th>
                 <th className="px-4 py-3 font-semibold">Researcher</th>
                 <th className="px-4 py-3 font-semibold">Progress</th>
+                <th className="px-4 py-3 font-semibold text-right">Actions</th>
               </tr>
             </thead>
             <tbody>
@@ -204,6 +220,23 @@ function PapersPage() {
                   </td>
                   <td className="w-36 px-4 py-3">
                     <Meter value={p.progress} />
+                  </td>
+                  <td className="px-4 py-3 text-right">
+                    <button
+                      type="button"
+                      className="p-1.5 rounded-lg text-destructive hover:bg-destructive/10 transition-colors cursor-pointer"
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        if (confirm(`Are you sure you want to delete the paper "${p.title}"?`)) {
+                          ws.removePaper(p.id);
+                          toast.success("Paper deleted successfully");
+                        }
+                      }}
+                      title="Delete Paper"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
                   </td>
                 </tr>
               ))}

@@ -75,7 +75,8 @@ CREATE TABLE IF NOT EXISTS "shots" (
   "date" TEXT NOT NULL,
   "paperId" TEXT,
   "hue" INTEGER NOT NULL,
-  "comments" JSONB NOT NULL
+  "comments" JSONB NOT NULL,
+  "url" TEXT
 );
 
 CREATE TABLE IF NOT EXISTS "voiceNotes" (
@@ -96,7 +97,8 @@ CREATE TABLE IF NOT EXISTS "files" (
   "folder" TEXT NOT NULL,
   "size" TEXT NOT NULL,
   "uploadedBy" TEXT NOT NULL,
-  "date" TEXT NOT NULL
+  "date" TEXT NOT NULL,
+  "url" TEXT
 );
 
 CREATE TABLE IF NOT EXISTS "links" (

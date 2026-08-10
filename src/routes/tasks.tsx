@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
-import { MessageSquare, Paperclip, Plus } from "lucide-react";
+import { MessageSquare, Paperclip, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { useWorkspace } from "@/lib/workspace-store";
 import { LABELS, TASK_COLUMNS, type Priority, type TaskStatus } from "@/data/workspace";
@@ -122,8 +122,24 @@ function TasksPage() {
         <SheetContent className="w-full overflow-y-auto sm:max-w-lg">
           {task && (
             <>
-              <SheetHeader>
-                <SheetTitle className="pr-6 text-left">{task.title}</SheetTitle>
+              <SheetHeader className="flex flex-row items-center justify-between pr-8 border-b border-border/50 pb-3">
+                <SheetTitle className="text-left flex-1 min-w-0 pr-2">{task.title}</SheetTitle>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => {
+                    if (confirm(`Are you sure you want to delete task "${task.title}"?`)) {
+                      ws.removeTask(task.id);
+                      setOpenTask(null);
+                      toast.success("Task deleted successfully");
+                    }
+                  }}
+                  className="text-destructive hover:bg-destructive/10 shrink-0 cursor-pointer"
+                  title="Delete Task"
+                >
+                  <Trash2 className="h-4 w-4 mr-1" />
+                  Delete
+                </Button>
               </SheetHeader>
               <div className="space-y-5 px-4 pb-8">
                 <div className="flex flex-wrap items-center gap-2">

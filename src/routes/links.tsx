@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { ExternalLink } from "lucide-react";
+import { ExternalLink, Trash2 } from "lucide-react";
 import { useWorkspace } from "@/lib/workspace-store";
 import { Initials, PageHeader, Panel, Tag } from "@/components/ui-bits";
 
@@ -25,7 +25,22 @@ function LinksPage() {
           <Panel key={l.id} className="p-5 transition-transform hover:-translate-y-0.5">
             <div className="flex items-center justify-between gap-2">
               <Tag>{l.category}</Tag>
-              <a href={l.url} target="_blank" rel="noreferrer" className="text-muted-foreground hover:text-brand"><ExternalLink className="h-4 w-4" /></a>
+              <div className="flex items-center gap-1">
+                <a href={l.url} target="_blank" rel="noreferrer" className="p-1 rounded-lg text-muted-foreground hover:text-brand hover:bg-secondary transition-colors" title="Open Link">
+                  <ExternalLink className="h-4 w-4" />
+                </a>
+                <button
+                  onClick={() => {
+                    if (confirm(`Are you sure you want to delete the resource "${l.title}"?`)) {
+                      ws.removeLink(l.id);
+                    }
+                  }}
+                  className="p-1 rounded-lg text-destructive hover:bg-destructive/10 transition-colors cursor-pointer"
+                  title="Delete Resource"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
+              </div>
             </div>
             <h2 className="font-display mt-3 text-[15px] font-semibold leading-snug">{l.title}</h2>
             <p className="mt-1 text-sm text-muted-foreground">{l.description}</p>

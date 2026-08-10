@@ -26,7 +26,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useWorkspace } from "@/lib/workspace-store";
-import { project, notifications } from "@/data/workspace";
+import { notifications } from "@/data/workspace";
 import { Initials } from "@/components/ui-bits";
 import { GlobalSearch } from "@/components/global-search";
 import {
@@ -117,11 +117,11 @@ export function AppShell({ children }: { children: ReactNode }) {
         <p className="text-[11px] font-semibold uppercase tracking-wide text-sidebar-foreground/55">
           Current phase
         </p>
-        <p className="mt-1 text-sm font-semibold text-sidebar-foreground">{project.phase}</p>
+        <p className="mt-1 text-sm font-semibold text-sidebar-foreground">{ws.project.phase}</p>
         <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-sidebar-foreground/15">
-          <div className="h-full rounded-full bg-brand" style={{ width: `${project.progress}%` }} />
+          <div className="h-full rounded-full bg-brand" style={{ width: `${ws.project.progress}%` }} />
         </div>
-        <p className="mt-1.5 text-[11px] text-sidebar-foreground/60">{project.progress}% overall progress</p>
+        <p className="mt-1.5 text-[11px] text-sidebar-foreground/60">{ws.project.progress}% overall progress</p>
       </div>
     </div>
   );
@@ -130,12 +130,12 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   return (
     <div className="min-h-screen w-full bg-background">
-      <aside className="fixed inset-y-0 left-0 z-40 hidden w-64 border-r border-sidebar-border bg-sidebar lg:block">
+      <aside className="fixed inset-y-0 left-0 z-40 hidden w-64 border-r border-sidebar-border bg-sidebar md:block">
         {sidebar}
       </aside>
 
       {openNav && (
-        <div className="fixed inset-0 z-50 lg:hidden">
+        <div className="fixed inset-0 z-50 md:hidden">
           <button
             aria-label="Close navigation"
             className="absolute inset-0 bg-foreground/40 backdrop-blur-sm"
@@ -154,11 +154,11 @@ export function AppShell({ children }: { children: ReactNode }) {
         </div>
       )}
 
-      <div className="lg:pl-64">
+      <div className="md:pl-64">
         <header className="sticky top-0 z-30 border-b border-border bg-background/85 backdrop-blur-xl">
           <div className="flex h-16 items-center gap-2 px-4 sm:px-6">
             <button
-              className="rounded-lg p-2 text-muted-foreground hover:bg-secondary lg:hidden"
+              className="rounded-lg p-2 text-muted-foreground hover:bg-secondary md:hidden"
               onClick={() => setOpenNav(true)}
               aria-label="Open navigation"
             >
@@ -250,10 +250,10 @@ export function AppShell({ children }: { children: ReactNode }) {
           </div>
         </header>
 
-        <main className="mx-auto w-full max-w-[1500px] px-4 pb-28 pt-6 sm:px-6 lg:pb-12">{children}</main>
+        <main className="mx-auto w-full max-w-[1500px] px-4 pb-28 pt-6 sm:px-6 md:pb-12">{children}</main>
       </div>
 
-      <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-background/95 backdrop-blur-xl lg:hidden">
+      <nav className="fixed inset-x-0 bottom-0 z-30 border-t border-border bg-background/95 backdrop-blur-xl md:hidden">
         <div className="grid grid-cols-5">
           {mobileNav.map((item) => (
             <Link
