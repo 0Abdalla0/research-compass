@@ -1,14 +1,22 @@
 import { createClient } from "@supabase/supabase-js";
 
-// Make sure Supabase URL and Anon Key are defined in environment variables.
 const supabaseUrl = import.meta.env["VITE_SUPABASE_URL"] || "";
 const supabaseAnonKey = import.meta.env["VITE_SUPABASE_ANON_KEY"] || "";
 
-if (!supabaseUrl || !supabaseAnonKey) {
+// Verify both keys exist and the URL is a valid format to prevent createClient from throwing.
+export const hasSupabaseKeys = !!(
+  supabaseUrl &&
+  supabaseAnonKey &&
+  supabaseUrl.startsWith("https://") &&
+  !supabaseUrl.includes("your-project-id")
+);
+
+if (!hasSupabaseKeys) {
   console.warn(
-    "Supabase configuration keys are missing. Please define VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY in your .env file. Falling back to offline seed data mode."
+    "Supabase credentials are missing, placeholder, or invalid. App is running in offline mode with mock seed data."
   );
 }
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
-export const hasSupabaseKeys = !!(supabaseUrl && supabaseAnonKey);
+export const supabase = hasSupabaseKeys
+  ? createClient(supabaseUrl, supabaseAnonKey)
+  : (null as any);

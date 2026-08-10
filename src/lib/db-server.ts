@@ -116,7 +116,7 @@ export const getWorkspaceDataServer = createServerFn({ method: "GET" })
       const events = eventsRes.data || [];
       const activity = activityRes.data || [];
 
-      const formattedMembers: Member[] = members.map((m) => cleanOptional({
+      const formattedMembers: Member[] = members.map((m: any) => cleanOptional({
         ...m,
         password: m.password ?? undefined,
         uniId: m.uniId ?? undefined,
@@ -126,14 +126,14 @@ export const getWorkspaceDataServer = createServerFn({ method: "GET" })
         privateEmail: m.privateEmail ?? undefined,
       }));
 
-      const formattedPapers: Paper[] = papers.map((p) => ({
+      const formattedPapers: Paper[] = papers.map((p: any) => ({
         ...p,
         status: p.status as PaperStatus,
         keywords: parseJSONB(p.keywords, []),
         analysis: parseJSONB(p.analysis, {}),
       }));
 
-      const formattedTasks: Task[] = tasks.map((t) => cleanOptional({
+      const formattedTasks: Task[] = tasks.map((t: any) => cleanOptional({
         ...t,
         status: t.status as TaskStatus,
         priority: t.priority as Priority,
@@ -143,7 +143,7 @@ export const getWorkspaceDataServer = createServerFn({ method: "GET" })
         phaseId: t.phaseId ?? undefined,
       }));
 
-      const formattedNotes: Note[] = notes.map((n) => cleanOptional({
+      const formattedNotes: Note[] = notes.map((n: any) => cleanOptional({
         ...n,
         type: n.type as Note["type"],
         tags: parseJSONB(n.tags, []),
@@ -151,26 +151,26 @@ export const getWorkspaceDataServer = createServerFn({ method: "GET" })
         taskId: n.taskId ?? undefined,
       }));
 
-      const formattedShots: Shot[] = shots.map((s) => cleanOptional({
+      const formattedShots: Shot[] = shots.map((s: any) => cleanOptional({
         ...s,
         tags: parseJSONB(s.tags, []),
         comments: parseJSONB(s.comments, []),
         paperId: s.paperId ?? undefined,
       }));
 
-      const formattedVoiceNotes: VoiceNote[] = voiceNotes.map((v) => cleanOptional({
+      const formattedVoiceNotes: VoiceNote[] = voiceNotes.map((v: any) => cleanOptional({
         ...v,
         paperId: v.paperId ?? undefined,
         taskId: v.taskId ?? undefined,
       }));
 
-      const formattedLinks: ResourceLink[] = links.map((l) => cleanOptional({
+      const formattedLinks: ResourceLink[] = links.map((l: any) => cleanOptional({
         ...l,
         tags: parseJSONB(l.tags, []),
         paperId: l.paperId ?? undefined,
       }));
 
-      const formattedMeetings: Meeting[] = meetings.map((m) => ({
+      const formattedMeetings: Meeting[] = meetings.map((m: any) => ({
         ...m,
         participants: parseJSONB(m.participants, []),
         agenda: parseJSONB(m.agenda, []),
@@ -178,18 +178,18 @@ export const getWorkspaceDataServer = createServerFn({ method: "GET" })
         actionItems: parseJSONB(m.actionItems, []),
       }));
 
-      const formattedEvents: CalEvent[] = events.map((e) => ({
+      const formattedEvents: CalEvent[] = events.map((e: any) => ({
         ...e,
         kind: e.kind as EventKind,
         attendees: parseJSONB(e.attendees, []),
       }));
 
       const formattedActivity: Activity[] = activity
-        .map((a) => ({
+        .map((a: any) => ({
           ...a,
           kind: a.kind as Activity["kind"],
         }))
-        .sort((a, b) => b.id.localeCompare(a.id));
+        .sort((a: any, b: any) => b.id.localeCompare(a.id));
 
       return {
         members: formattedMembers,
