@@ -11,6 +11,8 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as CalendarRouteImport } from './routes/calendar'
+import { Route as MediaRouteImport } from './routes/media'
+import { Route as NotesRouteImport } from './routes/notes'
 import { Route as TasksRouteImport } from './routes/tasks'
 import { Route as PapersIndexRouteImport } from './routes/papers.index'
 import { Route as PapersIdRouteImport } from './routes/papers.$id'
@@ -23,6 +25,16 @@ const IndexRoute = IndexRouteImport.update({
 const CalendarRoute = CalendarRouteImport.update({
   id: '/calendar',
   path: '/calendar',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MediaRoute = MediaRouteImport.update({
+  id: '/media',
+  path: '/media',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const NotesRoute = NotesRouteImport.update({
+  id: '/notes',
+  path: '/notes',
   getParentRoute: () => rootRouteImport,
 } as any)
 const TasksRoute = TasksRouteImport.update({
@@ -44,6 +56,8 @@ const PapersIdRoute = PapersIdRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/calendar': typeof CalendarRoute
+  '/media': typeof MediaRoute
+  '/notes': typeof NotesRoute
   '/tasks': typeof TasksRoute
   '/papers/$id': typeof PapersIdRoute
   '/papers/': typeof PapersIndexRoute
@@ -51,6 +65,8 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/calendar': typeof CalendarRoute
+  '/media': typeof MediaRoute
+  '/notes': typeof NotesRoute
   '/tasks': typeof TasksRoute
   '/papers/$id': typeof PapersIdRoute
   '/papers': typeof PapersIndexRoute
@@ -59,21 +75,47 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/calendar': typeof CalendarRoute
+  '/media': typeof MediaRoute
+  '/notes': typeof NotesRoute
   '/tasks': typeof TasksRoute
   '/papers/$id': typeof PapersIdRoute
   '/papers/': typeof PapersIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/calendar' | '/tasks' | '/papers/$id' | '/papers/'
+  fullPaths:
+    | '/'
+    | '/calendar'
+    | '/media'
+    | '/notes'
+    | '/tasks'
+    | '/papers/$id'
+    | '/papers/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/calendar' | '/tasks' | '/papers/$id' | '/papers'
-  id: '__root__' | '/' | '/calendar' | '/tasks' | '/papers/$id' | '/papers/'
+  to:
+    | '/'
+    | '/calendar'
+    | '/media'
+    | '/notes'
+    | '/tasks'
+    | '/papers/$id'
+    | '/papers'
+  id:
+    | '__root__'
+    | '/'
+    | '/calendar'
+    | '/media'
+    | '/notes'
+    | '/tasks'
+    | '/papers/$id'
+    | '/papers/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   CalendarRoute: typeof CalendarRoute
+  MediaRoute: typeof MediaRoute
+  NotesRoute: typeof NotesRoute
   TasksRoute: typeof TasksRoute
   PapersIdRoute: typeof PapersIdRoute
   PapersIndexRoute: typeof PapersIndexRoute
@@ -93,6 +135,20 @@ declare module '@tanstack/react-router' {
       path: '/calendar'
       fullPath: '/calendar'
       preLoaderRoute: typeof CalendarRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/media': {
+      id: '/media'
+      path: '/media'
+      fullPath: '/media'
+      preLoaderRoute: typeof MediaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/notes': {
+      id: '/notes'
+      path: '/notes'
+      fullPath: '/notes'
+      preLoaderRoute: typeof NotesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/tasks': {
@@ -122,6 +178,8 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   CalendarRoute: CalendarRoute,
+  MediaRoute: MediaRoute,
+  NotesRoute: NotesRoute,
   TasksRoute: TasksRoute,
   PapersIdRoute: PapersIdRoute,
   PapersIndexRoute: PapersIndexRoute,
