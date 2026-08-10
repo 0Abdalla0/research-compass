@@ -40,7 +40,6 @@ function FilesPage() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Format size
     let formattedSize = "";
     if (file.size > 1024 * 1024) {
       formattedSize = `${(file.size / (1024 * 1024)).toFixed(1)} MB`;
@@ -61,8 +60,6 @@ function FilesPage() {
     });
 
     toast.success(`"${file.name}" uploaded successfully!`);
-    
-    // Clear input
     e.target.value = "";
   };
 
@@ -75,10 +72,10 @@ function FilesPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 md:space-y-6">
       <PageHeader
         title="Files"
-        subtitle={`${ws.files.length} files across ${FOLDERS.length - 1} folders`}
+        subtitle={`${ws.files.length} files`}
         actions={
           <>
             <input
@@ -87,7 +84,7 @@ function FilesPage() {
               onChange={handleFileChange}
               className="hidden"
             />
-            <Button onClick={handleUploadClick} className="inline-flex items-center gap-2 cursor-pointer">
+            <Button onClick={handleUploadClick} className="inline-flex items-center gap-2 cursor-pointer text-xs md:text-sm">
               <UploadCloud className="h-4 w-4" />
               Upload file
             </Button>
@@ -95,9 +92,26 @@ function FilesPage() {
         }
       />
 
+      {/* Mobile Folders Horizontally Scrollable Bar */}
+      <div className="md:hidden flex gap-1.5 overflow-x-auto pb-2 px-1 scrollbar-none snap-x">
+        {FOLDERS.map((f) => (
+          <button
+            key={f}
+            onClick={() => setFolder(f)}
+            className={`snap-start shrink-0 rounded-full px-4 py-1.5 text-xs font-semibold transition-all cursor-pointer ${
+              folder === f
+                ? "bg-brand text-brand-foreground shadow"
+                : "bg-card border border-border text-muted-foreground"
+            }`}
+          >
+            {f}
+          </button>
+        ))}
+      </div>
+
       <div className="grid gap-4 md:grid-cols-[220px_minmax(0,1fr)]">
-        {/* Folders List Panel */}
-        <Panel className="p-3 self-start">
+        {/* Desktop Folders Sidebar (Hidden on Mobile) */}
+        <Panel className="hidden md:block p-3 self-start">
           <h2 className="text-xs font-bold uppercase tracking-wider text-muted-foreground px-3 mb-2 flex items-center gap-1.5">
             <Folder className="h-3.5 w-3.5" />
             Folders
@@ -120,87 +134,151 @@ function FilesPage() {
           </ul>
         </Panel>
 
-        {/* Files Grid/Table */}
+        {/* Files Area */}
         <div className="space-y-3">
           <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search files…" />
           
-          <Panel className="overflow-x-auto">
-            <table className="w-full min-w-[640px] text-sm">
-              <thead className="border-b border-border text-left text-xs uppercase text-muted-foreground bg-muted/20">
-                <tr>
-                  <th className="px-4 py-3">Name</th>
-                  <th className="px-4 py-3">Folder</th>
-                  <th className="px-4 py-3">Size</th>
-                  <th className="px-4 py-3">Owner</th>
-                  <th className="px-4 py-3 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {list.map((f) => (
-                  <tr key={f.id} className="border-b border-border/70 last:border-0 hover:bg-secondary/40 transition-colors">
-                    <td className="px-4 py-3">
-                      <button
-                        onClick={() => setPreviewFile(f)}
-                        className="flex items-center gap-2.5 font-semibold text-left text-foreground hover:text-brand transition-colors cursor-pointer"
-                      >
-                        <FileText className="h-4 w-4 text-brand shrink-0" />
-                        <span className="truncate max-w-[280px]">{f.name}</span>
-                      </button>
-                    </td>
-                    <td className="px-4 py-3 text-muted-foreground">{f.folder}</td>
-                    <td className="px-4 py-3 text-muted-foreground">{f.size}</td>
-                    <td className="px-4 py-3">
-                      <Initials member={ws.member(f.uploadedBy)} size={22} />
-                    </td>
-                    <td className="px-4 py-3 text-right">
-                      <div className="flex items-center justify-end gap-1">
-                        <Button
-                          size="sm"
-                          variant="ghost"
+          {/* Desktop Table View (Hidden on Mobile) */}
+          <div className="hidden md:block">
+            <Panel className="overflow-x-auto">
+              <table className="w-full min-w-[640px] text-sm">
+                <thead className="border-b border-border text-left text-xs uppercase text-muted-foreground bg-muted/20">
+                  <tr>
+                    <th className="px-4 py-3">Name</th>
+                    <th className="px-4 py-3">Folder</th>
+                    <th className="px-4 py-3">Size</th>
+                    <th className="px-4 py-3">Owner</th>
+                    <th className="px-4 py-3 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {list.map((f) => (
+                    <tr key={f.id} className="border-b border-border/70 last:border-0 hover:bg-secondary/40 transition-colors">
+                      <td className="px-4 py-3">
+                        <button
                           onClick={() => setPreviewFile(f)}
-                          title="Preview File"
-                          className="cursor-pointer"
+                          className="flex items-center gap-2.5 font-semibold text-left text-foreground hover:text-brand transition-colors cursor-pointer"
                         >
-                          <Eye className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground" />
-                        </Button>
-                        {f.url && (
+                          <FileText className="h-4 w-4 text-brand shrink-0" />
+                          <span className="truncate max-w-[280px]">{f.name}</span>
+                        </button>
+                      </td>
+                      <td className="px-4 py-3 text-muted-foreground">{f.folder}</td>
+                      <td className="px-4 py-3 text-muted-foreground">{f.size}</td>
+                      <td className="px-4 py-3">
+                        <Initials member={ws.member(f.uploadedBy)} size={22} />
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <div className="flex items-center justify-end gap-1">
                           <Button
                             size="sm"
                             variant="ghost"
-                            asChild
-                            title="Download File"
+                            onClick={() => setPreviewFile(f)}
+                            title="Preview File"
+                            className="cursor-pointer"
                           >
-                            <a href={f.url} download={f.name}>
-                              <Download className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground" />
-                            </a>
+                            <Eye className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground" />
                           </Button>
-                        )}
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => {
-                            ws.removeFile(f.id);
-                            toast.success("File deleted");
-                          }}
-                          title="Delete File"
-                          className="cursor-pointer"
-                        >
-                          <Trash2 className="h-3.5 w-3.5 text-destructive hover:bg-destructive/10" />
-                        </Button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-            
-            {list.length === 0 && (
-              <div className="py-12 text-center space-y-2">
-                <HardDrive className="h-8 w-8 mx-auto text-muted-foreground" />
-                <p className="text-sm text-muted-foreground font-medium">No files found in this folder.</p>
-              </div>
-            )}
-          </Panel>
+                          {f.url && (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              asChild
+                              title="Download File"
+                            >
+                              <a href={f.url} download={f.name}>
+                                <Download className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground" />
+                              </a>
+                            </Button>
+                          )}
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => {
+                              if (confirm(`Are you sure you want to delete "${f.name}"?`)) {
+                                ws.removeFile(f.id);
+                                toast.success("File deleted");
+                              }
+                            }}
+                            title="Delete File"
+                            className="cursor-pointer"
+                          >
+                            <Trash2 className="h-3.5 w-3.5 text-destructive hover:bg-destructive/10" />
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </Panel>
+          </div>
+
+          {/* Mobile Cards List View (Hidden on Desktop) */}
+          <div className="block md:hidden space-y-3">
+            {list.map((f) => (
+              <Panel key={f.id} className="p-4 border border-border bg-card flex flex-col gap-3">
+                <div className="flex items-start justify-between gap-3">
+                  <button
+                    onClick={() => setPreviewFile(f)}
+                    className="flex items-start gap-2 text-left font-semibold text-sm text-foreground hover:text-brand cursor-pointer"
+                  >
+                    <FileText className="h-4.5 w-4.5 text-brand shrink-0 mt-0.5" />
+                    <span className="break-all leading-snug">{f.name}</span>
+                  </button>
+                  <Initials member={ws.member(f.uploadedBy)} size={22} className="shrink-0" />
+                </div>
+                
+                <div className="flex items-center justify-between text-xs text-muted-foreground bg-secondary/40 px-2.5 py-1.5 rounded-lg border border-border/20">
+                  <span className="font-medium">{f.folder}</span>
+                  <span className="font-semibold">{f.size}</span>
+                </div>
+
+                <div className="flex items-center justify-end gap-2 border-t border-border/40 pt-2.5">
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => setPreviewFile(f)}
+                    className="h-8 px-2 text-xs font-semibold cursor-pointer"
+                  >
+                    <Eye className="h-3.5 w-3.5 mr-1" /> Preview
+                  </Button>
+                  {f.url && (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      asChild
+                      className="h-8 px-2 text-xs font-semibold cursor-pointer"
+                    >
+                      <a href={f.url} download={f.name}>
+                        <Download className="h-3.5 w-3.5 mr-1" /> Download
+                      </a>
+                    </Button>
+                  )}
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => {
+                      if (confirm(`Delete "${f.name}"?`)) {
+                        ws.removeFile(f.id);
+                        toast.success("File deleted");
+                      }
+                    }}
+                    className="h-8 px-2 text-xs font-semibold text-destructive hover:bg-destructive/10 cursor-pointer"
+                  >
+                    <Trash2 className="h-3.5 w-3.5 mr-1" /> Delete
+                  </Button>
+                </div>
+              </Panel>
+            ))}
+          </div>
+
+          {list.length === 0 && (
+            <Panel className="py-12 text-center space-y-2">
+              <HardDrive className="h-8 w-8 mx-auto text-muted-foreground" />
+              <p className="text-sm text-muted-foreground font-medium">No files found in this folder.</p>
+            </Panel>
+          )}
         </div>
       </div>
 
@@ -208,10 +286,9 @@ function FilesPage() {
       {previewFile && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
           <div className="bg-card border border-border w-full max-w-4xl rounded-2xl shadow-2xl flex flex-col max-h-[85vh] overflow-hidden animate-in zoom-in-95 duration-200">
-            {/* Modal Header */}
             <div className="flex items-center justify-between px-6 py-4 border-b border-border bg-muted/20">
               <div>
-                <h3 className="text-sm font-bold text-foreground truncate max-w-[500px]">
+                <h3 className="text-sm font-bold text-foreground truncate max-w-[260px] sm:max-w-[500px]">
                   {previewFile.name}
                 </h3>
                 <p className="text-[10px] text-muted-foreground font-semibold mt-0.5">
@@ -226,8 +303,7 @@ function FilesPage() {
               </button>
             </div>
 
-            {/* Modal Content / Preview Area */}
-            <div className="p-6 overflow-y-auto flex-1 flex flex-col items-center justify-center bg-muted/10 min-h-[300px]">
+            <div className="p-4 sm:p-6 overflow-y-auto flex-1 flex flex-col items-center justify-center bg-muted/10 min-h-[300px]">
               {previewFile.url ? (
                 isImage(previewFile.ext) ? (
                   <img

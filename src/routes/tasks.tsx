@@ -30,19 +30,38 @@ function TasksPage() {
   const ws = useWorkspace();
   const [dragging, setDragging] = useState<string | null>(null);
   const [openTask, setOpenTask] = useState<string | null>(null);
+  const [activeColumn, setActiveColumn] = useState<TaskStatus>("todo");
   const task = ws.tasks.find((t) => t.id === openTask);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 md:space-y-6">
       <PageHeader
         title="Task Board"
         subtitle="Drag cards between columns — every task can link to a paper, phase or file."
         actions={<AddTaskDialog />}
       />
 
+      {/* Mobile Column Tabs Selection */}
+      <div className="lg:hidden flex gap-1 overflow-x-auto pb-1 bg-muted/40 p-1 rounded-xl border border-border/40 scrollbar-none snap-x">
+        {TASK_COLUMNS.map((col) => (
+          <button
+            key={col.id}
+            onClick={() => setActiveColumn(col.id)}
+            className={`flex-1 min-w-[90px] text-center py-2 text-xs font-bold rounded-lg transition-all snap-start cursor-pointer ${
+              activeColumn === col.id
+                ? "bg-card text-brand shadow border border-border/20 font-black"
+                : "text-muted-foreground hover:bg-secondary/40"
+            }`}
+          >
+            {col.label} ({ws.tasks.filter((t) => t.status === col.id).length})
+          </button>
+        ))}
+      </div>
+
       <div className="grid gap-4 lg:grid-cols-5">
         {TASK_COLUMNS.map((col) => {
           const items = ws.tasks.filter((t) => t.status === col.id);
+          const isActive = activeColumn === col.id;
           return (
             <div
               key={col.id}
@@ -54,7 +73,7 @@ function TasksPage() {
                   setDragging(null);
                 }
               }}
-              className="rounded-2xl bg-surface-muted p-3"
+              className={`rounded-2xl bg-surface-muted p-3 transition-all ${isActive ? "block animate-in fade-in duration-200" : "hidden lg:block"}`}
             >
               <div className="mb-3 flex items-center justify-between px-1">
                 <h2 className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground">{col.label}</h2>

@@ -49,9 +49,9 @@ function MeetingsPage() {
               <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">Action items</p>
               <ul className="mt-2 space-y-2">
                 {m.actionItems.map((a) => (
-                  <li key={a.text} className="flex items-center gap-2 rounded-xl border border-border p-2.5">
-                    <span className="min-w-0 flex-1 truncate text-sm">{ws.member(a.ownerId)?.name} → {a.text}</span>
-                    <Button size="sm" variant="outline" onClick={() => { ws.addTask({ title: a.text, description: `From meeting: ${m.title}`, status: "todo", priority: "MEDIUM", assigneeId: a.ownerId, due: m.date, labels: ["Meeting"] }); toast.success("Task created from action item"); }}>
+                  <li key={a.text} className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 rounded-xl border border-border p-2.5 bg-card">
+                    <span className="min-w-0 flex-1 text-sm leading-snug text-foreground">{ws.member(a.ownerId)?.name} → {a.text}</span>
+                    <Button size="sm" variant="outline" className="w-full sm:w-auto shrink-0 text-xs font-semibold cursor-pointer" onClick={() => { ws.addTask({ title: a.text, description: `From meeting: ${m.title}`, status: "todo", priority: "MEDIUM", assigneeId: a.ownerId, due: m.date, labels: ["Meeting"] }); toast.success("Task created from action item"); }}>
                       Create task
                     </Button>
                   </li>
