@@ -22,9 +22,9 @@ export function LoginScreen() {
   const [regName, setRegName] = useState("");
   const [regEmail, setRegEmail] = useState("");
   const [regPassword, setRegPassword] = useState("");
-  const [regRole, setRegRole] = useState("Researcher");
+  const [regRole, setRegRole] = useState("Member");
 
-  // Researcher Custom Fields state
+  // Member Custom Fields state
   const [uniId, setUniId] = useState("");
   const [phone, setPhone] = useState("");
   const [uniEmail, setUniEmail] = useState("");
@@ -61,9 +61,9 @@ export function LoginScreen() {
       return;
     }
 
-    if (regRole === ("Researcher" || "Team Leader")) {
+    if (regRole === ("Member" || "Team Leader")) {
       if (!uniId || !phone || !uniEmail || !cv || !privateEmail || !verifyPrivateEmail) {
-        toast.error("Please fill in all required Researcher details.");
+        toast.error("Please fill in all required Member details.");
         return;
       }
       if (privateEmail.toLowerCase() !== verifyPrivateEmail.toLowerCase()) {
@@ -252,11 +252,8 @@ export function LoginScreen() {
                       onChange={(e) => setRegRole(e.target.value)}
                       className="w-full px-4 py-2.5 bg-background border border-border rounded-xl text-sm focus:outline-none focus:border-brand transition-colors text-foreground"
                     >
-                      <option value="Researcher">Researcher</option>
+                      <option value="Member">Member</option>
                       <option value="Team Leader">Team Leader</option>
-                      <option value="Developer">Developer</option>
-                      <option value="Data Scientist">Data Scientist</option>
-                      <option value="Documentation">Documentation</option>
                       <option value="Supervisor">Supervisor</option>
                     </select>
                   </div>
@@ -292,12 +289,12 @@ export function LoginScreen() {
                   />
                 </div>
 
-                {/* Conditional Fields for Researcher role */}
-                {regRole === "Researcher" && (
+                {/* Conditional Fields for Member role */}
+                {regRole === "Member" && (
                   <div className="pt-4 border-t border-border/80 space-y-3 animate-in fade-in slide-in-from-top-2 duration-300">
                     <h3 className="text-xs font-bold text-brand uppercase tracking-wider flex items-center gap-1.5">
                       <ShieldCheck className="h-4 w-4" />
-                      Researcher Validation Details
+                      Member Validation Details
                     </h3>
                     
                     <div className="grid gap-3 sm:grid-cols-2">

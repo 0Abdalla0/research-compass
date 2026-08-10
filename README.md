@@ -242,7 +242,7 @@ Tags
 
 Status
 
-Assigned researcher
+Assigned Member
 
 Progress
 
@@ -252,7 +252,7 @@ Allow:
 
 - Filter by year
 
-- Filter by researcher
+- Filter by Member
 
 - Filter by status
 
@@ -656,7 +656,7 @@ Roles:
 
 - Team Leader
 
-- Researcher
+- Member
 
 - Developer
 

@@ -18,7 +18,10 @@ function TeamPage() {
   const ws = useWorkspace();
   return (
     <div className="space-y-6">
-      <PageHeader title="Team" subtitle={`${ws.members.length} researchers, developers and supervisors`} />
+      <PageHeader
+        title="Team"
+        subtitle={`${ws.members.length} Members, developers and supervisors`}
+      />
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         {ws.members.map((m) => {
           const mine = ws.tasks.filter((t) => t.assigneeId === m.id);
@@ -38,7 +41,12 @@ function TeamPage() {
                 <Stat label="Papers" v={ws.papers.filter((p) => p.ownerId === m.id).length} />
               </div>
               <div className="mt-4 flex flex-wrap gap-1.5">
-                {ws.papers.filter((p) => p.ownerId === m.id).slice(0, 2).map((p) => (<Tag key={p.id}>{p.title.slice(0, 30)}…</Tag>))}
+                {ws.papers
+                  .filter((p) => p.ownerId === m.id)
+                  .slice(0, 2)
+                  .map((p) => (
+                    <Tag key={p.id}>{p.title.slice(0, 30)}…</Tag>
+                  ))}
               </div>
             </Panel>
           );

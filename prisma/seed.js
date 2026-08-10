@@ -34,7 +34,7 @@ const members = [
     id: "m4",
     name: "Jumana Saleh",
     initials: "JS",
-    role: "Researcher",
+    role: "Member",
     email: "jumana.saleh@uni.edu",
     responsibilities: "Clinical NLP survey, annotation guidelines, evaluation protocol",
     color: "300",

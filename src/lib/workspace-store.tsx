@@ -328,7 +328,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
           initials,
           role: role as any,
           email,
-          responsibilities: role === "Researcher" ? "Research team investigator" : "Research team member",
+          responsibilities: role === "Member" ? "Research team investigator" : "Research team member",
           color,
           password: password || "123456",
           uniId: uniId || undefined,
@@ -435,7 +435,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
         log("added a screenshot", s.title, "image");
       },
       commentShot: (id, text) => {
-        const author = currentUser ? currentUser.name : "Researcher";
+        const author = currentUser ? currentUser.name : "Member";
         const comment = { author, text };
         setShots((prev) =>
           prev.map((s) =>

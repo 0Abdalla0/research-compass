@@ -29,7 +29,7 @@ export const Route = createFileRoute("/papers/")({
       {
         name: "description",
         content:
-          "Search, filter and track every paper in the literature review: status, assigned researcher, analysis progress and keywords.",
+          "Search, filter and track every paper in the literature review: status, assigned Member, analysis progress and keywords.",
       },
       { property: "og:title", content: "Research Paper Library — ResearchHub" },
       { property: "og:description", content: "Track every paper from To Read to fully analyzed." },
@@ -106,14 +106,19 @@ function PapersPage() {
         <div className="grid gap-2 md:grid-cols-[minmax(0,1.6fr)_repeat(4,minmax(0,1fr))_minmax(0,1fr)]">
           <div className="relative">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search title, author, keyword…" className="pl-9" />
+            <Input
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              placeholder="Search title, author, keyword…"
+              className="pl-9"
+            />
           </div>
           <Filter value={status} onChange={setStatus} label="Status" options={STATUSES} />
           <Filter value={year} onChange={setYear} label="Year" options={years.map(String)} />
           <Filter
             value={owner}
             onChange={setOwner}
-            label="Researcher"
+            label="Member"
             options={ws.members.map((m) => m.id)}
             render={(id) => ws.member(id)?.name ?? id}
           />
@@ -133,7 +138,9 @@ function PapersPage() {
       {list.length === 0 && (
         <Panel className="p-12 text-center">
           <p className="font-medium">No papers match these filters</p>
-          <p className="mt-1 text-sm text-muted-foreground">Try clearing the search or the status filter.</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Try clearing the search or the status filter.
+          </p>
         </Panel>
       )}
 
@@ -144,7 +151,13 @@ function PapersPage() {
               <Panel className="flex h-full flex-col p-5 transition-all hover:-translate-y-0.5 hover:border-brand/40">
                 <div className="flex items-start justify-between gap-3">
                   <StatusPill status={p.status} />
-                  <div className="flex items-center gap-1.5" onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}>
+                  <div
+                    className="flex items-center gap-1.5"
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                    }}
+                  >
                     <span className="text-xs font-medium text-muted-foreground">{p.year}</span>
                     <button
                       type="button"
@@ -161,9 +174,13 @@ function PapersPage() {
                     </button>
                   </div>
                 </div>
-                <h3 className="font-display mt-3 line-clamp-3 text-[15px] font-semibold leading-snug">{p.title}</h3>
+                <h3 className="font-display mt-3 line-clamp-3 text-[15px] font-semibold leading-snug">
+                  {p.title}
+                </h3>
                 <p className="mt-1.5 line-clamp-1 text-xs text-muted-foreground">{p.authors}</p>
-                <p className="mt-0.5 line-clamp-1 text-xs italic text-muted-foreground">{p.venue}</p>
+                <p className="mt-0.5 line-clamp-1 text-xs italic text-muted-foreground">
+                  {p.venue}
+                </p>
                 <div className="mt-3 flex flex-wrap gap-1.5">
                   {p.keywords.slice(0, 3).map((k) => (
                     <Tag key={k}>{k}</Tag>
@@ -177,7 +194,9 @@ function PapersPage() {
                   <Meter value={p.progress} tone={p.progress === 100 ? "success" : "brand"} />
                   <div className="mt-3 flex items-center gap-2">
                     <Initials member={ws.member(p.ownerId)} size={24} />
-                    <span className="text-xs text-muted-foreground">{ws.member(p.ownerId)?.name}</span>
+                    <span className="text-xs text-muted-foreground">
+                      {ws.member(p.ownerId)?.name}
+                    </span>
                   </div>
                 </div>
               </Panel>
@@ -193,16 +212,23 @@ function PapersPage() {
                 <th className="px-4 py-3 font-semibold">Year</th>
                 <th className="px-4 py-3 font-semibold">Category</th>
                 <th className="px-4 py-3 font-semibold">Status</th>
-                <th className="px-4 py-3 font-semibold">Researcher</th>
+                <th className="px-4 py-3 font-semibold">Member</th>
                 <th className="px-4 py-3 font-semibold">Progress</th>
                 <th className="px-4 py-3 font-semibold text-right">Actions</th>
               </tr>
             </thead>
             <tbody>
               {list.map((p) => (
-                <tr key={p.id} className="border-b border-border/70 last:border-0 hover:bg-secondary/50">
+                <tr
+                  key={p.id}
+                  className="border-b border-border/70 last:border-0 hover:bg-secondary/50"
+                >
                   <td className="max-w-sm px-4 py-3">
-                    <Link to="/papers/$id" params={{ id: p.id }} className="font-medium hover:text-brand">
+                    <Link
+                      to="/papers/$id"
+                      params={{ id: p.id }}
+                      className="font-medium hover:text-brand"
+                    >
                       {p.title}
                     </Link>
                     <p className="line-clamp-1 text-xs text-muted-foreground">{p.authors}</p>
@@ -308,7 +334,10 @@ function AddPaperDialog() {
       doi: form.doi,
       url: form.url,
       category: form.category,
-      keywords: form.keywords.split(",").map((k) => k.trim()).filter(Boolean),
+      keywords: form.keywords
+        .split(",")
+        .map((k) => k.trim())
+        .filter(Boolean),
       abstract: form.abstract,
       status: form.status,
       ownerId: form.ownerId,
@@ -327,26 +356,52 @@ function AddPaperDialog() {
       <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-2xl">
         <DialogHeader>
           <DialogTitle>Add a research paper</DialogTitle>
-          <DialogDescription>Log the metadata now — the analysis workspace is created automatically.</DialogDescription>
+          <DialogDescription>
+            Log the metadata now — the analysis workspace is created automatically.
+          </DialogDescription>
         </DialogHeader>
         <div className="grid gap-3 sm:grid-cols-2">
           <Field label="Title" className="sm:col-span-2">
-            <Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="Paper title" maxLength={220} />
+            <Input
+              value={form.title}
+              onChange={(e) => setForm({ ...form, title: e.target.value })}
+              placeholder="Paper title"
+              maxLength={220}
+            />
           </Field>
           <Field label="Authors">
-            <Input value={form.authors} onChange={(e) => setForm({ ...form, authors: e.target.value })} placeholder="A. Author, B. Author" />
+            <Input
+              value={form.authors}
+              onChange={(e) => setForm({ ...form, authors: e.target.value })}
+              placeholder="A. Author, B. Author"
+            />
           </Field>
           <Field label="Publication year">
-            <Input value={form.year} onChange={(e) => setForm({ ...form, year: e.target.value })} inputMode="numeric" />
+            <Input
+              value={form.year}
+              onChange={(e) => setForm({ ...form, year: e.target.value })}
+              inputMode="numeric"
+            />
           </Field>
           <Field label="Journal / Conference">
-            <Input value={form.venue} onChange={(e) => setForm({ ...form, venue: e.target.value })} />
+            <Input
+              value={form.venue}
+              onChange={(e) => setForm({ ...form, venue: e.target.value })}
+            />
           </Field>
           <Field label="DOI">
-            <Input value={form.doi} onChange={(e) => setForm({ ...form, doi: e.target.value })} placeholder="10.xxxx/xxxxx" />
+            <Input
+              value={form.doi}
+              onChange={(e) => setForm({ ...form, doi: e.target.value })}
+              placeholder="10.xxxx/xxxxx"
+            />
           </Field>
           <Field label="URL / PDF link" className="sm:col-span-2">
-            <Input value={form.url} onChange={(e) => setForm({ ...form, url: e.target.value })} placeholder="https://" />
+            <Input
+              value={form.url}
+              onChange={(e) => setForm({ ...form, url: e.target.value })}
+              placeholder="https://"
+            />
           </Field>
           <Field label="Category">
             <Select value={form.category} onValueChange={(v) => setForm({ ...form, category: v })}>
@@ -354,7 +409,14 @@ function AddPaperDialog() {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {["Machine Learning", "Medical Informatics", "Ontologies", "NLP", "Data Science", "Software Engineering"].map((c) => (
+                {[
+                  "Machine Learning",
+                  "Medical Informatics",
+                  "Ontologies",
+                  "NLP",
+                  "Data Science",
+                  "Software Engineering",
+                ].map((c) => (
                   <SelectItem key={c} value={c}>
                     {c}
                   </SelectItem>
@@ -363,7 +425,10 @@ function AddPaperDialog() {
             </Select>
           </Field>
           <Field label="Status">
-            <Select value={form.status} onValueChange={(v) => setForm({ ...form, status: v as PaperStatus })}>
+            <Select
+              value={form.status}
+              onValueChange={(v) => setForm({ ...form, status: v as PaperStatus })}
+            >
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
@@ -376,7 +441,7 @@ function AddPaperDialog() {
               </SelectContent>
             </Select>
           </Field>
-          <Field label="Responsible researcher">
+          <Field label="Responsible Member">
             <Select value={form.ownerId} onValueChange={(v) => setForm({ ...form, ownerId: v })}>
               <SelectTrigger>
                 <SelectValue />
@@ -391,10 +456,19 @@ function AddPaperDialog() {
             </Select>
           </Field>
           <Field label="Keywords (comma separated)">
-            <Input value={form.keywords} onChange={(e) => setForm({ ...form, keywords: e.target.value })} placeholder="sepsis, ontology" />
+            <Input
+              value={form.keywords}
+              onChange={(e) => setForm({ ...form, keywords: e.target.value })}
+              placeholder="sepsis, ontology"
+            />
           </Field>
           <Field label="Abstract" className="sm:col-span-2">
-            <Textarea rows={4} value={form.abstract} onChange={(e) => setForm({ ...form, abstract: e.target.value })} maxLength={2000} />
+            <Textarea
+              rows={4}
+              value={form.abstract}
+              onChange={(e) => setForm({ ...form, abstract: e.target.value })}
+              maxLength={2000}
+            />
           </Field>
         </div>
         <DialogFooter>
