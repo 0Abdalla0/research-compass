@@ -10,33 +10,53 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as PapersIndexRouteImport } from './routes/papers.index'
+import { Route as PapersIdRouteImport } from './routes/papers.$id'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PapersIndexRoute = PapersIndexRouteImport.update({
+  id: '/papers/',
+  path: '/papers/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PapersIdRoute = PapersIdRouteImport.update({
+  id: '/papers/$id',
+  path: '/papers/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/papers/$id': typeof PapersIdRoute
+  '/papers/': typeof PapersIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/papers/$id': typeof PapersIdRoute
+  '/papers': typeof PapersIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/papers/$id': typeof PapersIdRoute
+  '/papers/': typeof PapersIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths: '/' | '/papers/$id' | '/papers/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to: '/' | '/papers/$id' | '/papers'
+  id: '__root__' | '/' | '/papers/$id' | '/papers/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  PapersIdRoute: typeof PapersIdRoute
+  PapersIndexRoute: typeof PapersIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -48,22 +68,28 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/papers/': {
+      id: '/papers/'
+      path: '/papers'
+      fullPath: '/papers/'
+      preLoaderRoute: typeof PapersIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/papers/$id': {
+      id: '/papers/$id'
+      path: '/papers/$id'
+      fullPath: '/papers/$id'
+      preLoaderRoute: typeof PapersIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  PapersIdRoute: PapersIdRoute,
+  PapersIndexRoute: PapersIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
