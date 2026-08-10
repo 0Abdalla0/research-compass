@@ -67,22 +67,22 @@ function Dashboard() {
   return (
     <div className="space-y-6">
       <Panel className="overflow-hidden border-0 p-0">
-        <div className="relative px-6 py-7 sm:px-8" style={{ background: "var(--gradient-brand)" }}>
+        <div className="relative px-6 py-7 sm:px-8 min-w-0 overflow-hidden" style={{ background: "var(--gradient-brand)" }}>
           <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
             <div className="min-w-0 text-white">
               <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/70">
                 Research Workspace
               </p>
-              <h1 className="font-display mt-2 text-2xl font-bold leading-tight sm:text-3xl">
+              <h1 className="font-display mt-2 text-2xl font-bold leading-tight sm:text-3xl break-words">
                 {ws.project.name}
               </h1>
-              <p className="mt-2 max-w-2xl text-sm text-white/80">{ws.project.topic}</p>
+              <p className="mt-2 max-w-2xl text-sm text-white/80 break-words leading-relaxed">{ws.project.topic}</p>
               <div className="mt-4 flex flex-wrap items-center gap-3">
                 <Stack ids={ws.members.map((m) => m.id)} members={ws.members} />
-                <span className="rounded-full bg-white/15 px-3 py-1 text-xs font-medium text-white">
+                <span className="rounded-full bg-white/15 px-3 py-1 text-xs font-medium text-white shrink-0">
                   {ws.project.phase}
                 </span>
-                <span className="text-xs text-white/70">{ws.project.institution}</span>
+                <span className="text-xs text-white/70 break-words leading-relaxed max-w-full">{ws.project.institution}</span>
               </div>
             </div>
             <div className="w-full lg:w-64">
@@ -170,7 +170,7 @@ function Dashboard() {
       </Panel>
 
       <div className="grid gap-4 xl:grid-cols-3">
-        <Panel className="p-5 xl:col-span-2">
+        <Panel className="p-5 xl:col-span-2 min-w-0 overflow-hidden">
           <div className="flex items-center justify-between">
             <div>
               <h2 className="font-display text-sm font-semibold">Research progress over time</h2>
@@ -180,7 +180,7 @@ function Dashboard() {
               <TrendingUp className="h-3.5 w-3.5" /> +6% this week
             </span>
           </div>
-          <div className="mt-4 h-64">
+          <div className="mt-4 h-64 min-w-0 overflow-hidden">
             <ResponsiveContainer width="100%" height="100%">
               <AreaChart data={[...ws.papers.length ? [] : [], ...seedSeries()]}>
                 <defs>

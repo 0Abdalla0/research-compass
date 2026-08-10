@@ -181,10 +181,11 @@ export function AppShell({ children }: { children: ReactNode }) {
 
             <button
               onClick={() => setSearchOpen(true)}
-              className="ml-auto flex min-w-0 flex-1 items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-secondary md:ml-4 md:max-w-md"
+              className="ml-auto flex min-w-0 items-center gap-2 rounded-xl border border-border bg-card p-2 md:px-3 md:py-2 text-sm text-muted-foreground transition-colors hover:bg-secondary md:ml-4 md:max-w-md md:flex-1 animate-in fade-in duration-200"
             >
               <Search className="h-4 w-4 shrink-0" />
-              <span className="truncate">Search papers, tasks, notes…</span>
+              <span className="truncate hidden sm:inline">Search papers, tasks, notes…</span>
+              <span className="truncate sm:hidden text-xs font-semibold">Search</span>
               <kbd className="ml-auto hidden shrink-0 rounded border border-border px-1.5 py-0.5 text-[10px] font-medium sm:block">
                 ⌘K
               </kbd>
