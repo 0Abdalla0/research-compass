@@ -187,7 +187,7 @@ export function LoginScreen() {
                       id="email"
                       type="email"
                       required
-                      placeholder="e.g. ahmed.kamal@uni.edu"
+                      placeholder="e.g. ahmed.kamal@cis.asu.edu.eg"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       className="w-full pl-10 pr-4 py-2.5 bg-background border border-border rounded-xl text-sm focus:outline-none focus:border-brand transition-colors text-foreground"
@@ -270,7 +270,7 @@ export function LoginScreen() {
                     id="reg-email"
                     type="email"
                     required
-                    placeholder="e.g. abdalla.nasser@uni.edu"
+                    placeholder="e.g. abdalla.nasser@cis.asu.edu.eg"
                     value={regEmail}
                     onChange={(e) => setRegEmail(e.target.value)}
                     className="w-full px-4 py-2.5 bg-background border border-border rounded-xl text-sm focus:outline-none focus:border-brand transition-colors text-foreground"
@@ -309,7 +309,7 @@ export function LoginScreen() {
                           id="uni-id"
                           type="text"
                           required
-                          placeholder="e.g. U2026118"
+                          placeholder="e.g. 2026118"
                           value={uniId}
                           onChange={(e) => setUniId(e.target.value)}
                           className="w-full px-3 py-2 bg-background border border-border rounded-lg text-xs focus:outline-none focus:border-brand text-foreground"
@@ -339,7 +339,7 @@ export function LoginScreen() {
                         id="uni-email"
                         type="email"
                         required
-                        placeholder="e.g. research@university.edu"
+                        placeholder="e.g. research@cis.asu.edu.eg"
                         value={uniEmail}
                         onChange={(e) => setUniEmail(e.target.value)}
                         className="w-full px-3 py-2 bg-background border border-border rounded-lg text-xs focus:outline-none focus:border-brand text-foreground"
