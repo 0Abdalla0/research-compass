@@ -65,6 +65,9 @@ type Ctx = {
   activity: Activity[];
   currentUser: (typeof seed.members)[number];
   member: (id?: string) => (typeof seed.members)[number] | undefined;
+  loginUser: (m: (typeof seed.members)[number]) => void;
+  logoutUser: () => void;
+  registerUser: (name: string, email: string, role: string) => void;
   addPaper: (p: Omit<Paper, "id" | "analysis" | "progress">) => void;
   updatePaper: (id: string, patch: Partial<Paper>) => void;
   setAnalysis: (paperId: string, section: string, value: string) => void;
@@ -94,6 +97,7 @@ type Ctx = {
 const WorkspaceContext = createContext<Ctx | null>(null);
 
 export function WorkspaceProvider({ children }: { children: ReactNode }) {
+  const [members, setMembers] = useState<typeof seed.members>(seed.members);
   const [papers, setPapers] = useState<Paper[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [notes, setNotes] = useState<Note[]>([]);
@@ -105,6 +109,27 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
   const [events, setEvents] = useState<CalEvent[]>([]);
   const [activity, setActivity] = useState<Activity[]>([]);
   const [theme, setTheme] = useState<"light" | "dark">("light");
+  const [currentUser, setCurrentUser] = useState<(typeof seed.members)[number] | null>(null);
+
+  // Load user session on mount
+  useEffect(() => {
+    const saved = localStorage.getItem("research_hub_user");
+    if (saved) {
+      try {
+        const user = JSON.parse(saved);
+        setCurrentUser(user);
+        // Make sure if user was dynamically registered, they exist in our list
+        setMembers((prev) => {
+          if (!prev.some((m) => m.id === user.id)) {
+            return [...prev, user];
+          }
+          return prev;
+        });
+      } catch {
+        setCurrentUser(null);
+      }
+    }
+  }, []);
 
   // Load from database on mount
   useEffect(() => {
@@ -128,25 +153,24 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     document.documentElement.classList.toggle("dark", theme === "dark");
   }, [theme]);
 
-  const currentUser = seed.members[0]!;
-
   const log = useCallback(
     (action: string, object: string, kind: Activity["kind"]) => {
       const actId = uid();
-      const newActivity = { id: actId, memberId: currentUser.id, action, object, time: "just now", kind };
+      const memberId = currentUser ? currentUser.id : "m1";
+      const newActivity = { id: actId, memberId, action, object, time: "just now", kind };
       setActivity((a) => [newActivity, ...a]);
       addActivityServer({ data: newActivity }).catch((err) =>
         console.error("Error logging activity to DB:", err),
       );
     },
-    [currentUser.id],
+    [currentUser],
   );
 
   const today = () => new Date().toISOString().slice(0, 10);
 
   const value = useMemo<Ctx>(
     () => ({
-      members: seed.members,
+      members,
       papers,
       tasks,
       notes,
@@ -158,8 +182,43 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       events,
       phases: seed.phases,
       activity,
-      currentUser,
-      member: (id?: string) => seed.members.find((m) => m.id === id),
+      currentUser: currentUser as any,
+      member: (id?: string) => members.find((m) => m.id === id),
+      loginUser: (m) => {
+        setCurrentUser(m);
+        localStorage.setItem("research_hub_user", JSON.stringify(m));
+        log("logged in", m.name, "comment");
+      },
+      logoutUser: () => {
+        if (currentUser) {
+          log("logged out", currentUser.name, "comment");
+        }
+        setCurrentUser(null);
+        localStorage.removeItem("research_hub_user");
+      },
+      registerUser: (name, email, role) => {
+        const initials = name
+          .split(" ")
+          .map((w) => w[0])
+          .join("")
+          .toUpperCase()
+          .slice(0, 2);
+        const color = Math.floor(Math.random() * 360).toString();
+        const id = "m_" + uid();
+        const newUser = {
+          id,
+          name,
+          initials,
+          role: role as any,
+          email,
+          responsibilities: "Newly registered researcher",
+          color,
+        };
+        setMembers((prev) => [...prev, newUser]);
+        setCurrentUser(newUser);
+        localStorage.setItem("research_hub_user", JSON.stringify(newUser));
+        log("joined the research team", name, "comment");
+      },
       addPaper: (p) => {
         const id = uid();
         const newPaper = { ...p, id, progress: 0, analysis: {} };
@@ -241,7 +300,8 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
         log("added a screenshot", s.title, "image");
       },
       commentShot: (id, text) => {
-        const comment = { author: currentUser.name, text };
+        const author = currentUser ? currentUser.name : "Researcher";
+        const comment = { author, text };
         setShots((prev) =>
           prev.map((s) =>
             s.id === id ? { ...s, comments: [...s.comments, comment] } : s,
@@ -331,7 +391,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       theme,
       toggleTheme: () => setTheme((t) => (t === "light" ? "dark" : "light")),
     }),
-    [papers, tasks, notes, shots, voiceNotes, files, links, meetings, events, activity, theme, currentUser, log],
+    [members, papers, tasks, notes, shots, voiceNotes, files, links, meetings, events, activity, theme, currentUser, log],
   );
 
   return <WorkspaceContext.Provider value={value}>{children}</WorkspaceContext.Provider>;

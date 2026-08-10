@@ -22,6 +22,7 @@ import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as TasksRouteImport } from './routes/tasks'
 import { Route as TeamRouteImport } from './routes/team'
 import { Route as VoiceRouteImport } from './routes/voice'
+import { Route as WheelRouteImport } from './routes/wheel'
 import { Route as PapersIndexRouteImport } from './routes/papers.index'
 import { Route as PapersIdRouteImport } from './routes/papers.$id'
 
@@ -90,6 +91,11 @@ const VoiceRoute = VoiceRouteImport.update({
   path: '/voice',
   getParentRoute: () => rootRouteImport,
 } as any)
+const WheelRoute = WheelRouteImport.update({
+  id: '/wheel',
+  path: '/wheel',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PapersIndexRoute = PapersIndexRouteImport.update({
   id: '/papers/',
   path: '/papers/',
@@ -115,6 +121,7 @@ export interface FileRoutesByFullPath {
   '/tasks': typeof TasksRoute
   '/team': typeof TeamRoute
   '/voice': typeof VoiceRoute
+  '/wheel': typeof WheelRoute
   '/papers/$id': typeof PapersIdRoute
   '/papers/': typeof PapersIndexRoute
 }
@@ -132,6 +139,7 @@ export interface FileRoutesByTo {
   '/tasks': typeof TasksRoute
   '/team': typeof TeamRoute
   '/voice': typeof VoiceRoute
+  '/wheel': typeof WheelRoute
   '/papers/$id': typeof PapersIdRoute
   '/papers': typeof PapersIndexRoute
 }
@@ -150,6 +158,7 @@ export interface FileRoutesById {
   '/tasks': typeof TasksRoute
   '/team': typeof TeamRoute
   '/voice': typeof VoiceRoute
+  '/wheel': typeof WheelRoute
   '/papers/$id': typeof PapersIdRoute
   '/papers/': typeof PapersIndexRoute
 }
@@ -169,6 +178,7 @@ export interface FileRouteTypes {
     | '/tasks'
     | '/team'
     | '/voice'
+    | '/wheel'
     | '/papers/$id'
     | '/papers/'
   fileRoutesByTo: FileRoutesByTo
@@ -186,6 +196,7 @@ export interface FileRouteTypes {
     | '/tasks'
     | '/team'
     | '/voice'
+    | '/wheel'
     | '/papers/$id'
     | '/papers'
   id:
@@ -203,6 +214,7 @@ export interface FileRouteTypes {
     | '/tasks'
     | '/team'
     | '/voice'
+    | '/wheel'
     | '/papers/$id'
     | '/papers/'
   fileRoutesById: FileRoutesById
@@ -221,6 +233,7 @@ export interface RootRouteChildren {
   TasksRoute: typeof TasksRoute
   TeamRoute: typeof TeamRoute
   VoiceRoute: typeof VoiceRoute
+  WheelRoute: typeof WheelRoute
   PapersIdRoute: typeof PapersIdRoute
   PapersIndexRoute: typeof PapersIndexRoute
 }
@@ -318,6 +331,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof VoiceRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/wheel': {
+      id: '/wheel'
+      path: '/wheel'
+      fullPath: '/wheel'
+      preLoaderRoute: typeof WheelRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/papers/': {
       id: '/papers/'
       path: '/papers'
@@ -349,6 +369,7 @@ const rootRouteChildren: RootRouteChildren = {
   TasksRoute: TasksRoute,
   TeamRoute: TeamRoute,
   VoiceRoute: VoiceRoute,
+  WheelRoute: WheelRoute,
   PapersIdRoute: PapersIdRoute,
   PapersIndexRoute: PapersIndexRoute,
 }

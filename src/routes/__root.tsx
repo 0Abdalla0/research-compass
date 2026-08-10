@@ -12,8 +12,9 @@ import { useEffect, type ReactNode } from "react";
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { AppShell } from "@/components/app-shell";
-import { WorkspaceProvider } from "@/lib/workspace-store";
+import { WorkspaceProvider, useWorkspace } from "@/lib/workspace-store";
 import { Toaster } from "@/components/ui/sonner";
+import { LoginScreen } from "@/components/login-screen";
 
 function NotFoundComponent() {
   return (
@@ -136,12 +137,24 @@ function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       <WorkspaceProvider>
-        <AppShell>
-          {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-          <Outlet />
-        </AppShell>
+        <InnerRoot />
         <Toaster position="top-right" richColors />
       </WorkspaceProvider>
     </QueryClientProvider>
+  );
+}
+
+function InnerRoot() {
+  const { currentUser } = useWorkspace();
+
+  if (!currentUser) {
+    return <LoginScreen />;
+  }
+
+  return (
+    <AppShell>
+      {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
+      <Outlet />
+    </AppShell>
   );
 }

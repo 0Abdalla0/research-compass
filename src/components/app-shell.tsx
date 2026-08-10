@@ -22,6 +22,7 @@ import {
   Video,
   X,
   Menu,
+  HelpCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useWorkspace } from "@/lib/workspace-store";
@@ -47,6 +48,7 @@ const nav = [
   { to: "/voice", label: "Voice Notes", icon: Mic },
   { to: "/meetings", label: "Meetings", icon: Video },
   { to: "/roadmap", label: "Roadmap", icon: RouteIcon },
+  { to: "/wheel", label: "Spin the Wheel", icon: HelpCircle },
   { to: "/files", label: "Files", icon: FolderOpen },
   { to: "/links", label: "Resources", icon: Link2 },
   { to: "/team", label: "Team", icon: Users },
@@ -58,7 +60,8 @@ const mobileNav = nav.slice(0, 5);
 
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const { theme, toggleTheme, currentUser } = useWorkspace();
+  const ws = useWorkspace();
+  const { theme, toggleTheme, currentUser } = ws;
   const [openNav, setOpenNav] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
 
@@ -223,12 +226,12 @@ export function AppShell({ children }: { children: ReactNode }) {
 
               <DropdownMenu>
                 <DropdownMenuTrigger className="ml-1 rounded-full">
-                  <Initials member={currentUser} size={32} />
+                  <Initials member={currentUser || undefined} size={32} />
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-56">
                   <DropdownMenuLabel className="flex flex-col">
-                    <span>{currentUser.name}</span>
-                    <span className="text-xs font-normal text-muted-foreground">{currentUser.email}</span>
+                    <span>{currentUser?.name}</span>
+                    <span className="text-xs font-normal text-muted-foreground">{currentUser?.email}</span>
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
                   <DropdownMenuItem asChild>
@@ -238,7 +241,9 @@ export function AppShell({ children }: { children: ReactNode }) {
                     <Link to="/settings">Project settings</Link>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem>Sign out</DropdownMenuItem>
+                  <DropdownMenuItem onClick={ws.logoutUser} className="cursor-pointer text-destructive focus:bg-destructive/10">
+                    Sign out
+                  </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
