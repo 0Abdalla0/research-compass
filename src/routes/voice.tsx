@@ -30,6 +30,7 @@ function VoicePage() {
   
   // Real-time recording stats
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
+  const [micVolume, setMicVolume] = useState(0); // Real-time mic volume level (0 to 100)
   
   // Real-time playback progress: { [voiceNoteId]: currentPlayTimeSeconds }
   const [playProgress, setPlayProgress] = useState<Record<string, number>>({});
@@ -39,11 +40,17 @@ function VoicePage() {
   const audioChunksRef = useRef<Blob[]>([]);
   const timerIntervalRef = useRef<any | null>(null);
   const audioPlayerRef = useRef<HTMLAudioElement | null>(null);
+  
+  // Web Audio Analyser references
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const animationFrameRef = useRef<number | null>(null);
 
   // Clean up timers and audio on unmount
   useEffect(() => {
     return () => {
       if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
+      if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
+      if (audioContextRef.current) audioContextRef.current.close();
       if (audioPlayerRef.current) {
         audioPlayerRef.current.pause();
         audioPlayerRef.current = null;
@@ -60,37 +67,93 @@ function VoicePage() {
 
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const recorder = new MediaRecorder(stream);
+      
+      // Determine the best supported audio MIME type for full cross-platform playback compatibility (specifically Safari/iOS vs Chrome/Firefox)
+      let mimeType = "";
+      if (MediaRecorder.isTypeSupported("audio/mp4")) {
+        mimeType = "audio/mp4"; // Best for iOS/Safari WebKit
+      } else if (MediaRecorder.isTypeSupported("audio/webm")) {
+        mimeType = "audio/webm"; // Best for Chrome/Firefox
+      } else if (MediaRecorder.isTypeSupported("audio/ogg")) {
+        mimeType = "audio/ogg";
+      } else {
+        mimeType = "audio/wav";
+      }
+
+      console.log("Selected audio recording MIME type:", mimeType);
+
+      const recorder = new MediaRecorder(stream, { mimeType });
       mediaRecorderRef.current = recorder;
       audioChunksRef.current = [];
 
+      // Setup real-time Web Audio API analyser to verify microphone audio levels
+      try {
+        const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+        audioContextRef.current = audioCtx;
+        const source = audioCtx.createMediaStreamSource(stream);
+        const analyser = audioCtx.createAnalyser();
+        analyser.fftSize = 256;
+        const bufferLength = analyser.frequencyBinCount;
+        const dataArray = new Uint8Array(bufferLength);
+        source.connect(analyser);
+
+        const checkVolume = () => {
+          if (!recorder || recorder.state === "inactive") return;
+          analyser.getByteFrequencyData(dataArray);
+          let sum = 0;
+          for (let i = 0; i < bufferLength; i++) {
+            sum += dataArray[i] ?? 0;
+          }
+          const average = sum / bufferLength;
+          setMicVolume(average); // Update mic level
+          animationFrameRef.current = requestAnimationFrame(checkVolume);
+        };
+        animationFrameRef.current = requestAnimationFrame(checkVolume);
+      } catch (audioErr) {
+        console.warn("Could not initialize real-time audio visualizer analyser:", audioErr);
+      }
+
       recorder.ondataavailable = (e) => {
-        if (e.data.size > 0) {
+        if (e.data && e.data.size > 0) {
           audioChunksRef.current.push(e.data);
         }
       };
 
       recorder.onstop = () => {
-        const audioBlob = new Blob(audioChunksRef.current, { type: "audio/webm" });
+        // Clean up visualizer analyser loop
+        if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
+        if (audioContextRef.current) {
+          audioContextRef.current.close().catch(() => {});
+          audioContextRef.current = null;
+        }
+
+        if (audioChunksRef.current.length === 0) {
+          toast.error("Audio recording failed: No sound data captured.");
+          setRecording(false);
+          return;
+        }
+
+        const audioBlob = new Blob(audioChunksRef.current, { type: mimeType });
         const audioUrl = URL.createObjectURL(audioBlob);
 
         ws.addVoiceNote({
           title: title.trim() || `Voice Note ${new Date().toLocaleTimeString()}`,
           seconds: elapsedSeconds || 1,
           authorId: ws.currentUser ? ws.currentUser.id : "m1",
-          description: "Recorded in the browser.",
+          description: `Recorded in the browser (${mimeType.split(";")[0]}).`,
           url: audioUrl,
         });
 
         setTitle("");
         setElapsedSeconds(0);
+        setMicVolume(0);
         toast.success("Voice note saved successfully!");
 
-        // Release microphone lock
+        // Release microphone stream tracks
         stream.getTracks().forEach((track) => track.stop());
       };
 
-      recorder.start();
+      recorder.start(250); // Slice data chunks every 250ms to ensure continuous data capture
       setRecording(true);
       setIsPaused(false);
       setElapsedSeconds(0);
@@ -100,10 +163,10 @@ function VoicePage() {
         setElapsedSeconds((s) => s + 1);
       }, 1000);
 
-      toast.info("Recording audio... Speak into your microphone.");
+      toast.info("Recording started. Talk into your microphone.");
     } catch (err) {
       console.error("Microphone access error:", err);
-      toast.error("Microphone access denied. Please grant permissions to record.");
+      toast.error("Microphone access denied. Please grant permission to record.");
     }
   };
 
@@ -147,11 +210,11 @@ function VoicePage() {
 
   // 4. Play / Pause Voice Note
   const handlePlayPause = (v: ReturnType<typeof useWorkspace>["voiceNotes"][number]) => {
-    // If clicking play on the already playing note, toggle play/pause
     if (playingId === v.id) {
       if (audioPlayerRef.current) {
         if (audioPlayerRef.current.paused) {
           audioPlayerRef.current.play();
+          setPlayingId(v.id);
         } else {
           audioPlayerRef.current.pause();
           setPlayingId(null);
@@ -160,19 +223,16 @@ function VoicePage() {
       return;
     }
 
-    // Stop existing audio player
     if (audioPlayerRef.current) {
       audioPlayerRef.current.pause();
       audioPlayerRef.current = null;
     }
 
     if (!v.url) {
-      // Fallback message for pre-seeded database rows without real urls
-      toast.error("This is a demo placeholder note. Please record a new voice note to play real audio!");
+      toast.error("This is a placeholder note. Please record a new voice note to play real audio!");
       return;
     }
 
-    // Create new audio instance
     const audio = new Audio(v.url);
     audioPlayerRef.current = audio;
     setPlayingId(v.id);
@@ -194,7 +254,7 @@ function VoicePage() {
 
     audio.play().catch((err) => {
       console.error("Audio playback error:", err);
-      toast.error("Failed to play audio note.");
+      toast.error("Format unsupported or audio playback blocked by browser/device settings.");
       setPlayingId(null);
     });
   };
@@ -223,28 +283,37 @@ function VoicePage() {
                 Record Note
               </Button>
             ) : (
-              <div className="flex items-center gap-2 w-full sm:w-auto">
-                <Button 
-                  variant="outline" 
-                  onClick={togglePauseRecording} 
-                  title={isPaused ? "Resume" : "Pause"}
-                  className="cursor-pointer"
-                >
-                  <Pause className={`h-4 w-4 ${isPaused ? "animate-pulse text-brand" : "text-foreground"}`} />
-                </Button>
-                <Button
-                  variant="destructive"
-                  onClick={stopRecording}
-                  title="Stop and Save"
-                  className="inline-flex items-center gap-1.5 cursor-pointer bg-destructive text-destructive-foreground"
-                >
-                  <Square className="h-4 w-4 fill-current" />
-                  Save Note
-                </Button>
-                <span className="flex items-center gap-2 text-xs font-semibold text-destructive animate-pulse bg-destructive/10 px-3 py-2 rounded-xl">
-                  <span className="h-2 w-2 rounded-full bg-destructive" /> 
-                  {fmt(elapsedSeconds)} {isPaused && "(Paused)"}
-                </span>
+              <div className="flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-start">
+                <div className="flex items-center gap-2">
+                  <Button 
+                    variant="outline" 
+                    onClick={togglePauseRecording} 
+                    title={isPaused ? "Resume" : "Pause"}
+                    className="cursor-pointer"
+                  >
+                    <Pause className={`h-4 w-4 ${isPaused ? "animate-pulse text-brand" : "text-foreground"}`} />
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    onClick={stopRecording}
+                    title="Stop and Save"
+                    className="inline-flex items-center gap-1.5 cursor-pointer bg-destructive text-destructive-foreground"
+                  >
+                    <Square className="h-4 w-4 fill-current" />
+                    Save Note
+                  </Button>
+                </div>
+                
+                {/* Audio pulse ring matching mic volume */}
+                <div className="flex items-center gap-2">
+                  <span className="flex items-center gap-2 text-xs font-semibold text-destructive bg-destructive/10 px-3 py-2 rounded-xl">
+                    <span 
+                      className="h-2.5 w-2.5 rounded-full bg-destructive transition-transform duration-75" 
+                      style={{ transform: `scale(${1 + Math.min(micVolume / 15, 1.5)})` }}
+                    /> 
+                    {fmt(elapsedSeconds)} {isPaused && "(Paused)"}
+                  </span>
+                </div>
               </div>
             )}
           </div>
