@@ -1,7 +1,14 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { ExternalLink, Trash2 } from "lucide-react";
+import { useState, type ReactNode } from "react";
+import { toast } from "sonner";
+import { Edit3, ExternalLink, Plus, Trash2 } from "lucide-react";
 import { useWorkspace } from "@/lib/workspace-store";
 import { Initials, PageHeader, Panel, Tag } from "@/components/ui-bits";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { ResourceLink } from "@/data/workspace";
 
 export const Route = createFileRoute("/links")({
   head: () => ({
@@ -19,7 +26,19 @@ function LinksPage() {
   const ws = useWorkspace();
   return (
     <div className="space-y-6">
-      <PageHeader title="Resources" subtitle={`${ws.links.length} saved datasets, repositories, tools and references`} />
+      <PageHeader 
+        title="Resources" 
+        subtitle={`${ws.links.length} saved datasets, repositories, tools and references`} 
+        actions={
+          <AddLinkDialog 
+            trigger={
+              <Button size="sm" className="inline-flex items-center gap-1.5 cursor-pointer text-xs md:text-sm">
+                <Plus className="h-4 w-4" /> Add Resource
+              </Button>
+            }
+          />
+        }
+      />
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         {ws.links.map((l) => (
           <Panel key={l.id} className="p-5 transition-transform hover:-translate-y-0.5">
@@ -29,10 +48,19 @@ function LinksPage() {
                 <a href={l.url} target="_blank" rel="noreferrer" className="p-1 rounded-lg text-muted-foreground hover:text-brand hover:bg-secondary transition-colors" title="Open Link">
                   <ExternalLink className="h-4 w-4" />
                 </a>
+                <EditLinkDialog
+                  link={l}
+                  trigger={
+                    <button className="p-1 rounded-lg text-muted-foreground hover:bg-secondary transition-colors cursor-pointer" title="Edit Resource">
+                      <Edit3 className="h-4 w-4" />
+                    </button>
+                  }
+                />
                 <button
                   onClick={() => {
                     if (confirm(`Are you sure you want to delete the resource "${l.title}"?`)) {
                       ws.removeLink(l.id);
+                      toast.success("Resource deleted successfully");
                     }
                   }}
                   className="p-1 rounded-lg text-destructive hover:bg-destructive/10 transition-colors cursor-pointer"
@@ -53,5 +81,138 @@ function LinksPage() {
         ))}
       </div>
     </div>
+  );
+}
+
+function AddLinkDialog({ trigger }: { trigger: ReactNode }) {
+  const ws = useWorkspace();
+  const [open, setOpen] = useState(false);
+  const [title, setTitle] = useState("");
+  const [url, setUrl] = useState("");
+  const [description, setDescription] = useState("");
+  const [category, setCategory] = useState("Tools");
+  const [tagsStr, setTagsStr] = useState("");
+
+  const handleSave = () => {
+    if (!title.trim() || !url.trim()) {
+      toast.error("Title and URL are required");
+      return;
+    }
+    const tags = tagsStr.split(",").map((t) => t.trim()).filter(Boolean);
+    ws.addLink({
+      title: title.trim(),
+      url: url.trim(),
+      description: description.trim(),
+      category: category.trim(),
+      tags,
+      addedBy: ws.currentUser ? ws.currentUser.id : "m1",
+    });
+    toast.success("Resource added successfully");
+    setOpen(false);
+    setTitle("");
+    setUrl("");
+    setDescription("");
+    setTagsStr("");
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>{trigger}</DialogTrigger>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Add Resource Link</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4 py-4">
+          <div>
+            <Label className="mb-1.5 block text-xs font-semibold text-muted-foreground">Title</Label>
+            <Input placeholder="e.g. GitHub Repository" value={title} onChange={(e) => setTitle(e.target.value)} />
+          </div>
+          <div>
+            <Label className="mb-1.5 block text-xs font-semibold text-muted-foreground">URL</Label>
+            <Input placeholder="https://..." value={url} onChange={(e) => setUrl(e.target.value)} />
+          </div>
+          <div>
+            <Label className="mb-1.5 block text-xs font-semibold text-muted-foreground">Description</Label>
+            <Input placeholder="Short description of this resource..." value={description} onChange={(e) => setDescription(e.target.value)} />
+          </div>
+          <div>
+            <Label className="mb-1.5 block text-xs font-semibold text-muted-foreground">Category</Label>
+            <Input placeholder="e.g. Datasets, Code, Documentation" value={category} onChange={(e) => setCategory(e.target.value)} />
+          </div>
+          <div>
+            <Label className="mb-1.5 block text-xs font-semibold text-muted-foreground">Tags (comma separated)</Label>
+            <Input placeholder="e.g. nlp, python, api" value={tagsStr} onChange={(e) => setTagsStr(e.target.value)} />
+          </div>
+        </div>
+        <DialogFooter className="flex flex-row justify-end gap-2">
+          <Button variant="outline" onClick={() => setOpen(false)} className="cursor-pointer">Cancel</Button>
+          <Button onClick={handleSave} className="cursor-pointer">Add Resource</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function EditLinkDialog({ link, trigger }: { link: ResourceLink; trigger: ReactNode }) {
+  const ws = useWorkspace();
+  const [open, setOpen] = useState(false);
+  const [title, setTitle] = useState(link.title);
+  const [url, setUrl] = useState(link.url);
+  const [description, setDescription] = useState(link.description);
+  const [category, setCategory] = useState(link.category);
+  const [tagsStr, setTagsStr] = useState(link.tags.join(", "));
+
+  const handleSave = () => {
+    if (!title.trim() || !url.trim()) {
+      toast.error("Title and URL are required");
+      return;
+    }
+    const tags = tagsStr.split(",").map((t) => t.trim()).filter(Boolean);
+    ws.updateLink(link.id, {
+      title: title.trim(),
+      url: url.trim(),
+      description: description.trim(),
+      category: category.trim(),
+      tags,
+    });
+    toast.success("Resource updated successfully");
+    setOpen(false);
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>{trigger}</DialogTrigger>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Edit Resource Link</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4 py-4">
+          <div>
+            <Label className="mb-1.5 block text-xs font-semibold text-muted-foreground">Title</Label>
+            <Input value={title} onChange={(e) => setTitle(e.target.value)} />
+          </div>
+          <div>
+            <Label className="mb-1.5 block text-xs font-semibold text-muted-foreground">URL</Label>
+            <Input value={url} onChange={(e) => setUrl(e.target.value)} />
+          </div>
+          <div>
+            <Label className="mb-1.5 block text-xs font-semibold text-muted-foreground">Description</Label>
+            <Input value={description} onChange={(e) => setDescription(e.target.value)} />
+          </div>
+          <div>
+            <Label className="mb-1.5 block text-xs font-semibold text-muted-foreground">Category</Label>
+            <Input value={category} onChange={(e) => setCategory(e.target.value)} />
+          </div>
+          <div>
+            <Label className="mb-1.5 block text-xs font-semibold text-muted-foreground">Tags (comma separated)</Label>
+            <Input value={tagsStr} onChange={(e) => setTagsStr(e.target.value)} />
+          </div>
+        </div>
+        <DialogFooter className="flex flex-row justify-end gap-2">
+          <Button variant="outline" onClick={() => setOpen(false)} className="cursor-pointer">Cancel</Button>
+          <Button onClick={handleSave} className="cursor-pointer">Save Changes</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

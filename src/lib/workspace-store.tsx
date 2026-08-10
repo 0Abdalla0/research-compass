@@ -20,6 +20,7 @@ import type {
   Task,
   TaskStatus,
   VoiceNote,
+  Phase,
 } from "@/data/workspace";
 import {
   getWorkspaceDataServer,
@@ -52,7 +53,25 @@ import {
   removeShotServer,
   removeLinkServer,
   removeMeetingServer,
+  updateLinkServer,
+  addPhaseServer,
+  updatePhaseServer,
+  removePhaseServer,
 } from "@/lib/db-server";
+
+export type NotificationItem = {
+  id: string;
+  title: string;
+  body: string;
+  time: string;
+  unread: boolean;
+};
+
+export type Preferences = {
+  onlyLeadersDelete: boolean;
+  membersInvite: boolean;
+  emailReminders: boolean;
+};
 
 import { supabase, hasSupabaseKeys } from "./supabase";
 
@@ -79,7 +98,7 @@ type Ctx = {
   links: ResourceLink[];
   meetings: Meeting[];
   events: CalEvent[];
-  phases: typeof seed.phases;
+  phases: Phase[];
   activity: Activity[];
   currentUser: (typeof seed.members)[number];
   member: (id?: string) => (typeof seed.members)[number] | undefined;
@@ -113,11 +132,15 @@ type Ctx = {
   addFile: (f: Omit<ResearchFile, "id" | "date">) => void;
   removeFile: (id: string) => void;
   addLink: (l: Omit<ResourceLink, "id">) => void;
+  updateLink: (id: string, patch: Partial<ResourceLink>) => void;
   addEvent: (e: Omit<CalEvent, "id">) => void;
   updateEvent: (id: string, patch: Partial<CalEvent>) => void;
   removeEvent: (id: string) => void;
   addMeeting: (m: Omit<Meeting, "id">) => void;
   updateMeeting: (id: string, patch: Partial<Meeting>) => void;
+  addPhase: (p: Omit<Phase, "id">) => void;
+  updatePhase: (id: string, patch: Partial<Phase>) => void;
+  removePhase: (id: string) => void;
   project: typeof seed.project;
   updateProject: (name: string, topic: string, institution: string) => void;
   removePaper: (id: string) => void;
@@ -126,6 +149,11 @@ type Ctx = {
   removeShot: (id: string) => void;
   removeLink: (id: string) => void;
   removeMeeting: (id: string) => void;
+  preferences: Preferences;
+  updatePreference: (key: keyof Preferences, val: boolean) => void;
+  notifications: NotificationItem[];
+  clearNotifications: () => void;
+  markNotificationRead: (id: string) => void;
   theme: "light" | "dark";
   toggleTheme: () => void;
 };
@@ -144,11 +172,18 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
   const [meetings, setMeetings] = useState<Meeting[]>([]);
   const [events, setEvents] = useState<CalEvent[]>([]);
   const [activity, setActivity] = useState<Activity[]>([]);
+  const [phases, setPhases] = useState<Phase[]>(seed.phases);
   const [theme, setTheme] = useState<"light" | "dark">("light");
   const [currentUser, setCurrentUser] = useState<(typeof seed.members)[number] | null>(null);
   const [project, setProject] = useState<typeof seed.project>(seed.project);
+  const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const [preferences, setPreferences] = useState<Preferences>({
+    onlyLeadersDelete: false,
+    membersInvite: true,
+    emailReminders: true,
+  });
 
-  // Load project details on mount
+  // Load preferences, notifications, and project details on mount
   useEffect(() => {
     const savedProject = localStorage.getItem("research_hub_project");
     if (savedProject) {
@@ -158,7 +193,34 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
         console.error("Failed to load project details:", e);
       }
     }
+
+    const savedPrefs = localStorage.getItem("research_hub_preferences");
+    if (savedPrefs) {
+      try {
+        setPreferences(JSON.parse(savedPrefs));
+      } catch (e) {
+        console.error("Failed to load preferences:", e);
+      }
+    }
+
+    const savedNotifs = localStorage.getItem("research_hub_notifications");
+    if (savedNotifs) {
+      try {
+        setNotifications(JSON.parse(savedNotifs));
+      } catch (e) {
+        setNotifications(seed.notifications);
+      }
+    } else {
+      setNotifications(seed.notifications);
+    }
   }, []);
+
+  // Save notifications to localStorage when changed
+  useEffect(() => {
+    if (notifications.length > 0) {
+      localStorage.setItem("research_hub_notifications", JSON.stringify(notifications));
+    }
+  }, [notifications]);
 
   // Load user session on mount
   useEffect(() => {
@@ -197,6 +259,9 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
         setMeetings(data.meetings);
         setEvents(data.events);
         setActivity(data.activity);
+        if (data.phases && data.phases.length > 0) {
+          setPhases(data.phases);
+        }
       })
       .catch((err) => console.error("Error loading initial DB workspace data:", err));
   }, []);
@@ -232,7 +297,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       links,
       meetings,
       events,
-      phases: seed.phases,
+      phases,
       activity,
       currentUser: currentUser as any,
       member: (id?: string) => members.find((m) => m.id === id),
@@ -422,6 +487,12 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
         );
         log("added a link", l.title, "file");
       },
+      updateLink: (id, patch) => {
+        setLinks((prev) => prev.map((l) => (l.id === id ? { ...l, ...patch } : l)));
+        updateLinkServer({ data: { id, patch } }).catch((err) =>
+          console.error("Error updating resource link in DB:", err),
+        );
+      },
       addEvent: (e) => {
         const id = uid();
         const newEvent = { ...e, id };
@@ -457,6 +528,29 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
         updateMeetingServer({ data: { id, patch } }).catch((err) =>
           console.error("Error updating meeting in DB:", err),
         );
+      },
+      addPhase: (p) => {
+        const id = uid();
+        const newPhase = { ...p, id };
+        setPhases((prev) => [...prev, newPhase].sort((a, b) => a.index - b.index));
+        addPhaseServer({ data: newPhase }).catch((err) =>
+          console.error("Error saving phase to DB:", err),
+        );
+        log("added phase", p.name, "task");
+      },
+      updatePhase: (id, patch) => {
+        setPhases((prev) => prev.map((p) => (p.id === id ? { ...p, ...patch } : p)).sort((a, b) => a.index - b.index));
+        updatePhaseServer({ data: { id, patch } }).catch((err) =>
+          console.error("Error updating phase in DB:", err),
+        );
+      },
+      removePhase: (id) => {
+        const p = phases.find((x) => x.id === id);
+        setPhases((prev) => prev.filter((x) => x.id !== id));
+        removePhaseServer({ data: id }).catch((err) =>
+          console.error("Error deleting phase in DB:", err),
+        );
+        if (p) log("deleted phase", p.name, "task");
       },
       project,
       updateProject: (name, topic, institution) => {
@@ -501,10 +595,27 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
         removeMeetingServer({ data: id }).catch((err) => console.error("Error deleting meeting in DB:", err));
         if (m) log("deleted meeting", m.title, "task");
       },
+      preferences,
+      updatePreference: (key, val) => {
+        setPreferences((prev) => {
+          const updated = { ...prev, [key]: val };
+          localStorage.setItem("research_hub_preferences", JSON.stringify(updated));
+          return updated;
+        });
+      },
+      notifications,
+      clearNotifications: () => {
+        setNotifications([]);
+        localStorage.setItem("research_hub_notifications", JSON.stringify([]));
+        log("cleared all", "notifications", "comment");
+      },
+      markNotificationRead: (id) => {
+        setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, unread: false } : n)));
+      },
       theme,
       toggleTheme: () => setTheme((t) => (t === "light" ? "dark" : "light")),
     }),
-    [members, papers, tasks, notes, shots, voiceNotes, files, links, meetings, events, activity, theme, currentUser, project, log],
+    [members, papers, tasks, notes, shots, voiceNotes, files, links, meetings, events, phases, activity, theme, currentUser, project, preferences, notifications, log],
   );
 
   return <WorkspaceContext.Provider value={value}>{children}</WorkspaceContext.Provider>;

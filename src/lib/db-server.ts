@@ -17,6 +17,7 @@ import type {
   TaskStatus,
   VoiceNote,
   Member,
+  Phase,
 } from "@/data/workspace";
 
 function cleanOptional<T extends object>(obj: T): any {
@@ -57,6 +58,7 @@ export const getWorkspaceDataServer = createServerFn({ method: "GET" })
         meetings: seed.meetings,
         events: seed.events,
         activity: seed.activity,
+        phases: seed.phases,
       };
     }
 
@@ -73,6 +75,7 @@ export const getWorkspaceDataServer = createServerFn({ method: "GET" })
         meetingsRes,
         eventsRes,
         activityRes,
+        phasesRes,
       ] = await Promise.all([
         supabase.from("members").select("*"),
         supabase.from("papers").select("*"),
@@ -85,6 +88,7 @@ export const getWorkspaceDataServer = createServerFn({ method: "GET" })
         supabase.from("meetings").select("*"),
         supabase.from("events").select("*"),
         supabase.from("activity").select("*"),
+        supabase.from("phases").select("*"),
       ]);
 
       if (
@@ -98,7 +102,8 @@ export const getWorkspaceDataServer = createServerFn({ method: "GET" })
         linksRes.error ||
         meetingsRes.error ||
         eventsRes.error ||
-        activityRes.error
+        activityRes.error ||
+        phasesRes.error
       ) {
         console.error("Error fetching from Supabase, falling back to static seed data.");
         throw new Error("Supabase response error");
@@ -115,6 +120,7 @@ export const getWorkspaceDataServer = createServerFn({ method: "GET" })
       const meetings = meetingsRes.data || [];
       const events = eventsRes.data || [];
       const activity = activityRes.data || [];
+      const phases = phasesRes.data || [];
 
       const formattedMembers: Member[] = members.map((m: any) => cleanOptional({
         ...m,
@@ -191,6 +197,14 @@ export const getWorkspaceDataServer = createServerFn({ method: "GET" })
         }))
         .sort((a: any, b: any) => b.id.localeCompare(a.id));
 
+      const formattedPhases: Phase[] = phases
+        .map((p: any) => ({
+          ...p,
+          deliverables: parseJSONB(p.deliverables, []),
+          members: parseJSONB(p.members, []),
+        }))
+        .sort((a: any, b: any) => a.index - b.index);
+
       return {
         members: formattedMembers,
         papers: formattedPapers,
@@ -203,6 +217,7 @@ export const getWorkspaceDataServer = createServerFn({ method: "GET" })
         meetings: formattedMeetings,
         events: formattedEvents,
         activity: formattedActivity,
+        phases: formattedPhases,
       };
     } catch (e) {
       console.error("Supabase failed, returning static mock data:", e);
@@ -218,6 +233,7 @@ export const getWorkspaceDataServer = createServerFn({ method: "GET" })
         meetings: seed.meetings,
         events: seed.events,
         activity: seed.activity,
+        phases: seed.phases,
       };
     }
   });
@@ -630,3 +646,54 @@ export const removeMeetingServer = createServerFn({ method: "POST" })
       console.error("Supabase delete meeting error:", e);
     }
   });
+
+export const updateLinkServer = createServerFn({ method: "POST" })
+  .validator((d: { id: string; patch: any }) => d)
+  .handler(async ({ data }) => {
+    if (!hasSupabaseKeys) return;
+    try {
+      const { error } = await supabase.from("links").update(data.patch).eq("id", data.id);
+      if (error) throw error;
+    } catch (e) {
+      console.error("Supabase updateLink error:", e);
+    }
+  });
+
+export const addPhaseServer = createServerFn({ method: "POST" })
+  .validator((p: any) => p)
+  .handler(async ({ data }) => {
+    if (!hasSupabaseKeys) return data;
+    try {
+      const { data: res, error } = await supabase.from("phases").insert([data]).select();
+      if (error) throw error;
+      return res?.[0] || data;
+    } catch (e) {
+      console.error("Supabase addPhase error:", e);
+      return data;
+    }
+  });
+
+export const updatePhaseServer = createServerFn({ method: "POST" })
+  .validator((d: { id: string; patch: any }) => d)
+  .handler(async ({ data }) => {
+    if (!hasSupabaseKeys) return;
+    try {
+      const { error } = await supabase.from("phases").update(data.patch).eq("id", data.id);
+      if (error) throw error;
+    } catch (e) {
+      console.error("Supabase updatePhase error:", e);
+    }
+  });
+
+export const removePhaseServer = createServerFn({ method: "POST" })
+  .validator((id: string) => id)
+  .handler(async ({ data: id }) => {
+    if (!hasSupabaseKeys) return;
+    try {
+      const { error } = await supabase.from("phases").delete().eq("id", id);
+      if (error) throw error;
+    } catch (e) {
+      console.error("Supabase removePhase error:", e);
+    }
+  });
+

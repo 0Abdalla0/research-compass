@@ -1,5 +1,6 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import { useEffect, useState, type ReactNode } from "react";
+import { toast } from "sonner";
 import {
   Activity as ActivityIcon,
   Bell,
@@ -26,7 +27,6 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useWorkspace } from "@/lib/workspace-store";
-import { notifications } from "@/data/workspace";
 import { Initials } from "@/components/ui-bits";
 import { GlobalSearch } from "@/components/global-search";
 import {
@@ -61,7 +61,7 @@ const mobileNav = nav.slice(0, 5);
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const ws = useWorkspace();
-  const { theme, toggleTheme, currentUser } = ws;
+  const { theme, toggleTheme, currentUser, notifications, clearNotifications, markNotificationRead } = ws;
   const [openNav, setOpenNav] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
 
@@ -210,18 +210,46 @@ export function AppShell({ children }: { children: ReactNode }) {
                   )}
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-80">
-                  <DropdownMenuLabel>Notifications</DropdownMenuLabel>
+                  <div className="flex items-center justify-between px-3 py-1.5">
+                    <DropdownMenuLabel className="p-0 text-xs font-semibold">Notifications</DropdownMenuLabel>
+                    {notifications.length > 0 && (
+                      <button 
+                        onClick={() => {
+                          clearNotifications();
+                          toast.success("All notifications cleared");
+                        }}
+                        className="text-[10px] font-black text-destructive hover:underline cursor-pointer"
+                      >
+                        Clear All
+                      </button>
+                    )}
+                  </div>
                   <DropdownMenuSeparator />
-                  {notifications.map((n) => (
-                    <DropdownMenuItem key={n.id} className="flex-col items-start gap-0.5 py-2.5">
-                      <span className="flex w-full items-center gap-2 text-sm font-medium">
-                        {n.unread && <span className="h-1.5 w-1.5 rounded-full bg-brand" />}
-                        {n.title}
-                      </span>
-                      <span className="line-clamp-1 text-xs text-muted-foreground">{n.body}</span>
-                      <span className="text-[10px] text-muted-foreground">{n.time} ago</span>
-                    </DropdownMenuItem>
-                  ))}
+                  <div className="max-h-[280px] overflow-y-auto">
+                    {notifications.length > 0 ? (
+                      notifications.map((n) => (
+                        <DropdownMenuItem 
+                          key={n.id} 
+                          onClick={() => {
+                            markNotificationRead(n.id);
+                            toast.success("Marked as read");
+                          }}
+                          className="flex flex-col items-start gap-0.5 py-2 px-3 cursor-pointer focus:bg-muted/50"
+                        >
+                          <span className="flex w-full items-center gap-1.5 text-xs font-bold">
+                            {n.unread && <span className="h-1.5 w-1.5 rounded-full bg-brand shrink-0" />}
+                            {n.title}
+                          </span>
+                          <span className="line-clamp-2 text-[11px] text-muted-foreground">{n.body}</span>
+                          <span className="text-[10px] text-muted-foreground/60">{n.time} ago</span>
+                        </DropdownMenuItem>
+                      ))
+                    ) : (
+                      <div className="py-8 text-center text-xs text-muted-foreground">
+                        No notifications
+                      </div>
+                    )}
+                  </div>
                 </DropdownMenuContent>
               </DropdownMenu>
 

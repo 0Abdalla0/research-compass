@@ -99,9 +99,30 @@ function SettingsPage() {
         <Panel className="p-5">
           <h2 className="font-display text-sm font-semibold">Permissions & data</h2>
           <div className="mt-3 space-y-3">
-            <Toggle label="Only leaders can delete papers" />
-            <Toggle label="Members can invite collaborators" />
-            <Toggle label="Email deadline reminders" />
+            <Toggle 
+              label="Only leaders can delete papers" 
+              checked={ws.preferences.onlyLeadersDelete} 
+              onCheckedChange={(val) => {
+                ws.updatePreference("onlyLeadersDelete", val);
+                toast.success("Preference updated");
+              }}
+            />
+            <Toggle 
+              label="Members can invite collaborators" 
+              checked={ws.preferences.membersInvite} 
+              onCheckedChange={(val) => {
+                ws.updatePreference("membersInvite", val);
+                toast.success("Preference updated");
+              }}
+            />
+            <Toggle 
+              label="Email deadline reminders" 
+              checked={ws.preferences.emailReminders} 
+              onCheckedChange={(val) => {
+                ws.updatePreference("emailReminders", val);
+                toast.success("Preference updated");
+              }}
+            />
             <div className="flex flex-wrap gap-2 pt-2">
               <Button variant="outline" onClick={() => toast.success("Export prepared (JSON)")}>Export project data</Button>
               <Button variant="outline" onClick={() => toast.info("Project archived (demo)")}>Archive project</Button>
@@ -113,11 +134,19 @@ function SettingsPage() {
   );
 }
 
-function Toggle({ label }: { label: string }) {
+function Toggle({ 
+  label, 
+  checked, 
+  onCheckedChange 
+}: { 
+  label: string; 
+  checked: boolean; 
+  onCheckedChange: (val: boolean) => void;
+}) {
   return (
     <div className="flex items-center justify-between rounded-xl border border-border p-3">
       <span className="text-sm">{label}</span>
-      <Switch defaultChecked onCheckedChange={() => toast.success("Preference updated")} />
+      <Switch checked={checked} onCheckedChange={onCheckedChange} />
     </div>
   );
 }

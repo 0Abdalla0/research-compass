@@ -3,7 +3,7 @@ import { useState } from "react";
 import { MessageSquare, Paperclip, Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { useWorkspace } from "@/lib/workspace-store";
-import { LABELS, TASK_COLUMNS, type Priority, type TaskStatus } from "@/data/workspace";
+import { LABELS, TASK_COLUMNS, type Priority, type TaskStatus, type Task } from "@/data/workspace";
 import { Initials, Meter, PageHeader, Panel, PriorityPill, Tag } from "@/components/ui-bits";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -140,86 +140,180 @@ function TasksPage() {
       <Sheet open={Boolean(task)} onOpenChange={(o) => !o && setOpenTask(null)}>
         <SheetContent className="w-full overflow-y-auto sm:max-w-lg">
           {task && (
-            <>
-              <SheetHeader className="flex flex-row items-center justify-between pr-8 border-b border-border/50 pb-3">
-                <SheetTitle className="text-left flex-1 min-w-0 pr-2">{task.title}</SheetTitle>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => {
-                    if (confirm(`Are you sure you want to delete task "${task.title}"?`)) {
-                      ws.removeTask(task.id);
-                      setOpenTask(null);
-                      toast.success("Task deleted successfully");
-                    }
-                  }}
-                  className="text-destructive hover:bg-destructive/10 shrink-0 cursor-pointer"
-                  title="Delete Task"
-                >
-                  <Trash2 className="h-4 w-4 mr-1" />
-                  Delete
-                </Button>
-              </SheetHeader>
-              <div className="space-y-5 px-4 pb-8">
-                <div className="flex flex-wrap items-center gap-2">
-                  <PriorityPill priority={task.priority} />
-                  {task.labels.map((l) => (
-                    <Tag key={l}>{l}</Tag>
-                  ))}
-                </div>
-                <p className="text-sm text-muted-foreground">{task.description}</p>
-                <div className="grid grid-cols-2 gap-3 text-sm">
-                  <div>
-                    <p className="text-xs text-muted-foreground">Assignee</p>
-                    <div className="mt-1 flex items-center gap-2">
-                      <Initials member={ws.member(task.assigneeId)} size={24} />
-                      <span className="text-sm">{ws.member(task.assigneeId)?.name}</span>
-                    </div>
-                  </div>
-                  <div>
-                    <p className="text-xs text-muted-foreground">Due date</p>
-                    <p className="mt-1 font-medium">{task.due}</p>
-                  </div>
-                </div>
-                {task.paperId && (
-                  <div>
-                    <p className="text-xs text-muted-foreground">Related paper</p>
-                    <p className="mt-1 text-sm font-medium">{ws.papers.find((p) => p.id === task.paperId)?.title}</p>
-                  </div>
-                )}
-                <div>
-                  <p className="mb-2 text-xs text-muted-foreground">Checklist</p>
-                  <ul className="space-y-2">
-                    {task.checklist.map((c, i) => (
-                      <li key={c.text} className="flex items-center gap-2">
-                        <Checkbox checked={c.done} onCheckedChange={() => ws.toggleCheck(task.id, i)} />
-                        <span className={`text-sm ${c.done ? "text-muted-foreground line-through" : ""}`}>{c.text}</span>
-                      </li>
-                    ))}
-                    {task.checklist.length === 0 && <li className="text-sm text-muted-foreground">No subtasks yet.</li>}
-                  </ul>
-                </div>
-                <div>
-                  <p className="mb-2 text-xs text-muted-foreground">Move to</p>
-                  <div className="flex flex-wrap gap-2">
-                    {TASK_COLUMNS.map((c) => (
-                      <Button
-                        key={c.id}
-                        size="sm"
-                        variant={task.status === c.id ? "default" : "outline"}
-                        onClick={() => ws.moveTask(task.id, c.id)}
-                      >
-                        {c.label}
-                      </Button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </>
+            <TaskSheetContent task={task} onClose={() => setOpenTask(null)} />
           )}
         </SheetContent>
       </Sheet>
     </div>
+  );
+}
+
+function TaskSheetContent({ task, onClose }: { task: Task; onClose: () => void }) {
+  const ws = useWorkspace();
+  const [isEditing, setIsEditing] = useState(false);
+  const [title, setTitle] = useState(task.title);
+  const [description, setDescription] = useState(task.description);
+  const [priority, setPriority] = useState<Task["priority"]>(task.priority);
+  const [assigneeId, setAssigneeId] = useState(task.assigneeId);
+  const [due, setDue] = useState(task.due);
+
+  const handleSave = () => {
+    if (!title.trim()) {
+      toast.error("Task title is required");
+      return;
+    }
+    ws.updateTask(task.id, {
+      title: title.trim(),
+      description: description.trim(),
+      priority,
+      assigneeId,
+      due,
+    });
+    toast.success("Task updated successfully");
+    setIsEditing(false);
+  };
+
+  return (
+    <>
+      <SheetHeader className="flex flex-row items-center justify-between pr-8 border-b border-border/50 pb-3">
+        <SheetTitle className="text-left flex-1 min-w-0 pr-2">
+          {isEditing ? "Edit Task Details" : task.title}
+        </SheetTitle>
+        <div className="flex items-center gap-1.5 shrink-0">
+          {isEditing ? (
+            <Button size="sm" onClick={handleSave} className="cursor-pointer">Save</Button>
+          ) : (
+            <Button size="sm" variant="ghost" onClick={() => {
+              setTitle(task.title);
+              setDescription(task.description);
+              setPriority(task.priority);
+              setAssigneeId(task.assigneeId);
+              setDue(task.due);
+              setIsEditing(true);
+            }} className="cursor-pointer">Edit</Button>
+          )}
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => {
+              if (confirm(`Are you sure you want to delete task "${task.title}"?`)) {
+                ws.removeTask(task.id);
+                onClose();
+                toast.success("Task deleted successfully");
+              }
+            }}
+            className="text-destructive hover:bg-destructive/10 shrink-0 cursor-pointer"
+            title="Delete Task"
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        </div>
+      </SheetHeader>
+
+      {isEditing ? (
+        <div className="space-y-4 py-6">
+          <div>
+            <Label className="mb-1 block text-xs font-semibold text-muted-foreground">Title</Label>
+            <Input value={title} onChange={(e) => setTitle(e.target.value)} />
+          </div>
+          <div>
+            <Label className="mb-1 block text-xs font-semibold text-muted-foreground">Description</Label>
+            <Textarea rows={3} value={description} onChange={(e) => setDescription(e.target.value)} />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label className="mb-1 block text-xs font-semibold text-muted-foreground">Priority</Label>
+              <select 
+                value={priority} 
+                onChange={(e) => setPriority(e.target.value as Task["priority"])}
+                className="w-full h-10 px-3 border border-border rounded-xl bg-card text-sm cursor-pointer"
+              >
+                <option value="LOW">LOW</option>
+                <option value="MEDIUM">MEDIUM</option>
+                <option value="HIGH">HIGH</option>
+                <option value="URGENT">URGENT</option>
+              </select>
+            </div>
+            <div>
+              <Label className="mb-1 block text-xs font-semibold text-muted-foreground">Assignee</Label>
+              <select 
+                value={assigneeId} 
+                onChange={(e) => setAssigneeId(e.target.value)}
+                className="w-full h-10 px-3 border border-border rounded-xl bg-card text-sm cursor-pointer"
+              >
+                {ws.members.map((m) => (
+                  <option key={m.id} value={m.id}>{m.name}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+          <div>
+            <Label className="mb-1 block text-xs font-semibold text-muted-foreground">Due Date</Label>
+            <Input type="date" value={due} onChange={(e) => setDue(e.target.value)} />
+          </div>
+          <div className="flex gap-2 pt-2">
+            <Button variant="outline" className="flex-1 cursor-pointer" onClick={() => setIsEditing(false)}>Cancel</Button>
+            <Button className="flex-1 cursor-pointer" onClick={handleSave}>Save Changes</Button>
+          </div>
+        </div>
+      ) : (
+        <div className="space-y-5 pb-8 pt-4">
+          <div className="flex flex-wrap items-center gap-2">
+            <PriorityPill priority={task.priority} />
+            {task.labels.map((l) => (
+              <Tag key={l}>{l}</Tag>
+            ))}
+          </div>
+          <p className="text-sm text-muted-foreground">{task.description}</p>
+          <div className="grid grid-cols-2 gap-3 text-sm">
+            <div>
+              <p className="text-xs text-muted-foreground">Assignee</p>
+              <div className="mt-1 flex items-center gap-2">
+                <Initials member={ws.member(task.assigneeId)} size={24} />
+                <span className="text-sm">{ws.member(task.assigneeId)?.name}</span>
+              </div>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Due date</p>
+              <p className="mt-1 font-medium">{task.due}</p>
+            </div>
+          </div>
+          {task.paperId && (
+            <div>
+              <p className="text-xs text-muted-foreground">Related paper</p>
+              <p className="mt-1 text-sm font-medium">{ws.papers.find((p) => p.id === task.paperId)?.title}</p>
+            </div>
+          )}
+          <div>
+            <p className="mb-2 text-xs text-muted-foreground">Checklist</p>
+            <ul className="space-y-2">
+              {task.checklist.map((c, i) => (
+                <li key={c.text} className="flex items-center gap-2">
+                  <Checkbox checked={c.done} onCheckedChange={() => ws.toggleCheck(task.id, i)} />
+                  <span className={`text-sm ${c.done ? "text-muted-foreground line-through" : ""}`}>{c.text}</span>
+                </li>
+              ))}
+              {task.checklist.length === 0 && <li className="text-sm text-muted-foreground">No subtasks yet.</li>}
+            </ul>
+          </div>
+          <div>
+            <p className="mb-2 text-xs text-muted-foreground">Move to</p>
+            <div className="flex flex-wrap gap-2">
+              {TASK_COLUMNS.map((c) => (
+                <Button
+                  key={c.id}
+                  size="sm"
+                  variant={task.status === c.id ? "default" : "outline"}
+                  onClick={() => ws.moveTask(task.id, c.id)}
+                >
+                  {c.label}
+                </Button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
 

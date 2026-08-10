@@ -1,12 +1,15 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
-import { useState } from "react";
-import { ArrowLeft, ExternalLink, Image as ImageIcon, Link2, Mic, NotebookPen, Save, MessageSquare } from "lucide-react";
+import { useState, type ReactNode } from "react";
+import { ArrowLeft, ExternalLink, Image as ImageIcon, Link2, Mic, NotebookPen, Save, MessageSquare, Edit3 } from "lucide-react";
 import { toast } from "sonner";
 import { useWorkspace } from "@/lib/workspace-store";
-import { ANALYSIS_SECTIONS } from "@/data/workspace";
+import { ANALYSIS_SECTIONS, Paper } from "@/data/workspace";
 import { Initials, Meter, Panel, StatusPill, Tag } from "@/components/ui-bits";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export const Route = createFileRoute("/papers/$id")({
@@ -78,6 +81,14 @@ function PaperDetail() {
               <Button variant="outline" size="sm" onClick={() => toast.success("PDF opened in the file preview")}>
                 Preview PDF
               </Button>
+              <EditPaperDialog 
+                paper={paper}
+                trigger={
+                  <Button variant="outline" size="sm" className="cursor-pointer">
+                    <Edit3 className="mr-1.5 h-3.5 w-3.5" /> Edit details
+                  </Button>
+                }
+              />
               <span className="inline-flex items-center rounded-lg border border-border px-3 py-1.5 text-xs text-muted-foreground">
                 DOI {paper.doi || "—"}
               </span>
@@ -286,5 +297,116 @@ function AnalysisSection({ paperId, section, value }: { paperId: string; section
         </p>
       )}
     </Panel>
+  );
+}
+
+function EditPaperDialog({ paper, trigger }: { paper: Paper; trigger: ReactNode }) {
+  const ws = useWorkspace();
+  const [open, setOpen] = useState(false);
+  const [title, setTitle] = useState(paper.title);
+  const [authors, setAuthors] = useState(paper.authors);
+  const [venue, setVenue] = useState(paper.venue);
+  const [year, setYear] = useState(paper.year);
+  const [abstract, setAbstract] = useState(paper.abstract);
+  const [category, setCategory] = useState(paper.category);
+  const [status, setStatus] = useState<Paper["status"]>(paper.status);
+  const [url, setUrl] = useState(paper.url);
+  const [doi, setDoi] = useState(paper.doi || "");
+  const [keywords, setKeywords] = useState(paper.keywords.join(", "));
+
+  const handleSave = () => {
+    if (!title.trim()) {
+      toast.error("Paper title is required");
+      return;
+    }
+    const keywordsList = keywords.split(",").map((k) => k.trim()).filter(Boolean);
+    ws.updatePaper(paper.id, {
+      title: title.trim(),
+      authors: authors.trim(),
+      venue: venue.trim(),
+      year: Number(year) || new Date().getFullYear(),
+      abstract: abstract.trim(),
+      category: category.trim(),
+      status,
+      url: url.trim(),
+      doi: doi.trim(),
+      keywords: keywordsList,
+    });
+    toast.success("Paper details updated successfully");
+    setOpen(false);
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>{trigger}</DialogTrigger>
+      <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>Edit Paper Details</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4 py-4">
+          <div>
+            <Label className="mb-1.5 block text-xs font-semibold text-muted-foreground">Paper Title</Label>
+            <Input value={title} onChange={(e) => setTitle(e.target.value)} />
+          </div>
+          <div>
+            <Label className="mb-1.5 block text-xs font-semibold text-muted-foreground">Authors</Label>
+            <Input value={authors} onChange={(e) => setAuthors(e.target.value)} />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label className="mb-1.5 block text-xs font-semibold text-muted-foreground">Venue (Journal/Conference)</Label>
+              <Input value={venue} onChange={(e) => setVenue(e.target.value)} />
+            </div>
+            <div>
+              <Label className="mb-1.5 block text-xs font-semibold text-muted-foreground">Year</Label>
+              <Input type="number" value={year} onChange={(e) => setYear(Number(e.target.value))} />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label className="mb-1.5 block text-xs font-semibold text-muted-foreground">Category</Label>
+              <Input value={category} onChange={(e) => setCategory(e.target.value)} />
+            </div>
+            <div>
+              <Label className="mb-1.5 block text-xs font-semibold text-muted-foreground">Status</Label>
+              <select 
+                value={status} 
+                onChange={(e) => setStatus(e.target.value as Paper["status"])}
+                className="w-full h-10 px-3 border border-border rounded-xl bg-card text-sm cursor-pointer"
+              >
+                <option value="To Read">To Read</option>
+                <option value="Reading">Reading</option>
+                <option value="Analyzing">Analyzing</option>
+                <option value="Completed">Completed</option>
+                <option value="Important">Important</option>
+                <option value="Rejected">Rejected</option>
+              </select>
+            </div>
+          </div>
+          <div>
+            <Label className="mb-1.5 block text-xs font-semibold text-muted-foreground">Abstract</Label>
+            <Textarea rows={4} value={abstract} onChange={(e) => setAbstract(e.target.value)} />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label className="mb-1.5 block text-xs font-semibold text-muted-foreground">URL</Label>
+              <Input value={url} onChange={(e) => setUrl(e.target.value)} />
+            </div>
+            <div>
+              <Label className="mb-1.5 block text-xs font-semibold text-muted-foreground">DOI</Label>
+              <Input value={doi} onChange={(e) => setDoi(e.target.value)} />
+            </div>
+          </div>
+          <div>
+            <Label className="mb-1.5 block text-xs font-semibold text-muted-foreground">Keywords (comma separated)</Label>
+            <Input value={keywords} onChange={(e) => setKeywords(e.target.value)} />
+          </div>
+        </div>
+        <DialogFooter className="flex flex-row justify-end gap-2">
+          <Button variant="outline" onClick={() => setOpen(false)} className="cursor-pointer">Cancel</Button>
+          <Button onClick={handleSave} className="cursor-pointer">Save Changes</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
