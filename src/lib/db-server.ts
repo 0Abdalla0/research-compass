@@ -16,6 +16,7 @@ import type {
   Task,
   TaskStatus,
   VoiceNote,
+  Member,
 } from "@/data/workspace";
 
 function cleanOptional<T extends object>(obj: T): any {
@@ -45,6 +46,7 @@ export const getWorkspaceDataServer = createServerFn({ method: "GET" })
     if (!hasSupabaseKeys) {
       console.info("Offline mode: Reading static workspace seed data.");
       return {
+        members: seed.members,
         papers: seed.papers,
         tasks: seed.tasks,
         notes: seed.notes,
@@ -60,6 +62,7 @@ export const getWorkspaceDataServer = createServerFn({ method: "GET" })
 
     try {
       const [
+        membersRes,
         papersRes,
         tasksRes,
         notesRes,
@@ -71,6 +74,7 @@ export const getWorkspaceDataServer = createServerFn({ method: "GET" })
         eventsRes,
         activityRes,
       ] = await Promise.all([
+        supabase.from("members").select("*"),
         supabase.from("papers").select("*"),
         supabase.from("tasks").select("*"),
         supabase.from("notes").select("*"),
@@ -84,6 +88,7 @@ export const getWorkspaceDataServer = createServerFn({ method: "GET" })
       ]);
 
       if (
+        membersRes.error ||
         papersRes.error ||
         tasksRes.error ||
         notesRes.error ||
@@ -99,6 +104,7 @@ export const getWorkspaceDataServer = createServerFn({ method: "GET" })
         throw new Error("Supabase response error");
       }
 
+      const members = membersRes.data || [];
       const papers = papersRes.data || [];
       const tasks = tasksRes.data || [];
       const notes = notesRes.data || [];
@@ -109,6 +115,16 @@ export const getWorkspaceDataServer = createServerFn({ method: "GET" })
       const meetings = meetingsRes.data || [];
       const events = eventsRes.data || [];
       const activity = activityRes.data || [];
+
+      const formattedMembers: Member[] = members.map((m) => cleanOptional({
+        ...m,
+        password: m.password ?? undefined,
+        uniId: m.uniId ?? undefined,
+        phone: m.phone ?? undefined,
+        uniEmail: m.uniEmail ?? undefined,
+        cv: m.cv ?? undefined,
+        privateEmail: m.privateEmail ?? undefined,
+      }));
 
       const formattedPapers: Paper[] = papers.map((p) => ({
         ...p,
@@ -176,6 +192,7 @@ export const getWorkspaceDataServer = createServerFn({ method: "GET" })
         .sort((a, b) => b.id.localeCompare(a.id));
 
       return {
+        members: formattedMembers,
         papers: formattedPapers,
         tasks: formattedTasks,
         notes: formattedNotes,
@@ -190,6 +207,7 @@ export const getWorkspaceDataServer = createServerFn({ method: "GET" })
     } catch (e) {
       console.error("Supabase failed, returning static mock data:", e);
       return {
+        members: seed.members,
         papers: seed.papers,
         tasks: seed.tasks,
         notes: seed.notes,

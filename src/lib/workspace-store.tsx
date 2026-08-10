@@ -48,7 +48,19 @@ import {
   addActivityServer,
 } from "@/lib/db-server";
 
+import { supabase, hasSupabaseKeys } from "./supabase";
+
 const uid = () => Math.random().toString(36).slice(2, 9);
+
+function cleanOptional<T extends object>(obj: T): any {
+  const result = { ...obj } as any;
+  Object.keys(result).forEach((key) => {
+    if (result[key] === undefined || result[key] === null) {
+      delete result[key];
+    }
+  });
+  return result;
+}
 
 type Ctx = {
   members: typeof seed.members;
@@ -67,7 +79,17 @@ type Ctx = {
   member: (id?: string) => (typeof seed.members)[number] | undefined;
   loginUser: (m: (typeof seed.members)[number]) => void;
   logoutUser: () => void;
-  registerUser: (name: string, email: string, role: string) => void;
+  registerUser: (
+    name: string,
+    email: string,
+    role: string,
+    password?: string,
+    uniId?: string,
+    phone?: string,
+    uniEmail?: string,
+    cv?: string,
+    privateEmail?: string
+  ) => void;
   addPaper: (p: Omit<Paper, "id" | "analysis" | "progress">) => void;
   updatePaper: (id: string, patch: Partial<Paper>) => void;
   setAnalysis: (paperId: string, section: string, value: string) => void;
@@ -135,6 +157,9 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     getWorkspaceDataServer()
       .then((data) => {
+        if (data.members && data.members.length > 0) {
+          setMembers(data.members);
+        }
         setPapers(data.papers);
         setTasks(data.tasks);
         setNotes(data.notes);
@@ -196,7 +221,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
         setCurrentUser(null);
         localStorage.removeItem("research_hub_user");
       },
-      registerUser: (name, email, role) => {
+      registerUser: (name, email, role, password, uniId, phone, uniEmail, cv, privateEmail) => {
         const initials = name
           .split(" ")
           .map((w) => w[0])
@@ -205,19 +230,37 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
           .slice(0, 2);
         const color = Math.floor(Math.random() * 360).toString();
         const id = "m_" + uid();
-        const newUser = {
+        const newUser = cleanOptional({
           id,
           name,
           initials,
           role: role as any,
           email,
-          responsibilities: "Newly registered researcher",
+          responsibilities: role === "Researcher" ? "Research team investigator" : "Research team member",
           color,
-        };
+          password: password || "123456",
+          uniId: uniId || undefined,
+          phone: phone || undefined,
+          uniEmail: uniEmail || undefined,
+          cv: cv || undefined,
+          privateEmail: privateEmail || undefined,
+        });
         setMembers((prev) => [...prev, newUser]);
         setCurrentUser(newUser);
         localStorage.setItem("research_hub_user", JSON.stringify(newUser));
         log("joined the research team", name, "comment");
+
+        // Insert to live DB if enabled
+        if (hasSupabaseKeys) {
+          (async () => {
+            try {
+              const { error } = await supabase.from("members").insert([newUser]);
+              if (error) throw error;
+            } catch (err) {
+              console.error("Error inserting member to live Supabase DB:", err);
+            }
+          })();
+        }
       },
       addPaper: (p) => {
         const id = uid();

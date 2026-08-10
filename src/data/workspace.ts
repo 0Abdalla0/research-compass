@@ -14,6 +14,12 @@ export type Member = {
   email: string;
   responsibilities: string;
   color: string;
+  password?: string;
+  uniId?: string;
+  phone?: string;
+  uniEmail?: string;
+  cv?: string;
+  privateEmail?: string;
 };
 
 export type PaperStatus = "To Read" | "Reading" | "Analyzing" | "Completed" | "Important" | "Rejected";
@@ -162,62 +168,7 @@ export const project = {
   progress: 46,
 };
 
-export const members: Member[] = [
-  {
-    id: "m1",
-    name: "Ahmed Kamal",
-    initials: "AK",
-    role: "Team Leader",
-    email: "ahmed.kamal@uni.edu",
-    responsibilities: "Literature review coordination, research gap analysis, paper writing",
-    color: "255",
-  },
-  {
-    id: "m2",
-    name: "Abdalla Nasser",
-    initials: "AN",
-    role: "Developer",
-    email: "abdalla.nasser@uni.edu",
-    responsibilities: "System architecture, API layer, ontology reasoning service",
-    color: "195",
-  },
-  {
-    id: "m3",
-    name: "Maria Fahmy",
-    initials: "MF",
-    role: "Data Scientist",
-    email: "maria.fahmy@uni.edu",
-    responsibilities: "MIMIC-IV extraction, feature engineering, model benchmarking",
-    color: "155",
-  },
-  {
-    id: "m4",
-    name: "Jumana Saleh",
-    initials: "JS",
-    role: "Researcher",
-    email: "jumana.saleh@uni.edu",
-    responsibilities: "Clinical NLP survey, annotation guidelines, evaluation protocol",
-    color: "300",
-  },
-  {
-    id: "m5",
-    name: "Ziad Hosny",
-    initials: "ZH",
-    role: "Documentation",
-    email: "ziad.hosny@uni.edu",
-    responsibilities: "Thesis document, figures, presentation decks, meeting minutes",
-    color: "70",
-  },
-  {
-    id: "m6",
-    name: "Dr. Laila Mansour",
-    initials: "LM",
-    role: "Supervisor",
-    email: "l.mansour@uni.edu",
-    responsibilities: "Scientific supervision, methodology review, publication strategy",
-    color: "25",
-  },
-];
+export const members: Member[] = [];
 
 const emptyAnalysis = {};
 

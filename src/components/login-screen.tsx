@@ -1,8 +1,10 @@
 import { useState } from "react";
 import { useWorkspace } from "@/lib/workspace-store";
-import { LogIn, UserPlus, Sparkles, Mail, Lock, ShieldAlert, ArrowRight } from "lucide-react";
+import { LogIn, UserPlus, Mail, Lock, ShieldAlert, ArrowRight, FileText, Phone, Award, ShieldCheck } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+
+type Member = ReturnType<typeof useWorkspace>["members"][number];
 
 export function LoginScreen() {
   const ws = useWorkspace();
@@ -12,10 +14,23 @@ export function LoginScreen() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
+  // Quick Login state
+  const [confirmingMember, setConfirmingMember] = useState<Member | null>(null);
+  const [confirmPassword, setConfirmPassword] = useState("");
+
   // Register state
   const [regName, setRegName] = useState("");
   const [regEmail, setRegEmail] = useState("");
+  const [regPassword, setRegPassword] = useState("");
   const [regRole, setRegRole] = useState("Researcher");
+
+  // Researcher Custom Fields state
+  const [uniId, setUniId] = useState("");
+  const [phone, setPhone] = useState("");
+  const [uniEmail, setUniEmail] = useState("");
+  const [cv, setCv] = useState("");
+  const [privateEmail, setPrivateEmail] = useState("");
+  const [verifyPrivateEmail, setVerifyPrivateEmail] = useState("");
 
   const handleSignIn = (e: React.FormEvent) => {
     e.preventDefault();
@@ -23,47 +38,84 @@ export function LoginScreen() {
       toast.error("Please fill in all fields.");
       return;
     }
-    // Check if email matches a pre-seeded member (for convenience)
     const matched = ws.members.find((m) => m.email.toLowerCase() === email.toLowerCase());
     if (matched) {
-      ws.loginUser(matched);
-      toast.success(`Welcome back, ${matched.name}!`, {
-        description: `Logged in as ${matched.role}`,
-      });
+      const correctPassword = matched.password || "123456";
+      if (password === correctPassword) {
+        ws.loginUser(matched);
+        toast.success(`Welcome back, ${matched.name}!`, {
+          description: `Logged in as ${matched.role}`,
+        });
+      } else {
+        toast.error("Incorrect password.");
+      }
     } else {
-      // Otherwise, create a mock user
-      const name = email.split("@")[0] || "User";
-      const initials = name.slice(0, 2).toUpperCase();
-      const color = Math.floor(Math.random() * 360).toString();
-      const mockUser = {
-        id: "m_mock_" + Math.random().toString(36).slice(2, 9),
-        name,
-        initials,
-        role: "Researcher" as const,
-        email,
-        responsibilities: "Graduation research team member",
-        color,
-      };
-      ws.loginUser(mockUser);
-      toast.success(`Signed in as ${name}!`);
+      toast.error("Account email not found. Please register an account first.");
     }
   };
 
   const handleRegister = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!regName || !regEmail) {
-      toast.error("Please provide both name and email.");
+    if (!regName || !regEmail || !regPassword) {
+      toast.error("Name, email, and password are required.");
       return;
     }
-    ws.registerUser(regName, regEmail, regRole);
+
+    if (regRole === "Researcher") {
+      if (!uniId || !phone || !uniEmail || !cv || !privateEmail || !verifyPrivateEmail) {
+        toast.error("Please fill in all required Researcher details.");
+        return;
+      }
+      if (privateEmail.toLowerCase() !== verifyPrivateEmail.toLowerCase()) {
+        toast.error("Personal emails do not match.");
+        return;
+      }
+      ws.registerUser(
+        regName,
+        regEmail,
+        regRole,
+        regPassword,
+        uniId,
+        phone,
+        uniEmail,
+        cv,
+        privateEmail
+      );
+    } else {
+      ws.registerUser(regName, regEmail, regRole, regPassword);
+    }
+
+    // Reset fields
+    setRegName("");
+    setRegEmail("");
+    setRegPassword("");
+    setUniId("");
+    setPhone("");
+    setUniEmail("");
+    setCv("");
+    setPrivateEmail("");
+    setVerifyPrivateEmail("");
+
     toast.success(`Account created! Welcome to MedOnto Lab, ${regName}!`);
   };
 
-  const handleQuickLogin = (member: typeof ws.members[number]) => {
-    ws.loginUser(member);
-    toast.success(`Quick logged in as ${member.name}!`, {
-      description: `Role: ${member.role}`,
-    });
+  const handleQuickLoginClick = (member: Member) => {
+    setConfirmingMember(member);
+    setConfirmPassword("");
+  };
+
+  const handleConfirmQuickLogin = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!confirmingMember) return;
+    const correctPassword = confirmingMember.password || "123456";
+    if (confirmPassword === correctPassword) {
+      ws.loginUser(confirmingMember);
+      setConfirmingMember(null);
+      setConfirmPassword("");
+      toast.success(`Logged in as ${confirmingMember.name}!`);
+    } else {
+      toast.error("Incorrect password for quick login.");
+    }
   };
 
   return (
@@ -174,19 +226,40 @@ export function LoginScreen() {
             ) : (
               /* Register Form */
               <form onSubmit={handleRegister} className="space-y-4">
-                <div className="space-y-1">
-                  <label htmlFor="reg-name" className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                    Full Name
-                  </label>
-                  <input
-                    id="reg-name"
-                    type="text"
-                    required
-                    placeholder="e.g. Abdalla Nasser"
-                    value={regName}
-                    onChange={(e) => setRegName(e.target.value)}
-                    className="w-full px-4 py-2.5 bg-background border border-border rounded-xl text-sm focus:outline-none focus:border-brand transition-colors text-foreground"
-                  />
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-1">
+                    <label htmlFor="reg-name" className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                      Full Name
+                    </label>
+                    <input
+                      id="reg-name"
+                      type="text"
+                      required
+                      placeholder="e.g. Abdalla Nasser"
+                      value={regName}
+                      onChange={(e) => setRegName(e.target.value)}
+                      className="w-full px-4 py-2.5 bg-background border border-border rounded-xl text-sm focus:outline-none focus:border-brand transition-colors text-foreground"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label htmlFor="reg-role" className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                      Research Role
+                    </label>
+                    <select
+                      id="reg-role"
+                      value={regRole}
+                      onChange={(e) => setRegRole(e.target.value)}
+                      className="w-full px-4 py-2.5 bg-background border border-border rounded-xl text-sm focus:outline-none focus:border-brand transition-colors text-foreground"
+                    >
+                      <option value="Researcher">Researcher</option>
+                      <option value="Team Leader">Team Leader</option>
+                      <option value="Developer">Developer</option>
+                      <option value="Data Scientist">Data Scientist</option>
+                      <option value="Documentation">Documentation</option>
+                      <option value="Supervisor">Supervisor</option>
+                    </select>
+                  </div>
                 </div>
 
                 <div className="space-y-1">
@@ -205,23 +278,121 @@ export function LoginScreen() {
                 </div>
 
                 <div className="space-y-1">
-                  <label htmlFor="reg-role" className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                    Research Role
+                  <label htmlFor="reg-pass" className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                    Create Password
                   </label>
-                  <select
-                    id="reg-role"
-                    value={regRole}
-                    onChange={(e) => setRegRole(e.target.value)}
+                  <input
+                    id="reg-pass"
+                    type="password"
+                    required
+                    placeholder="Minimum 6 characters"
+                    value={regPassword}
+                    onChange={(e) => setRegPassword(e.target.value)}
                     className="w-full px-4 py-2.5 bg-background border border-border rounded-xl text-sm focus:outline-none focus:border-brand transition-colors text-foreground"
-                  >
-                    <option value="Team Leader">Team Leader</option>
-                    <option value="Researcher">Researcher</option>
-                    <option value="Developer">Developer</option>
-                    <option value="Data Scientist">Data Scientist</option>
-                    <option value="Documentation">Documentation</option>
-                    <option value="Supervisor">Supervisor</option>
-                  </select>
+                  />
                 </div>
+
+                {/* Conditional Fields for Researcher role */}
+                {regRole === "Researcher" && (
+                  <div className="pt-4 border-t border-border/80 space-y-3 animate-in fade-in slide-in-from-top-2 duration-300">
+                    <h3 className="text-xs font-bold text-brand uppercase tracking-wider flex items-center gap-1.5">
+                      <ShieldCheck className="h-4 w-4" />
+                      Researcher Validation Details
+                    </h3>
+                    
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <div className="space-y-1">
+                        <label htmlFor="uni-id" className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">
+                          University ID
+                        </label>
+                        <input
+                          id="uni-id"
+                          type="text"
+                          required
+                          placeholder="e.g. U2026118"
+                          value={uniId}
+                          onChange={(e) => setUniId(e.target.value)}
+                          className="w-full px-3 py-2 bg-background border border-border rounded-lg text-xs focus:outline-none focus:border-brand text-foreground"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label htmlFor="phone" className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">
+                          Phone Number
+                        </label>
+                        <input
+                          id="phone"
+                          type="tel"
+                          required
+                          placeholder="e.g. +20123456789"
+                          value={phone}
+                          onChange={(e) => setPhone(e.target.value)}
+                          className="w-full px-3 py-2 bg-background border border-border rounded-lg text-xs focus:outline-none focus:border-brand text-foreground"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-1">
+                      <label htmlFor="uni-email" className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">
+                        University Email
+                      </label>
+                      <input
+                        id="uni-email"
+                        type="email"
+                        required
+                        placeholder="e.g. research@university.edu"
+                        value={uniEmail}
+                        onChange={(e) => setUniEmail(e.target.value)}
+                        className="w-full px-3 py-2 bg-background border border-border rounded-lg text-xs focus:outline-none focus:border-brand text-foreground"
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <label htmlFor="cv-text" className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">
+                        CV Summary & Background
+                      </label>
+                      <textarea
+                        id="cv-text"
+                        required
+                        placeholder="Detail your scientific experience, clinical NLP context, or previous publications..."
+                        value={cv}
+                        onChange={(e) => setCv(e.target.value)}
+                        rows={2}
+                        className="w-full px-3 py-2 bg-background border border-border rounded-lg text-xs focus:outline-none focus:border-brand resize-none text-foreground"
+                      />
+                    </div>
+
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <div className="space-y-1">
+                        <label htmlFor="p-email" className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">
+                          Private Email
+                        </label>
+                        <input
+                          id="p-email"
+                          type="email"
+                          required
+                          placeholder="e.g. private@gmail.com"
+                          value={privateEmail}
+                          onChange={(e) => setPrivateEmail(e.target.value)}
+                          className="w-full px-3 py-2 bg-background border border-border rounded-lg text-xs focus:outline-none focus:border-brand text-foreground"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label htmlFor="v-p-email" className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">
+                          Verify Private Email
+                        </label>
+                        <input
+                          id="v-p-email"
+                          type="email"
+                          required
+                          placeholder="Confirm email address"
+                          value={verifyPrivateEmail}
+                          onChange={(e) => setVerifyPrivateEmail(e.target.value)}
+                          className="w-full px-3 py-2 bg-background border border-border rounded-lg text-xs focus:outline-none focus:border-brand text-foreground"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                )}
 
                 <button
                   type="submit"
@@ -234,42 +405,110 @@ export function LoginScreen() {
             )}
 
             {/* Quick Login Section */}
-            <div className="relative my-6">
-              <div className="absolute inset-0 flex items-center" aria-hidden="true">
-                <div className="w-full border-t border-border" />
-              </div>
-              <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-card px-3 text-muted-foreground font-semibold tracking-wide">
-                  Or Quick Login As
-                </span>
-              </div>
-            </div>
+            {ws.members.length > 0 && (
+              <>
+                <div className="relative my-6">
+                  <div className="absolute inset-0 flex items-center" aria-hidden="true">
+                    <div className="w-full border-t border-border" />
+                  </div>
+                  <div className="relative flex justify-center text-xs uppercase">
+                    <span className="bg-card px-3 text-muted-foreground font-semibold tracking-wide">
+                      Or Quick Login As
+                    </span>
+                  </div>
+                </div>
 
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-              {ws.members.slice(0, 6).map((m) => (
-                <button
-                  key={m.id}
-                  type="button"
-                  onClick={() => handleQuickLogin(m)}
-                  className="group flex flex-col items-center justify-center p-3 rounded-xl border border-border bg-surface-muted/50 hover:bg-brand/5 hover:border-brand/40 text-center transition-all cursor-pointer hover:shadow-inner"
-                >
-                  <span
-                    className="grid h-8 w-8 place-items-center rounded-full text-xs font-semibold text-white group-hover:scale-105 transition-transform"
-                    style={{
-                      background: `linear-gradient(140deg, oklch(0.6 0.14 ${m.color}), oklch(0.42 0.13 ${m.color}))`,
-                    }}
+                {confirmingMember ? (
+                  /* Password Verification overlay for Quick Login */
+                  <form
+                    onSubmit={handleConfirmQuickLogin}
+                    className="space-y-3 p-4 rounded-xl border border-border bg-surface-muted/30 animate-in fade-in slide-in-from-bottom-2 duration-300"
                   >
-                    {m.initials}
-                  </span>
-                  <span className="mt-1.5 block text-xs font-bold truncate w-full text-foreground">
-                    {m.name.split(" ")[0]}
-                  </span>
-                  <span className="block text-[9px] text-muted-foreground font-medium truncate w-full uppercase">
-                    {m.role}
-                  </span>
-                </button>
-              ))}
-            </div>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span
+                          className="grid h-7 w-7 place-items-center rounded-full text-[10px] font-bold text-white"
+                          style={{
+                            background: `linear-gradient(140deg, oklch(0.6 0.14 ${confirmingMember.color}), oklch(0.42 0.13 ${confirmingMember.color}))`,
+                          }}
+                        >
+                          {confirmingMember.initials}
+                        </span>
+                        <div>
+                          <span className="block text-xs font-bold text-foreground">
+                            {confirmingMember.name}
+                          </span>
+                          <span className="block text-[9px] uppercase font-semibold text-muted-foreground">
+                            {confirmingMember.role}
+                          </span>
+                        </div>
+                      </div>
+                      <span className="text-[10px] text-brand/80 font-bold bg-brand/5 px-2 py-0.5 rounded-full">
+                        Verification Required
+                      </span>
+                    </div>
+
+                    <div className="relative">
+                      <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-muted-foreground pointer-events-none">
+                        <Lock className="h-3.5 w-3.5" />
+                      </span>
+                      <input
+                        type="password"
+                        required
+                        placeholder="Enter account password..."
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                        className="w-full pl-9 pr-3 py-1.5 bg-background border border-border rounded-lg text-xs focus:outline-none focus:border-brand text-foreground"
+                        autoFocus
+                      />
+                    </div>
+
+                    <div className="flex gap-2 justify-end pt-1">
+                      <button
+                        type="button"
+                        onClick={() => setConfirmingMember(null)}
+                        className="px-2.5 py-1.5 rounded-lg border border-border text-[10px] font-semibold text-foreground hover:bg-muted cursor-pointer"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        type="submit"
+                        className="px-3 py-1.5 rounded-lg bg-brand text-brand-foreground text-[10px] font-semibold transition-colors hover:bg-brand/90 cursor-pointer"
+                      >
+                        Verify & Log In
+                      </button>
+                    </div>
+                  </form>
+                ) : (
+                  /* Members Cards list */
+                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+                    {ws.members.slice(0, 6).map((m) => (
+                      <button
+                        key={m.id}
+                        type="button"
+                        onClick={() => handleQuickLoginClick(m)}
+                        className="group flex flex-col items-center justify-center p-3 rounded-xl border border-border bg-surface-muted/50 hover:bg-brand/5 hover:border-brand/40 text-center transition-all cursor-pointer hover:shadow-inner"
+                      >
+                        <span
+                          className="grid h-8 w-8 place-items-center rounded-full text-xs font-semibold text-white group-hover:scale-105 transition-transform"
+                          style={{
+                            background: `linear-gradient(140deg, oklch(0.6 0.14 ${m.color}), oklch(0.42 0.13 ${m.color}))`,
+                          }}
+                        >
+                          {m.initials}
+                        </span>
+                        <span className="mt-1.5 block text-xs font-bold truncate w-full text-foreground">
+                          {m.name.split(" ")[0]}
+                        </span>
+                        <span className="block text-[9px] text-muted-foreground font-medium truncate w-full uppercase">
+                          {m.role}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
           </div>
         </div>
 

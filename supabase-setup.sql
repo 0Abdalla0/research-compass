@@ -10,7 +10,13 @@ CREATE TABLE IF NOT EXISTS "members" (
   "role" TEXT NOT NULL,
   "email" TEXT NOT NULL,
   "responsibilities" TEXT NOT NULL,
-  "color" TEXT NOT NULL
+  "color" TEXT NOT NULL,
+  "password" TEXT NOT NULL,
+  "uniId" TEXT,
+  "phone" TEXT,
+  "uniEmail" TEXT,
+  "cv" TEXT,
+  "privateEmail" TEXT
 );
 
 CREATE TABLE IF NOT EXISTS "papers" (
@@ -159,18 +165,10 @@ ALTER TABLE "events" DISABLE ROW LEVEL SECURITY;
 ALTER TABLE "phases" DISABLE ROW LEVEL SECURITY;
 ALTER TABLE "activity" DISABLE ROW LEVEL SECURITY;
 
--- 3. Clear existing values
+-- 3. Clear existing values (Notice: members starts completely clean!)
 TRUNCATE "members", "papers", "tasks", "notes", "shots", "voiceNotes", "files", "links", "meetings", "events", "phases", "activity";
 
--- 4. Seed Data
-
-INSERT INTO "members" ("id", "name", "initials", "role", "email", "responsibilities", "color") VALUES
-('m1', 'Ahmed Kamal', 'AK', 'Team Leader', 'ahmed.kamal@uni.edu', 'Literature review coordination, research gap analysis, paper writing', '255'),
-('m2', 'Abdalla Nasser', 'AN', 'Developer', 'abdalla.nasser@uni.edu', 'System architecture, API layer, ontology reasoning service', '195'),
-('m3', 'Maria Fahmy', 'MF', 'Data Scientist', 'maria.fahmy@uni.edu', 'MIMIC-IV extraction, feature engineering, model benchmarking', '155'),
-('m4', 'Jumana Saleh', 'JS', 'Researcher', 'jumana.saleh@uni.edu', 'Clinical NLP survey, annotation guidelines, evaluation protocol', '300'),
-('m5', 'Ziad Hosny', 'ZH', 'Documentation', 'ziad.hosny@uni.edu', 'Thesis document, figures, presentation decks, meeting minutes', '70'),
-('m6', 'Dr. Laila Mansour', 'LM', 'Supervisor', 'l.mansour@uni.edu', 'Scientific supervision, methodology review, publication strategy', '25');
+-- 4. Seed Data (No seeded members inserted, members must register to log in)
 
 INSERT INTO "papers" ("id", "title", "authors", "year", "venue", "doi", "url", "category", "keywords", "abstract", "status", "ownerId", "progress", "analysis") VALUES
 ('p1', 'Clinical BERT Embeddings for Early Sepsis Prediction from Unstructured Notes', 'Y. Zhang, P. Kumar, E. Sanchez', 2024, 'Journal of Biomedical Informatics', '10.1016/j.jbi.2024.104512', 'https://doi.org/10.1016/j.jbi.2024.104512', 'Medical Informatics', '["ClinicalBERT", "sepsis", "EHR", "transformers"]', 'We fine-tune a domain-adapted BERT encoder on 210k de-identified ICU progress notes to predict sepsis onset up to 6 hours in advance, outperforming structured-only baselines by 8.4 AUROC points.', 'Analyzing', 'm1', 72, '{"Dataset": "MIMIC-IV v2.2 — 38,412 ICU stays, 210k notes, Sepsis-3 labels.", "Results": "AUROC 0.892 vs 0.808 structured-only; AUPRC 0.611; earliest reliable alert at 5.2h median.", "Advantages": "Strong empirical gains, reproducible cohort definition, released preprocessing code.", "Methodology": "Retrospective cohort study; sliding 6h prediction windows; 5-fold patient-level cross validation; ablation over note types.", "Disadvantages": "Heavy compute, no interpretability analysis, ignores medication ordering signals.", "Research Gap": "No semantic layer — the model has no notion of clinical concept hierarchy or negation scope.", "Limitations": "Single-center data, no external validation, note timestamps assumed reliable.", "References": "Johnson et al. 2023 (MIMIC-IV); Singer et al. 2016 (Sepsis-3); Alsentzer et al. 2019.", "What We Can Use": "Their cohort extraction SQL and Sepsis-3 labelling logic; the late-fusion architecture.", "Important Quotes": "\\"Free-text notes contributed 63% of the predictive signal in the first six hours of admission.\\"", "Proposed Solution": "Domain-adapted ClinicalBERT encoder fused with a temporal structured-feature branch through late concatenation.", "Research Problem": "Structured vital-sign models miss early clinical signals that clinicians record only in free-text notes.", "Research Question": "Can contextual embeddings of nursing and physician notes improve 6-hour-ahead sepsis prediction over structured baselines?", "Evaluation Metrics": "AUROC, AUPRC, sensitivity at fixed 90% specificity, calibration (Brier score).", "What We Can Improve": "Inject ontology concepts (SNOMED CT) instead of raw wordpieces for interpretability.", "Machine Learning / AI Models": "ClinicalBERT, BioGPT baseline, XGBoost structured baseline, LSTM fusion head."}'),
