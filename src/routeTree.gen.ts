@@ -12,8 +12,11 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as CalendarRouteImport } from './routes/calendar'
 import { Route as MediaRouteImport } from './routes/media'
+import { Route as MeetingsRouteImport } from './routes/meetings'
 import { Route as NotesRouteImport } from './routes/notes'
+import { Route as RoadmapRouteImport } from './routes/roadmap'
 import { Route as TasksRouteImport } from './routes/tasks'
+import { Route as VoiceRouteImport } from './routes/voice'
 import { Route as PapersIndexRouteImport } from './routes/papers.index'
 import { Route as PapersIdRouteImport } from './routes/papers.$id'
 
@@ -32,14 +35,29 @@ const MediaRoute = MediaRouteImport.update({
   path: '/media',
   getParentRoute: () => rootRouteImport,
 } as any)
+const MeetingsRoute = MeetingsRouteImport.update({
+  id: '/meetings',
+  path: '/meetings',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const NotesRoute = NotesRouteImport.update({
   id: '/notes',
   path: '/notes',
   getParentRoute: () => rootRouteImport,
 } as any)
+const RoadmapRoute = RoadmapRouteImport.update({
+  id: '/roadmap',
+  path: '/roadmap',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const TasksRoute = TasksRouteImport.update({
   id: '/tasks',
   path: '/tasks',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const VoiceRoute = VoiceRouteImport.update({
+  id: '/voice',
+  path: '/voice',
   getParentRoute: () => rootRouteImport,
 } as any)
 const PapersIndexRoute = PapersIndexRouteImport.update({
@@ -57,8 +75,11 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/calendar': typeof CalendarRoute
   '/media': typeof MediaRoute
+  '/meetings': typeof MeetingsRoute
   '/notes': typeof NotesRoute
+  '/roadmap': typeof RoadmapRoute
   '/tasks': typeof TasksRoute
+  '/voice': typeof VoiceRoute
   '/papers/$id': typeof PapersIdRoute
   '/papers/': typeof PapersIndexRoute
 }
@@ -66,8 +87,11 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/calendar': typeof CalendarRoute
   '/media': typeof MediaRoute
+  '/meetings': typeof MeetingsRoute
   '/notes': typeof NotesRoute
+  '/roadmap': typeof RoadmapRoute
   '/tasks': typeof TasksRoute
+  '/voice': typeof VoiceRoute
   '/papers/$id': typeof PapersIdRoute
   '/papers': typeof PapersIndexRoute
 }
@@ -76,8 +100,11 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/calendar': typeof CalendarRoute
   '/media': typeof MediaRoute
+  '/meetings': typeof MeetingsRoute
   '/notes': typeof NotesRoute
+  '/roadmap': typeof RoadmapRoute
   '/tasks': typeof TasksRoute
+  '/voice': typeof VoiceRoute
   '/papers/$id': typeof PapersIdRoute
   '/papers/': typeof PapersIndexRoute
 }
@@ -87,8 +114,11 @@ export interface FileRouteTypes {
     | '/'
     | '/calendar'
     | '/media'
+    | '/meetings'
     | '/notes'
+    | '/roadmap'
     | '/tasks'
+    | '/voice'
     | '/papers/$id'
     | '/papers/'
   fileRoutesByTo: FileRoutesByTo
@@ -96,8 +126,11 @@ export interface FileRouteTypes {
     | '/'
     | '/calendar'
     | '/media'
+    | '/meetings'
     | '/notes'
+    | '/roadmap'
     | '/tasks'
+    | '/voice'
     | '/papers/$id'
     | '/papers'
   id:
@@ -105,8 +138,11 @@ export interface FileRouteTypes {
     | '/'
     | '/calendar'
     | '/media'
+    | '/meetings'
     | '/notes'
+    | '/roadmap'
     | '/tasks'
+    | '/voice'
     | '/papers/$id'
     | '/papers/'
   fileRoutesById: FileRoutesById
@@ -115,8 +151,11 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   CalendarRoute: typeof CalendarRoute
   MediaRoute: typeof MediaRoute
+  MeetingsRoute: typeof MeetingsRoute
   NotesRoute: typeof NotesRoute
+  RoadmapRoute: typeof RoadmapRoute
   TasksRoute: typeof TasksRoute
+  VoiceRoute: typeof VoiceRoute
   PapersIdRoute: typeof PapersIdRoute
   PapersIndexRoute: typeof PapersIndexRoute
 }
@@ -144,6 +183,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof MediaRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/meetings': {
+      id: '/meetings'
+      path: '/meetings'
+      fullPath: '/meetings'
+      preLoaderRoute: typeof MeetingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/notes': {
       id: '/notes'
       path: '/notes'
@@ -151,11 +197,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof NotesRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/roadmap': {
+      id: '/roadmap'
+      path: '/roadmap'
+      fullPath: '/roadmap'
+      preLoaderRoute: typeof RoadmapRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/tasks': {
       id: '/tasks'
       path: '/tasks'
       fullPath: '/tasks'
       preLoaderRoute: typeof TasksRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/voice': {
+      id: '/voice'
+      path: '/voice'
+      fullPath: '/voice'
+      preLoaderRoute: typeof VoiceRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/papers/': {
@@ -179,8 +239,11 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   CalendarRoute: CalendarRoute,
   MediaRoute: MediaRoute,
+  MeetingsRoute: MeetingsRoute,
   NotesRoute: NotesRoute,
+  RoadmapRoute: RoadmapRoute,
   TasksRoute: TasksRoute,
+  VoiceRoute: VoiceRoute,
   PapersIdRoute: PapersIdRoute,
   PapersIndexRoute: PapersIndexRoute,
 }
