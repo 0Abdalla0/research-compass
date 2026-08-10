@@ -82,12 +82,18 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   const sidebar = (
     <div className="flex h-full flex-col gap-1 overflow-y-auto px-3 pb-6">
-      <Link to="/" className="mb-4 flex items-center px-2 pt-5">
+      <Link to="/" className="mb-4 flex items-center gap-2.5 px-2 pt-5">
+        <span
+          className="grid h-9 w-9 shrink-0 place-items-center rounded-xl text-sm font-black text-white"
+          style={{ background: "var(--gradient-brand)" }}
+        >
+          R
+        </span>
         <span className="min-w-0">
-          <span className="font-display block text-[17px] font-black tracking-tight text-sidebar-foreground">
+          <span className="font-display block truncate text-[15px] font-bold leading-tight text-sidebar-foreground">
             ResearchHub
           </span>
-          <span className="block truncate text-[11px] text-sidebar-foreground/60">{ws.project.institution}</span>
+          <span className="block truncate text-[11px] text-sidebar-foreground/60">MedOnto Lab</span>
         </span>
       </Link>
 
@@ -162,12 +168,12 @@ export function AppShell({ children }: { children: ReactNode }) {
             <DropdownMenu>
               <DropdownMenuTrigger className="hidden items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-secondary md:flex">
                 <span className="h-2 w-2 rounded-full bg-success" />
-                <span className="max-w-[180px] truncate">{ws.project.institution}</span>
+                <span className="max-w-[180px] truncate">MedOnto Lab</span>
                 <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start" className="w-60">
                 <DropdownMenuLabel>Teams</DropdownMenuLabel>
-                <DropdownMenuItem>{ws.project.institution} · {ws.project.name}</DropdownMenuItem>
+                <DropdownMenuItem>MedOnto Lab · Group 07</DropdownMenuItem>
                 <DropdownMenuItem>NLP Reading Group</DropdownMenuItem>
                 <DropdownMenuItem>Faculty AI Seminar</DropdownMenuItem>
               </DropdownMenuContent>
