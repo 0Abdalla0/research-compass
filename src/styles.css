@@ -190,3 +190,56 @@
     letter-spacing: -0.02em;
   }
 }
+
+/* --- Mobile Responsiveness and Stuck-Hover Fixes --- */
+
+/* 1. Prevent sticky hover effects on touch screens */
+@media (hover: none) {
+  .hover\:-translate-y-0\.5:hover,
+  .hover\:-translate-y-1:hover,
+  .hover\:scale-105:hover,
+  .group:hover .group-hover\:scale-105 {
+    transform: none !important;
+  }
+  
+  .hover\:shadow-lg:hover,
+  .hover\:shadow-md:hover {
+    box-shadow: var(--shadow-card) !important;
+  }
+
+  .hover\:border-brand\/40:hover {
+    border-color: var(--color-border) !important;
+  }
+}
+
+/* 2. Optimize fixed layout paddings and spacing on mobile displays */
+@media (max-width: 767px) {
+  .p-5 {
+    padding: 1rem !important; /* 16px instead of 20px */
+  }
+  .p-6 {
+    padding: 1.25rem !important; /* 20px instead of 24px */
+  }
+  .p-7 {
+    padding: 1.25rem !important;
+  }
+  .p-12 {
+    padding: 2rem !important;
+  }
+  .px-6 {
+    padding-left: 1rem !important;
+    padding-right: 1rem !important;
+  }
+  .py-7 {
+    padding-top: 1.25rem !important;
+    padding-bottom: 1.25rem !important;
+  }
+  .px-8 {
+    padding-left: 1rem !important;
+    padding-right: 1rem !important;
+  }
+  .gap-6 {
+    gap: 1rem !important;
+  }
+}
+
