@@ -61,7 +61,7 @@ export function LoginScreen() {
       return;
     }
 
-    if (regRole === "Researcher") {
+    if (regRole === ("Researcher" || "Team Leader")) {
       if (!uniId || !phone || !uniEmail || !cv || !privateEmail || !verifyPrivateEmail) {
         toast.error("Please fill in all required Researcher details.");
         return;

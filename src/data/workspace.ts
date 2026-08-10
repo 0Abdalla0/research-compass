@@ -1,9 +1,6 @@
 export type Role =
   | "Team Leader"
-  | "Researcher"
-  | "Developer"
-  | "Data Scientist"
-  | "Documentation"
+  | "Member"
   | "Supervisor";
 
 export type Member = {
