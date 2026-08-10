@@ -213,6 +213,11 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     } else {
       setNotifications(seed.notifications);
     }
+
+    const savedTheme = localStorage.getItem("research_hub_theme");
+    if (savedTheme === "dark" || savedTheme === "light") {
+      setTheme(savedTheme);
+    }
   }, []);
 
   // Save notifications to localStorage when changed
@@ -282,6 +287,13 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     },
     [currentUser],
   );
+
+  const computedProject = useMemo(() => {
+    const progress = phases.length > 0
+      ? Math.round(phases.reduce((sum, p) => sum + p.progress, 0) / phases.length)
+      : 0;
+    return { ...project, progress };
+  }, [project, phases]);
 
   const today = () => new Date().toISOString().slice(0, 10);
 
@@ -552,7 +564,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
         );
         if (p) log("deleted phase", p.name, "task");
       },
-      project,
+      project: computedProject,
       updateProject: (name, topic, institution) => {
         const updated = { ...project, name, topic, institution };
         setProject(updated);
@@ -613,7 +625,11 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
         setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, unread: false } : n)));
       },
       theme,
-      toggleTheme: () => setTheme((t) => (t === "light" ? "dark" : "light")),
+      toggleTheme: () => setTheme((t) => {
+        const next = t === "light" ? "dark" : "light";
+        localStorage.setItem("research_hub_theme", next);
+        return next;
+      }),
     }),
     [members, papers, tasks, notes, shots, voiceNotes, files, links, meetings, events, phases, activity, theme, currentUser, project, preferences, notifications, log],
   );
