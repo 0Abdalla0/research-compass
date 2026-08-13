@@ -248,7 +248,7 @@ export const addPaperServer = createServerFn({ method: "POST" })
       return res?.[0] || data;
     } catch (e) {
       console.error("Supabase insert paper error:", e);
-      return data;
+      throw e;
     }
   });
 
@@ -371,7 +371,7 @@ export const addShotServer = createServerFn({ method: "POST" })
       return res?.[0] || data;
     } catch (e) {
       console.error("Supabase insert screenshot error:", e);
-      return data;
+      throw e;
     }
   });
 
@@ -410,7 +410,7 @@ export const addVoiceNoteServer = createServerFn({ method: "POST" })
       return res?.[0] || data;
     } catch (e) {
       console.error("Supabase insert voiceNote error:", e);
-      return data;
+      throw e;
     }
   });
 
@@ -448,7 +448,7 @@ export const addFileServer = createServerFn({ method: "POST" })
       return res?.[0] || data;
     } catch (e) {
       console.error("Supabase insert file error:", e);
-      return data;
+      throw e;
     }
   });
 
@@ -461,6 +461,7 @@ export const removeFileServer = createServerFn({ method: "POST" })
       if (error) throw error;
     } catch (e) {
       console.error("Supabase delete file error:", e);
+      throw e;
     }
   });
 
