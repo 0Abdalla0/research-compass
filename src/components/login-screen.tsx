@@ -89,7 +89,7 @@ export function LoginScreen() {
       return;
     }
 
-    if (regRole === "Member" || regRole === "Team Leader") {
+    if (regRole === "Member") {
       if (!uniId || !phone || !uniEmail || !cv || !privateEmail || !verifyPrivateEmail) {
         toast.error("Please fill in all required member details (including CV upload).");
         return;
@@ -291,7 +291,6 @@ export function LoginScreen() {
                       className="w-full px-4 py-2.5 bg-background border border-border rounded-xl text-sm focus:outline-none focus:border-brand transition-colors text-foreground"
                     >
                       <option value="Member">Member</option>
-                      <option value="Team Leader">Team Leader</option>
                       <option value="Supervisor">Supervisor</option>
                     </select>
                   </div>

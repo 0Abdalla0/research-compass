@@ -1,5 +1,4 @@
 export type Role =
-  | "Team Leader"
   | "Member"
   | "Supervisor";
 
