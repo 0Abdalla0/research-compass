@@ -141,7 +141,7 @@ function VoicePage() {
         const voiceTitle = title.trim() || `Voice Note ${new Date().toLocaleTimeString()}`;
 
         try {
-          const publicUrl = await uploadFileToStorage(audioBlob, `${voiceTitle}.${ext}`, "voicenotes");
+          const publicUrl = await uploadFileToStorage(audioBlob, `${voiceTitle}.${ext}`, "documents");
 
           ws.addVoiceNote({
             title: voiceTitle,

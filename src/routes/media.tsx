@@ -169,7 +169,7 @@ function UploadDialog() {
     const toastId = toast.loading("Uploading screenshot...");
 
     try {
-      const publicUrl = await uploadFileToStorage(imageFile, imageFile.name, "screenshots");
+      const publicUrl = await uploadFileToStorage(imageFile, imageFile.name, "documents");
 
       const payload: Parameters<typeof ws.addShot>[0] = {
         title: f.title.trim(),

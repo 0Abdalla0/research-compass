@@ -380,5 +380,46 @@ END;
 $$;
 
 -- ============================================================
+-- SECTION 11: AUTOMATIC STORAGE BUCKET & POLICIES SETUP
+-- Creates the public 'documents' bucket and grants read/write permissions
+-- ============================================================
+DO $$
+BEGIN
+  -- Insert public bucket
+  INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
+  VALUES ('documents', 'documents', true, 52428800, null)
+  ON CONFLICT (id) DO NOTHING;
+
+  -- Policy: Allow public read access to all files inside documents bucket
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies WHERE tablename = 'objects' AND policyname = 'Public Access'
+  ) THEN
+    CREATE POLICY "Public Access" ON storage.objects FOR SELECT USING (bucket_id = 'documents');
+  END IF;
+
+  -- Policy: Allow public write access to documents bucket
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies WHERE tablename = 'objects' AND policyname = 'Public Upload'
+  ) THEN
+    CREATE POLICY "Public Upload" ON storage.objects FOR INSERT WITH CHECK (bucket_id = 'documents');
+  END IF;
+
+  -- Policy: Allow public update access
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies WHERE tablename = 'objects' AND policyname = 'Public Update'
+  ) THEN
+    CREATE POLICY "Public Update" ON storage.objects FOR UPDATE USING (bucket_id = 'documents');
+  END IF;
+
+  -- Policy: Allow public delete access
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies WHERE tablename = 'objects' AND policyname = 'Public Delete'
+  ) THEN
+    CREATE POLICY "Public Delete" ON storage.objects FOR DELETE USING (bucket_id = 'documents');
+  END IF;
+END
+$$;
+
+-- ============================================================
 -- DONE — Migration applied successfully.
 -- ============================================================
