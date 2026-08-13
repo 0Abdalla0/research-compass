@@ -1,8 +1,9 @@
 import { useState } from "react";
 import { useWorkspace } from "@/lib/workspace-store";
-import { LogIn, UserPlus, Mail, Lock, ShieldAlert, ArrowRight, FileText, Phone, Award, ShieldCheck } from "lucide-react";
+import { LogIn, UserPlus, Mail, Lock, ShieldAlert, ArrowRight, FileText, Phone, Award, ShieldCheck, Eye, EyeOff, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { uploadFileToStorage } from "@/lib/supabase";
 
 type Member = ReturnType<typeof useWorkspace>["members"][number];
 
@@ -13,6 +14,7 @@ export function LoginScreen() {
   // Sign In state
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showSignInPassword, setShowSignInPassword] = useState(false);
 
   // Quick Login state
   const [confirmingMember, setConfirmingMember] = useState<Member | null>(null);
@@ -22,15 +24,36 @@ export function LoginScreen() {
   const [regName, setRegName] = useState("");
   const [regEmail, setRegEmail] = useState("");
   const [regPassword, setRegPassword] = useState("");
+  const [regConfirmPassword, setRegConfirmPassword] = useState("");
   const [regRole, setRegRole] = useState("Member");
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   // Member Custom Fields state
   const [uniId, setUniId] = useState("");
   const [phone, setPhone] = useState("");
   const [uniEmail, setUniEmail] = useState("");
   const [cv, setCv] = useState("");
+  const [cvFile, setCvFile] = useState<File | null>(null);
+  const [cvUrl, setCvUrl] = useState("");
   const [privateEmail, setPrivateEmail] = useState("");
   const [verifyPrivateEmail, setVerifyPrivateEmail] = useState("");
+
+  const handleCvChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setCvFile(file);
+    const toastId = toast.loading(`Uploading CV "${file.name}"...`);
+    try {
+      const publicUrl = await uploadFileToStorage(file, file.name, "documents");
+      setCvUrl(publicUrl);
+      setCv(publicUrl);
+      toast.success("CV uploaded successfully!", { id: toastId });
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to upload CV.", { id: toastId });
+    }
+  };
 
   const handleSignIn = (e: React.FormEvent) => {
     e.preventDefault();
@@ -56,14 +79,19 @@ export function LoginScreen() {
 
   const handleRegister = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!regName || !regEmail || !regPassword) {
-      toast.error("Name, email, and password are required.");
+    if (!regName || !regEmail || !regPassword || !regConfirmPassword) {
+      toast.error("All registration fields are required.");
       return;
     }
 
-    if (regRole === ("Member" || "Team Leader")) {
+    if (regPassword !== regConfirmPassword) {
+      toast.error("Passwords do not match.");
+      return;
+    }
+
+    if (regRole === "Member" || regRole === "Team Leader") {
       if (!uniId || !phone || !uniEmail || !cv || !privateEmail || !verifyPrivateEmail) {
-        toast.error("Please fill in all required Member details.");
+        toast.error("Please fill in all required member details (including CV upload).");
         return;
       }
       if (privateEmail.toLowerCase() !== verifyPrivateEmail.toLowerCase()) {
@@ -89,10 +117,13 @@ export function LoginScreen() {
     setRegName("");
     setRegEmail("");
     setRegPassword("");
+    setRegConfirmPassword("");
     setUniId("");
     setPhone("");
     setUniEmail("");
     setCv("");
+    setCvFile(null);
+    setCvUrl("");
     setPrivateEmail("");
     setVerifyPrivateEmail("");
 
@@ -205,13 +236,20 @@ export function LoginScreen() {
                     </span>
                     <input
                       id="pass"
-                      type="password"
+                      type={showSignInPassword ? "text" : "password"}
                       required
                       placeholder="••••••••"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                      className="w-full pl-10 pr-4 py-2.5 bg-background border border-border rounded-xl text-sm focus:outline-none focus:border-brand transition-colors text-foreground"
+                      className="w-full pl-10 pr-10 py-2.5 bg-background border border-border rounded-xl text-sm focus:outline-none focus:border-brand transition-colors text-foreground"
                     />
+                    <button
+                      type="button"
+                      onClick={() => setShowSignInPassword(!showSignInPassword)}
+                      className="absolute inset-y-0 right-0 pr-3 flex items-center text-muted-foreground hover:text-foreground cursor-pointer"
+                    >
+                      {showSignInPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
                   </div>
                 </div>
 
@@ -273,20 +311,54 @@ export function LoginScreen() {
                     className="w-full px-4 py-2.5 bg-background border border-border rounded-xl text-sm focus:outline-none focus:border-brand transition-colors text-foreground"
                   />
                 </div>
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="space-y-1">
+                    <label htmlFor="reg-pass" className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                      Create Password
+                    </label>
+                    <div className="relative">
+                      <input
+                        id="reg-pass"
+                        type={showPassword ? "text" : "password"}
+                        required
+                        placeholder="Min 6 characters"
+                        value={regPassword}
+                        onChange={(e) => setRegPassword(e.target.value)}
+                        className="w-full pl-4 pr-10 py-2.5 bg-background border border-border rounded-xl text-sm focus:outline-none focus:border-brand transition-colors text-foreground"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute inset-y-0 right-0 pr-3 flex items-center text-muted-foreground hover:text-foreground cursor-pointer"
+                      >
+                        {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </button>
+                    </div>
+                  </div>
 
-                <div className="space-y-1">
-                  <label htmlFor="reg-pass" className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                    Create Password
-                  </label>
-                  <input
-                    id="reg-pass"
-                    type="password"
-                    required
-                    placeholder="Minimum 6 characters"
-                    value={regPassword}
-                    onChange={(e) => setRegPassword(e.target.value)}
-                    className="w-full px-4 py-2.5 bg-background border border-border rounded-xl text-sm focus:outline-none focus:border-brand transition-colors text-foreground"
-                  />
+                  <div className="space-y-1">
+                    <label htmlFor="reg-confirm-pass" className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                      Verify Password
+                    </label>
+                    <div className="relative">
+                      <input
+                        id="reg-confirm-pass"
+                        type={showConfirmPassword ? "text" : "password"}
+                        required
+                        placeholder="Re-type password"
+                        value={regConfirmPassword}
+                        onChange={(e) => setRegConfirmPassword(e.target.value)}
+                        className="w-full pl-4 pr-10 py-2.5 bg-background border border-border rounded-xl text-sm focus:outline-none focus:border-brand transition-colors text-foreground"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                        className="absolute inset-y-0 right-0 pr-3 flex items-center text-muted-foreground hover:text-foreground cursor-pointer"
+                      >
+                        {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </button>
+                    </div>
+                  </div>
                 </div>
 
                 {/* Conditional Fields for Member role */}
@@ -343,19 +415,36 @@ export function LoginScreen() {
                       />
                     </div>
 
-                    <div className="space-y-1">
-                      <label htmlFor="cv-text" className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">
-                        CV Summary & Background
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1">
+                        <FileText className="h-3.5 w-3.5 text-brand" />
+                        CV Document / Resume
                       </label>
-                      <textarea
-                        id="cv-text"
-                        required
-                        placeholder="Detail your scientific experience, clinical NLP context, or previous publications..."
-                        value={cv}
-                        onChange={(e) => setCv(e.target.value)}
-                        rows={2}
-                        className="w-full px-3 py-2 bg-background border border-border rounded-lg text-xs focus:outline-none focus:border-brand resize-none text-foreground"
-                      />
+                      <div className="flex items-center gap-3">
+                        <label className="flex items-center gap-2 px-3 py-2 border border-dashed border-border rounded-xl bg-muted/30 text-xs font-semibold text-foreground hover:bg-secondary transition-all cursor-pointer flex-1">
+                          <Upload className="h-4 w-4 text-muted-foreground" />
+                          <span className="truncate max-w-[200px] text-muted-foreground">
+                            {cvFile ? cvFile.name : "Select CV File (PDF, DOCX...)"}
+                          </span>
+                          <input
+                            type="file"
+                            accept=".pdf,.doc,.docx,.txt"
+                            onChange={handleCvChange}
+                            className="hidden"
+                          />
+                        </label>
+                        {cvUrl && (
+                          <a
+                            href={cvUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-xs font-bold text-brand hover:underline flex items-center gap-1 shrink-0"
+                          >
+                            <Eye className="h-3.5 w-3.5" /> View
+                          </a>
+                        )}
+                      </div>
+                      <input type="hidden" value={cv} required />
                     </div>
 
                     <div className="grid gap-3 sm:grid-cols-2">
