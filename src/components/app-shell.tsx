@@ -118,10 +118,6 @@ export function AppShell({ children }: { children: ReactNode }) {
           Current phase
         </p>
         <p className="mt-1 text-sm font-semibold text-sidebar-foreground">{ws.project.phase}</p>
-        <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-sidebar-foreground/15">
-          <div className="h-full rounded-full bg-brand" style={{ width: `${ws.project.progress}%` }} />
-        </div>
-        <p className="mt-1.5 text-[11px] text-sidebar-foreground/60">{ws.project.progress}% overall progress</p>
       </div>
     </div>
   );
@@ -165,19 +161,6 @@ export function AppShell({ children }: { children: ReactNode }) {
               <Menu className="h-5 w-5" />
             </button>
 
-            <DropdownMenu>
-              <DropdownMenuTrigger className="hidden items-center gap-2 rounded-xl border border-border bg-card px-3 py-2 text-sm font-medium text-foreground transition-colors hover:bg-secondary md:flex">
-                <span className="h-2 w-2 rounded-full bg-success" />
-                <span className="max-w-[180px] truncate">MedOnto Lab</span>
-                <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" className="w-60">
-                <DropdownMenuLabel>Teams</DropdownMenuLabel>
-                <DropdownMenuItem>MedOnto Lab · Group 07</DropdownMenuItem>
-                <DropdownMenuItem>NLP Reading Group</DropdownMenuItem>
-                <DropdownMenuItem>Faculty AI Seminar</DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
 
             <button
               onClick={() => setSearchOpen(true)}

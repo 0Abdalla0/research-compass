@@ -421,5 +421,95 @@ END
 $$;
 
 -- ============================================================
+-- SECTION 12: ROADMAP & RELATIONSHIPS JUNCTION TABLE TRIGGERS
+-- Automatically synchronizes normalized M:M junction tables
+-- when JSONB arrays (members, participants, attendees) change.
+-- ============================================================
+
+-- 1. Sync function for phase_members
+CREATE OR REPLACE FUNCTION sync_phase_members()
+RETURNS TRIGGER AS $$
+DECLARE
+  member_id_text TEXT;
+BEGIN
+  DELETE FROM "phase_members" WHERE "phase_id" = NEW.id;
+  
+  IF NEW.members IS NOT NULL AND jsonb_typeof(NEW.members) = 'array' THEN
+    FOR member_id_text IN SELECT jsonb_array_elements_text(NEW.members)
+    LOOP
+      IF EXISTS (SELECT 1 FROM "members" WHERE "id" = member_id_text) THEN
+        INSERT INTO "phase_members" ("phase_id", "member_id")
+        VALUES (NEW.id, member_id_text)
+        ON CONFLICT DO NOTHING;
+      END IF;
+    END LOOP;
+  END IF;
+  
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trigger_sync_phase_members ON "phases";
+CREATE TRIGGER trigger_sync_phase_members
+AFTER INSERT OR UPDATE OF members ON "phases"
+FOR EACH ROW EXECUTE FUNCTION sync_phase_members();
+
+-- 2. Sync function for meeting_participants
+CREATE OR REPLACE FUNCTION sync_meeting_participants()
+RETURNS TRIGGER AS $$
+DECLARE
+  participant_id_text TEXT;
+BEGIN
+  DELETE FROM "meeting_participants" WHERE "meeting_id" = NEW.id;
+  
+  IF NEW.participants IS NOT NULL AND jsonb_typeof(NEW.participants) = 'array' THEN
+    FOR participant_id_text IN SELECT jsonb_array_elements_text(NEW.participants)
+    LOOP
+      IF EXISTS (SELECT 1 FROM "members" WHERE "id" = participant_id_text) THEN
+        INSERT INTO "meeting_participants" ("meeting_id", "member_id")
+        VALUES (NEW.id, participant_id_text)
+        ON CONFLICT DO NOTHING;
+      END IF;
+    END LOOP;
+  END IF;
+  
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trigger_sync_meeting_participants ON "meetings";
+CREATE TRIGGER trigger_sync_meeting_participants
+AFTER INSERT OR UPDATE OF participants ON "meetings"
+FOR EACH ROW EXECUTE FUNCTION sync_meeting_participants();
+
+-- 3. Sync function for event_attendees
+CREATE OR REPLACE FUNCTION sync_event_attendees()
+RETURNS TRIGGER AS $$
+DECLARE
+  attendee_id_text TEXT;
+BEGIN
+  DELETE FROM "event_attendees" WHERE "event_id" = NEW.id;
+  
+  IF NEW.attendees IS NOT NULL AND jsonb_typeof(NEW.attendees) = 'array' THEN
+    FOR attendee_id_text IN SELECT jsonb_array_elements_text(NEW.attendees)
+    LOOP
+      IF EXISTS (SELECT 1 FROM "members" WHERE "id" = attendee_id_text) THEN
+        INSERT INTO "event_attendees" ("event_id", "member_id")
+        VALUES (NEW.id, attendee_id_text)
+        ON CONFLICT DO NOTHING;
+      END IF;
+    END LOOP;
+  END IF;
+  
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trigger_sync_event_attendees ON "events";
+CREATE TRIGGER trigger_sync_event_attendees
+AFTER INSERT OR UPDATE OF attendees ON "events"
+FOR EACH ROW EXECUTE FUNCTION sync_event_attendees();
+
+-- ============================================================
 -- DONE — Migration applied successfully.
 -- ============================================================

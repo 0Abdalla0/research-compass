@@ -68,31 +68,20 @@ function Dashboard() {
     <div className="space-y-6">
       <Panel className="overflow-hidden border-0 p-0">
         <div className="relative px-6 py-7 sm:px-8 min-w-0 overflow-hidden" style={{ background: "var(--gradient-brand)" }}>
-          <div className="grid gap-6 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
-            <div className="min-w-0 text-white">
-              <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/70">
-                Research Workspace
-              </p>
-              <h1 className="font-display mt-2 text-2xl font-bold leading-tight sm:text-3xl break-words">
-                {ws.project.name}
-              </h1>
-              <p className="mt-2 max-w-2xl text-sm text-white/80 break-words leading-relaxed">{ws.project.topic}</p>
-              <div className="mt-4 flex flex-wrap items-center gap-3">
-                <Stack ids={ws.members.map((m) => m.id)} members={ws.members} />
-                <span className="rounded-full bg-white/15 px-3 py-1 text-xs font-medium text-white shrink-0">
-                  {ws.project.phase}
-                </span>
-                <span className="text-xs text-white/70 break-words leading-relaxed max-w-full">{ws.project.institution}</span>
-              </div>
-            </div>
-            <div className="w-full lg:w-64">
-              <div className="flex items-end justify-between text-white">
-                <span className="text-xs font-medium text-white/75">Overall progress</span>
-                <span className="font-display text-3xl font-bold">{ws.project.progress}%</span>
-              </div>
-              <div className="mt-2 h-2 overflow-hidden rounded-full bg-white/20">
-                <div className="h-full rounded-full bg-white transition-all duration-1000" style={{ width: `${ws.project.progress}%` }} />
-              </div>
+          <div className="min-w-0 text-white">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-white/70">
+              Research Workspace
+            </p>
+            <h1 className="font-display mt-2 text-2xl font-bold leading-tight sm:text-3xl break-words">
+              {ws.project.name}
+            </h1>
+            <p className="mt-2 max-w-2xl text-sm text-white/80 break-words leading-relaxed">{ws.project.topic}</p>
+            <div className="mt-4 flex flex-wrap items-center gap-3">
+              <Stack ids={ws.members.map((m) => m.id)} members={ws.members} />
+              <span className="rounded-full bg-white/15 px-3 py-1 text-xs font-medium text-white shrink-0">
+                {ws.project.phase}
+              </span>
+              <span className="text-xs text-white/70 break-words leading-relaxed max-w-full">{ws.project.institution}</span>
             </div>
           </div>
         </div>

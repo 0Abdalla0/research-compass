@@ -37,7 +37,6 @@ export function LoginScreen() {
   const [cvFile, setCvFile] = useState<File | null>(null);
   const [cvUrl, setCvUrl] = useState("");
   const [privateEmail, setPrivateEmail] = useState("");
-  const [verifyPrivateEmail, setVerifyPrivateEmail] = useState("");
 
   const handleCvChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -89,13 +88,9 @@ export function LoginScreen() {
       return;
     }
 
-    if (regRole === "Member") {
-      if (!uniId || !phone || !uniEmail || !cv || !privateEmail || !verifyPrivateEmail) {
+    if (regRole === "Member" || regRole === "Team Leader") {
+      if (!uniId || !phone || !uniEmail || !cv || !privateEmail) {
         toast.error("Please fill in all required member details (including CV upload).");
-        return;
-      }
-      if (privateEmail.toLowerCase() !== verifyPrivateEmail.toLowerCase()) {
-        toast.error("Personal emails do not match.");
         return;
       }
       ws.registerUser(
@@ -125,7 +120,6 @@ export function LoginScreen() {
     setCvFile(null);
     setCvUrl("");
     setPrivateEmail("");
-    setVerifyPrivateEmail("");
 
     toast.success(`Account created! Welcome to MedOnto Lab, ${regName}!`);
   };
@@ -446,35 +440,19 @@ export function LoginScreen() {
                       <input type="hidden" value={cv} required />
                     </div>
 
-                    <div className="grid gap-3 sm:grid-cols-2">
-                      <div className="space-y-1">
-                        <label htmlFor="p-email" className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">
-                          Private Email
-                        </label>
-                        <input
-                          id="p-email"
-                          type="email"
-                          required
-                          placeholder="e.g. private@gmail.com"
-                          value={privateEmail}
-                          onChange={(e) => setPrivateEmail(e.target.value)}
-                          className="w-full px-3 py-2 bg-background border border-border rounded-lg text-xs focus:outline-none focus:border-brand text-foreground"
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <label htmlFor="v-p-email" className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">
-                          Verify Private Email
-                        </label>
-                        <input
-                          id="v-p-email"
-                          type="email"
-                          required
-                          placeholder="Confirm email address"
-                          value={verifyPrivateEmail}
-                          onChange={(e) => setVerifyPrivateEmail(e.target.value)}
-                          className="w-full px-3 py-2 bg-background border border-border rounded-lg text-xs focus:outline-none focus:border-brand text-foreground"
-                        />
-                      </div>
+                    <div className="space-y-1">
+                      <label htmlFor="p-email" className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">
+                        Private Email
+                      </label>
+                      <input
+                        id="p-email"
+                        type="email"
+                        required
+                        placeholder="e.g. private@gmail.com"
+                        value={privateEmail}
+                        onChange={(e) => setPrivateEmail(e.target.value)}
+                        className="w-full px-3 py-2 bg-background border border-border rounded-lg text-xs focus:outline-none focus:border-brand text-foreground"
+                      />
                     </div>
                   </div>
                 )}
