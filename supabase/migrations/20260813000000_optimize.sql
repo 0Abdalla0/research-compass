@@ -11,6 +11,34 @@
 -- SECTION 1: UNIQUE CONSTRAINT — members.email
 -- Prevents duplicate account registration
 -- ============================================================
+-- Deduplicate members: group by email, keep the one with MIN(id)
+-- First update all referencing tables to use the kept id to prevent orphan references
+DO $$
+DECLARE
+  r RECORD;
+BEGIN
+  FOR r IN (
+    SELECT email, MIN(id) as keep_id
+    FROM "members"
+    GROUP BY email
+    HAVING COUNT(*) > 1
+  ) LOOP
+    -- Update references from other IDs with the same email to keep_id
+    UPDATE "papers" SET "ownerId" = r.keep_id WHERE "ownerId" IN (SELECT id FROM "members" WHERE email = r.email AND id <> r.keep_id);
+    UPDATE "tasks" SET "assigneeId" = r.keep_id WHERE "assigneeId" IN (SELECT id FROM "members" WHERE email = r.email AND id <> r.keep_id);
+    UPDATE "notes" SET "authorId" = r.keep_id WHERE "authorId" IN (SELECT id FROM "members" WHERE email = r.email AND id <> r.keep_id);
+    UPDATE "shots" SET "uploadedBy" = r.keep_id WHERE "uploadedBy" IN (SELECT id FROM "members" WHERE email = r.email AND id <> r.keep_id);
+    UPDATE "voiceNotes" SET "authorId" = r.keep_id WHERE "authorId" IN (SELECT id FROM "members" WHERE email = r.email AND id <> r.keep_id);
+    UPDATE "files" SET "uploadedBy" = r.keep_id WHERE "uploadedBy" IN (SELECT id FROM "members" WHERE email = r.email AND id <> r.keep_id);
+    UPDATE "links" SET "addedBy" = r.keep_id WHERE "addedBy" IN (SELECT id FROM "members" WHERE email = r.email AND id <> r.keep_id);
+    UPDATE "activity" SET "memberId" = r.keep_id WHERE "memberId" IN (SELECT id FROM "members" WHERE email = r.email AND id <> r.keep_id);
+    
+    -- Now delete the duplicate members
+    DELETE FROM "members" WHERE email = r.email AND id <> r.keep_id;
+  END LOOP;
+END
+$$;
+
 DO $$
 BEGIN
   IF NOT EXISTS (
