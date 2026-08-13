@@ -68,10 +68,11 @@ export async function uploadFileToStorage(file: File | Blob, originalName: strin
 
     return urlData.publicUrl;
   } catch (err) {
-    console.error("Supabase storage upload error, falling back to local object URL:", err);
-    if (file instanceof File) {
-      return URL.createObjectURL(file);
-    }
-    return URL.createObjectURL(new File([file], originalName));
+    console.error("Supabase storage upload error, falling back to Base64 Data URL:", err);
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result as string);
+      reader.readAsDataURL(file);
+    });
   }
 }

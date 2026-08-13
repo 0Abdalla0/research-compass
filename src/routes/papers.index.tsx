@@ -1,8 +1,9 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
-import { LayoutGrid, Plus, Rows3, Search, Trash2 } from "lucide-react";
+import { useMemo, useState, useRef } from "react";
+import { LayoutGrid, Plus, Rows3, Search, Trash2, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { useWorkspace } from "@/lib/workspace-store";
+import { uploadFileToStorage } from "@/lib/supabase";
 import type { PaperStatus } from "@/data/workspace";
 import { Initials, Meter, PageHeader, Panel, StatusPill, Tag } from "@/components/ui-bits";
 import { Button } from "@/components/ui/button";
@@ -307,6 +308,9 @@ function Filter({
 function AddPaperDialog() {
   const ws = useWorkspace();
   const [open, setOpen] = useState(false);
+  const [pdfFile, setPdfFile] = useState<File | null>(null);
+  const [uploadingPdf, setUploadingPdf] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [form, setForm] = useState({
     title: "",
     authors: "",
@@ -320,6 +324,24 @@ function AddPaperDialog() {
     status: "To Read" as PaperStatus,
     ownerId: "m1",
   });
+
+  const handlePdfChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setPdfFile(file);
+    setUploadingPdf(true);
+    const toastId = toast.loading(`Uploading "${file.name}"...`);
+    try {
+      const publicUrl = await uploadFileToStorage(file, file.name, "documents");
+      setForm((prev) => ({ ...prev, url: publicUrl }));
+      toast.success(`"${file.name}" uploaded successfully!`, { id: toastId });
+    } catch (err) {
+      console.error(err);
+      toast.error(`Failed to upload "${file.name}"`, { id: toastId });
+    } finally {
+      setUploadingPdf(false);
+    }
+  };
 
   const submit = () => {
     if (form.title.trim().length < 4) {
@@ -343,6 +365,7 @@ function AddPaperDialog() {
       ownerId: form.ownerId,
     });
     toast.success("Paper added to the library");
+    setPdfFile(null);
     setOpen(false);
   };
 
@@ -396,13 +419,45 @@ function AddPaperDialog() {
               placeholder="10.xxxx/xxxxx"
             />
           </Field>
-          <Field label="URL / PDF link" className="sm:col-span-2">
-            <Input
-              value={form.url}
-              onChange={(e) => setForm({ ...form, url: e.target.value })}
-              placeholder="https://"
-            />
-          </Field>
+          <div className="sm:col-span-2 space-y-2.5">
+            <Field label="URL / PDF link">
+              <Input
+                value={form.url}
+                onChange={(e) => setForm({ ...form, url: e.target.value })}
+                placeholder="https:// or base64 file data..."
+              />
+            </Field>
+            <div>
+              <Label className="mb-1.5 block text-xs font-semibold text-muted-foreground uppercase tracking-wide">Or Upload Paper Document (PDF)</Label>
+              <input
+                type="file"
+                ref={fileInputRef}
+                accept=".pdf"
+                onChange={handlePdfChange}
+                className="hidden"
+                disabled={uploadingPdf}
+              />
+              <div 
+                onClick={() => !uploadingPdf && fileInputRef.current?.click()}
+                className="rounded-xl border border-dashed border-border p-4 text-center text-xs text-muted-foreground hover:bg-secondary/40 cursor-pointer transition-colors"
+              >
+                {uploadingPdf ? (
+                  <p className="text-brand font-semibold animate-pulse">Uploading file to database...</p>
+                ) : pdfFile ? (
+                  <div className="space-y-1">
+                    <p className="text-brand font-semibold">Change selected PDF</p>
+                    <p className="text-[10px] text-muted-foreground">{pdfFile.name}</p>
+                  </div>
+                ) : (
+                  <div className="space-y-1.5 py-1 flex flex-col items-center justify-center">
+                    <Upload className="h-5 w-5 text-muted-foreground" />
+                    <p className="font-medium text-foreground">Click to upload your research paper PDF</p>
+                    <p className="text-[10px] text-muted-foreground">Will be converted to persistent database URL</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
           <Field label="Category">
             <Select value={form.category} onValueChange={(v) => setForm({ ...form, category: v })}>
               <SelectTrigger>
