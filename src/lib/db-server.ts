@@ -78,17 +78,17 @@ export const getWorkspaceDataServer = createServerFn({ method: "GET" })
         phasesRes,
       ] = await Promise.all([
         supabase.from("members").select("*"),
-        supabase.from("papers").select("*"),
-        supabase.from("tasks").select("*"),
-        supabase.from("notes").select("*"),
-        supabase.from("shots").select("*"),
-        supabase.from("voiceNotes").select("*"),
-        supabase.from("files").select("*"),
-        supabase.from("links").select("*"),
-        supabase.from("meetings").select("*"),
-        supabase.from("events").select("*"),
-        supabase.from("activity").select("*"),
-        supabase.from("phases").select("*"),
+        supabase.from("papers").select("*").order("created_at", { ascending: false }),
+        supabase.from("tasks").select("*").order("created_at", { ascending: false }),
+        supabase.from("notes").select("*").order("updated_at", { ascending: false }),
+        supabase.from("shots").select("*").order("created_at", { ascending: false }),
+        supabase.from("voiceNotes").select("*").order("created_at", { ascending: false }),
+        supabase.from("files").select("*").order("created_at", { ascending: false }),
+        supabase.from("links").select("*").order("created_at", { ascending: false }),
+        supabase.from("meetings").select("*").order("created_at", { ascending: false }),
+        supabase.from("events").select("*").order("date", { ascending: true }),
+        supabase.from("recent_activity").select("*"),
+        supabase.from("phases").select("*").order("index", { ascending: true }),
       ]);
 
       if (
@@ -269,21 +269,13 @@ export const setAnalysisServer = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     if (!hasSupabaseKeys) return;
     try {
-      const { data: paperRes, error: fetchErr } = await supabase
-        .from("papers")
-        .select("analysis")
-        .eq("id", data.paperId)
-        .single();
-      if (fetchErr || !paperRes) throw fetchErr || new Error("Paper not found");
-
-      const analysis = parseJSONB(paperRes.analysis, {});
-      analysis[data.section] = data.value;
-
-      const { error: updateErr } = await supabase
-        .from("papers")
-        .update({ analysis })
-        .eq("id", data.paperId);
-      if (updateErr) throw updateErr;
+      // Use atomic DB function — eliminates read-then-write N+1
+      const { error } = await supabase.rpc("set_paper_analysis", {
+        p_paper_id: data.paperId,
+        p_section: data.section,
+        p_value: data.value,
+      });
+      if (error) throw error;
     } catch (e) {
       console.error("Supabase setAnalysis error:", e);
     }
@@ -332,23 +324,12 @@ export const toggleCheckServer = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     if (!hasSupabaseKeys) return;
     try {
-      const { data: taskRes, error: fetchErr } = await supabase
-        .from("tasks")
-        .select("checklist")
-        .eq("id", data.taskId)
-        .single();
-      if (fetchErr || !taskRes) throw fetchErr || new Error("Task not found");
-
-      const checklist = parseJSONB(taskRes.checklist, []);
-      if (checklist[data.index]) {
-        checklist[data.index].done = !checklist[data.index].done;
-      }
-
-      const { error: updateErr } = await supabase
-        .from("tasks")
-        .update({ checklist })
-        .eq("id", data.taskId);
-      if (updateErr) throw updateErr;
+      // Use atomic DB function — eliminates read-then-write N+1
+      const { error } = await supabase.rpc("toggle_checklist_item", {
+        p_task_id: data.taskId,
+        p_index: data.index,
+      });
+      if (error) throw error;
     } catch (e) {
       console.error("Supabase toggleCheck error:", e);
     }

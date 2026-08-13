@@ -1,6 +1,6 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useState } from "react";
-import { MessageSquare, Paperclip, Plus, Trash2 } from "lucide-react";
+import { MessageSquare, Paperclip, Plus, Trash2, FileText, BookOpen } from "lucide-react";
 import { toast } from "sonner";
 import { useWorkspace } from "@/lib/workspace-store";
 import { LABELS, TASK_COLUMNS, type Priority, type TaskStatus, type Task } from "@/data/workspace";
@@ -278,12 +278,43 @@ function TaskSheetContent({ task, onClose }: { task: Task; onClose: () => void }
               <p className="mt-1 font-medium">{task.due}</p>
             </div>
           </div>
-          {task.paperId && (
-            <div>
-              <p className="text-xs text-muted-foreground">Related paper</p>
-              <p className="mt-1 text-sm font-medium">{ws.papers.find((p) => p.id === task.paperId)?.title}</p>
-            </div>
-          )}
+          {/* Related paper link */}
+          {task.paperId && (() => {
+            const paper = ws.papers.find((p) => p.id === task.paperId);
+            return paper ? (
+              <div>
+                <p className="mb-1 text-xs text-muted-foreground flex items-center gap-1">
+                  <FileText className="h-3.5 w-3.5" /> Related Paper
+                </p>
+                <Link
+                  to="/papers/$id"
+                  params={{ id: paper.id }}
+                  className="inline-flex items-center gap-1.5 rounded-xl border border-brand/30 bg-brand/5 px-3 py-2 text-sm font-medium text-brand hover:bg-brand/10 transition-colors"
+                >
+                  <FileText className="h-4 w-4 shrink-0" />
+                  {paper.title.slice(0, 60)}{paper.title.length > 60 ? "…" : ""}
+                </Link>
+              </div>
+            ) : null;
+          })()}
+          {/* Related phase link */}
+          {task.phaseId && (() => {
+            const phase = ws.phases.find((ph) => ph.id === task.phaseId);
+            return phase ? (
+              <div>
+                <p className="mb-1 text-xs text-muted-foreground flex items-center gap-1">
+                  <BookOpen className="h-3.5 w-3.5" /> Roadmap Phase
+                </p>
+                <Link
+                  to="/roadmap"
+                  className="inline-flex items-center gap-1.5 rounded-xl border border-border px-3 py-2 text-sm font-medium hover:bg-secondary transition-colors"
+                >
+                  <BookOpen className="h-4 w-4 shrink-0" />
+                  Phase {phase.index + 1}: {phase.name}
+                </Link>
+              </div>
+            ) : null;
+          })()}
           <div>
             <p className="mb-2 text-xs text-muted-foreground">Checklist</p>
             <ul className="space-y-2">
