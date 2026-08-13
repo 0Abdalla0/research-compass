@@ -8,6 +8,7 @@ import {
   type ReactNode,
 } from "react";
 import * as seed from "@/data/workspace";
+import { removeStorageObject } from "@/lib/uploads";
 import type {
   Activity,
   CalEvent,
@@ -113,7 +114,10 @@ type Ctx = {
     phone?: string,
     uniEmail?: string,
     cv?: string,
-    privateEmail?: string
+    privateEmail?: string,
+    cv_storage_path?: string,
+    cv_mime_type?: string,
+    cv_size_bytes?: number
   ) => void;
   addPaper: (p: Omit<Paper, "id" | "analysis" | "progress">) => void;
   updatePaper: (id: string, patch: Partial<Paper>) => void;
@@ -313,7 +317,20 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
         setCurrentUser(null);
         localStorage.removeItem("research_hub_user");
       },
-      registerUser: (name, email, role, password, uniId, phone, uniEmail, cv, privateEmail) => {
+      registerUser: (
+        name,
+        email,
+        role,
+        password,
+        uniId,
+        phone,
+        uniEmail,
+        cv,
+        privateEmail,
+        cv_storage_path,
+        cv_mime_type,
+        cv_size_bytes
+      ) => {
         const initials = name
           .split(" ")
           .map((w) => w[0])
@@ -336,6 +353,9 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
           uniEmail: uniEmail || undefined,
           cv: cv || undefined,
           privateEmail: privateEmail || undefined,
+          cv_storage_path: cv_storage_path || undefined,
+          cv_mime_type: cv_mime_type || undefined,
+          cv_size_bytes: cv_size_bytes || undefined,
         });
         setMembers((prev) => [...prev, newUser]);
         setCurrentUser(newUser);
@@ -425,14 +445,21 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
           console.error("Error updating note in DB:", err),
         );
       },
-      addShot: (s) => {
+      addShot: async (s) => {
         const id = uid();
         const newShot = { ...s, id, date: today(), comments: [] };
         setShots((prev) => [newShot, ...prev]);
-        addShotServer({ data: newShot }).catch((err) =>
-          console.error("Error saving screenshot to DB:", err),
-        );
-        log("added a screenshot", s.title, "image");
+        try {
+          await addShotServer({ data: newShot });
+          log("added a screenshot", s.title, "image");
+        } catch (err) {
+          console.error("Error saving screenshot to DB, rolling back and deleting storage object:", err);
+          setShots((prev) => prev.filter((x) => x.id !== id));
+          if (s.storage_path) {
+            await removeStorageObject(s.storage_path);
+          }
+          throw err;
+        }
       },
       commentShot: (id, text) => {
         const author = currentUser ? currentUser.name : "Member";
@@ -446,20 +473,31 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
           console.error("Error adding screenshot comment to DB:", err),
         );
       },
-      addVoiceNote: (v) => {
+      addVoiceNote: async (v) => {
         const id = uid();
         const newVoiceNote = { ...v, id, date: today() };
         setVoiceNotes((prev) => [newVoiceNote, ...prev]);
-        addVoiceNoteServer({ data: newVoiceNote }).catch((err) =>
-          console.error("Error saving voice note to DB:", err),
-        );
-        log("added a voice note", v.title, "voice");
+        try {
+          await addVoiceNoteServer({ data: newVoiceNote });
+          log("added a voice note", v.title, "voice");
+        } catch (err) {
+          console.error("Error saving voice note to DB, rolling back and deleting storage object:", err);
+          setVoiceNotes((prev) => prev.filter((x) => x.id !== id));
+          if (v.storage_path) {
+            await removeStorageObject(v.storage_path);
+          }
+          throw err;
+        }
       },
       removeVoiceNote: (id) => {
-        setVoiceNotes((prev) => prev.filter((v) => v.id !== id));
+        const v = voiceNotes.find((x) => x.id === id);
+        setVoiceNotes((prev) => prev.filter((x) => x.id !== id));
         removeVoiceNoteServer({ data: id }).catch((err) =>
           console.error("Error deleting voice note in DB:", err),
         );
+        if (v && v.storage_path) {
+          removeStorageObject(v.storage_path).catch((err) => console.error("Storage delete error:", err));
+        }
       },
       renameVoiceNote: (id, title) => {
         setVoiceNotes((prev) => prev.map((v) => (v.id === id ? { ...v, title } : v)));
@@ -467,16 +505,29 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
           console.error("Error renaming voice note in DB:", err),
         );
       },
-      addFile: (f) => {
+      addFile: async (f) => {
         const id = uid();
         const newFile = { ...f, id, date: today() };
         setFiles((prev) => [newFile, ...prev]);
-        addFileServer({ data: newFile }).catch((err) => console.error("Error saving file to DB:", err));
-        log("uploaded", f.name, "file");
+        try {
+          await addFileServer({ data: newFile });
+          log("uploaded", f.name, "file");
+        } catch (err) {
+          console.error("Error saving file to DB, rolling back and deleting storage object:", err);
+          setFiles((prev) => prev.filter((x) => x.id !== id));
+          if (f.storage_path) {
+            await removeStorageObject(f.storage_path);
+          }
+          throw err;
+        }
       },
       removeFile: (id) => {
-        setFiles((prev) => prev.filter((f) => f.id !== id));
+        const f = files.find((x) => x.id === id);
+        setFiles((prev) => prev.filter((x) => x.id !== id));
         removeFileServer({ data: id }).catch((err) => console.error("Error deleting file in DB:", err));
+        if (f && f.storage_path) {
+          removeStorageObject(f.storage_path).catch((err) => console.error("Storage delete error:", err));
+        }
       },
       addLink: (l) => {
         const id = uid();
@@ -563,7 +614,12 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
         const p = papers.find((x) => x.id === id);
         setPapers((prev) => prev.filter((x) => x.id !== id));
         removePaperServer({ data: id }).catch((err) => console.error("Error deleting paper in DB:", err));
-        if (p) log("deleted paper", p.title, "paper");
+        if (p) {
+          log("deleted paper", p.title, "paper");
+          if (p.storage_path) {
+            removeStorageObject(p.storage_path).catch((err) => console.error("Storage delete error:", err));
+          }
+        }
       },
       removeTask: (id) => {
         const t = tasks.find((x) => x.id === id);
@@ -581,7 +637,12 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
         const s = shots.find((x) => x.id === id);
         setShots((prev) => prev.filter((x) => x.id !== id));
         removeShotServer({ data: id }).catch((err) => console.error("Error deleting screenshot in DB:", err));
-        if (s) log("deleted screenshot", s.title, "image");
+        if (s) {
+          log("deleted screenshot", s.title, "image");
+          if (s.storage_path) {
+            removeStorageObject(s.storage_path).catch((err) => console.error("Storage delete error:", err));
+          }
+        }
       },
       removeLink: (id) => {
         const l = links.find((x) => x.id === id);

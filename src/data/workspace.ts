@@ -1,6 +1,7 @@
 export type Role =
   | "Member"
-  | "Supervisor";
+  | "Supervisor"
+  | "Team Leader";
 
 export type Member = {
   id: string;
@@ -10,12 +11,15 @@ export type Member = {
   email: string;
   responsibilities: string;
   color: string;
-  password?: string;
-  uniId?: string;
-  phone?: string;
-  uniEmail?: string;
-  cv?: string;
-  privateEmail?: string;
+  password?: string | undefined;
+  uniId?: string | undefined;
+  phone?: string | undefined;
+  uniEmail?: string | undefined;
+  cv?: string | undefined;
+  privateEmail?: string | undefined;
+  cv_storage_path?: string | undefined;
+  cv_mime_type?: string | undefined;
+  cv_size_bytes?: number | undefined;
 };
 
 export type PaperStatus = "To Read" | "Reading" | "Analyzing" | "Completed" | "Important" | "Rejected";
@@ -35,6 +39,9 @@ export type Paper = {
   ownerId: string;
   progress: number;
   analysis: Record<string, string>;
+  storage_path?: string | undefined;
+  mime_type?: string | undefined;
+  size_bytes?: number | undefined;
 };
 
 export type TaskStatus = "backlog" | "todo" | "progress" | "review" | "done";
@@ -64,8 +71,8 @@ export type Note = {
   updated: string;
   tags: string[];
   body: string;
-  paperId?: string;
-  taskId?: string;
+  paperId?: string | undefined;
+  taskId?: string | undefined;
 };
 
 export type Shot = {
@@ -76,10 +83,13 @@ export type Shot = {
   source: string;
   uploadedBy: string;
   date: string;
-  paperId?: string;
+  paperId?: string | undefined;
   hue: number;
   comments: { author: string; text: string }[];
-  url?: string;
+  url?: string | undefined;
+  storage_path?: string | undefined;
+  mime_type?: string | undefined;
+  size_bytes?: number | undefined;
 };
 
 export type VoiceNote = {
@@ -89,9 +99,12 @@ export type VoiceNote = {
   authorId: string;
   date: string;
   description: string;
-  paperId?: string;
-  taskId?: string;
-  url?: string;
+  paperId?: string | undefined;
+  taskId?: string | undefined;
+  url?: string | undefined;
+  storage_path?: string | undefined;
+  mime_type?: string | undefined;
+  size_bytes?: number | undefined;
 };
 
 export type ResearchFile = {
@@ -102,7 +115,10 @@ export type ResearchFile = {
   size: string;
   uploadedBy: string;
   date: string;
-  url?: string;
+  url?: string | undefined;
+  storage_path?: string | undefined;
+  mime_type?: string | undefined;
+  size_bytes?: number | undefined;
 };
 
 export type ResourceLink = {

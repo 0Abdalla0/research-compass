@@ -3,7 +3,7 @@ import { useWorkspace } from "@/lib/workspace-store";
 import { LogIn, UserPlus, Mail, Lock, ShieldAlert, ArrowRight, FileText, Phone, Award, ShieldCheck, Eye, EyeOff, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { uploadFileToStorage } from "@/lib/supabase";
+import { uploadFile } from "@/lib/uploads";
 
 type Member = ReturnType<typeof useWorkspace>["members"][number];
 
@@ -37,6 +37,9 @@ export function LoginScreen() {
   const [cvFile, setCvFile] = useState<File | null>(null);
   const [cvUrl, setCvUrl] = useState("");
   const [privateEmail, setPrivateEmail] = useState("");
+  const [cvStoragePath, setCvStoragePath] = useState("");
+  const [cvMimeType, setCvMimeType] = useState("");
+  const [cvSizeBytes, setCvSizeBytes] = useState<number | undefined>(undefined);
 
   const handleCvChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -44,9 +47,12 @@ export function LoginScreen() {
     setCvFile(file);
     const toastId = toast.loading(`Uploading CV "${file.name}"...`);
     try {
-      const publicUrl = await uploadFileToStorage(file, file.name, "documents");
-      setCvUrl(publicUrl);
-      setCv(publicUrl);
+      const uploadRes = await uploadFile(file, file.name, "cvs");
+      setCvUrl(uploadRes.url);
+      setCv(uploadRes.url);
+      setCvStoragePath(uploadRes.storage_path);
+      setCvMimeType(uploadRes.mime_type);
+      setCvSizeBytes(uploadRes.size_bytes);
       toast.success("CV uploaded successfully!", { id: toastId });
     } catch (err) {
       console.error(err);
@@ -102,7 +108,10 @@ export function LoginScreen() {
         phone,
         uniEmail,
         cv,
-        privateEmail
+        privateEmail,
+        cvStoragePath || undefined,
+        cvMimeType || undefined,
+        cvSizeBytes
       );
     } else {
       ws.registerUser(regName, regEmail, regRole, regPassword);
@@ -120,6 +129,9 @@ export function LoginScreen() {
     setCvFile(null);
     setCvUrl("");
     setPrivateEmail("");
+    setCvStoragePath("");
+    setCvMimeType("");
+    setCvSizeBytes(undefined);
 
     toast.success(`Account created! Welcome to MedOnto Lab, ${regName}!`);
   };

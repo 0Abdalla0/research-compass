@@ -3,7 +3,7 @@ import { useState, useRef } from "react";
 import { Upload, Trash2, MessageSquare, Tag as TagIcon, Globe } from "lucide-react";
 import { toast } from "sonner";
 import { useWorkspace } from "@/lib/workspace-store";
-import { uploadFileToStorage } from "@/lib/supabase";
+import { uploadFile } from "@/lib/uploads";
 import { Initials, PageHeader, Panel, Tag } from "@/components/ui-bits";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -169,7 +169,7 @@ function UploadDialog() {
     const toastId = toast.loading("Uploading screenshot...");
 
     try {
-      const publicUrl = await uploadFileToStorage(imageFile, imageFile.name, "documents");
+      const uploadRes = await uploadFile(imageFile, imageFile.name, "media");
 
       const payload: Parameters<typeof ws.addShot>[0] = {
         title: f.title.trim(),
@@ -178,10 +178,13 @@ function UploadDialog() {
         source: f.source,
         uploadedBy: ws.currentUser ? ws.currentUser.id : "m1",
         hue: Math.floor(Math.random() * 360),
-        url: publicUrl,
+        url: uploadRes.url,
+        storage_path: uploadRes.storage_path,
+        mime_type: uploadRes.mime_type,
+        size_bytes: uploadRes.size_bytes,
       };
 
-      ws.addShot(payload);
+      await ws.addShot(payload);
       toast.success("Screenshot added to the board", { id: toastId });
 
       // Reset Form

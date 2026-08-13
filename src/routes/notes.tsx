@@ -224,7 +224,7 @@ function AddNoteDialog({ onCreated }: { onCreated: (id: string) => void }) {
             ws.addNote({
               title: f.title.trim(),
               type: f.type,
-              authorId: ws.currentUser.id,
+              authorId: ws.currentUser ? ws.currentUser.id : "m1",
               tags: f.tags.split(",").map((t) => t.trim()).filter(Boolean),
               body: f.body,
               paperId: f.paperId || undefined,

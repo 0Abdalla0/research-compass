@@ -103,7 +103,7 @@ function TeamPage() {
                     ))}
                     {ownedPapers.length > 3 && (
                       <Link
-                        to="/papers/"
+                        to="/papers"
                         className="rounded-lg border border-border px-2 py-1 text-[11px] text-muted-foreground hover:bg-secondary transition-colors"
                       >
                         +{ownedPapers.length - 3} more

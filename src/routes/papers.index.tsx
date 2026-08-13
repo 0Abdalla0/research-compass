@@ -3,7 +3,7 @@ import { useMemo, useState, useRef } from "react";
 import { LayoutGrid, Plus, Rows3, Search, Trash2, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { useWorkspace } from "@/lib/workspace-store";
-import { uploadFileToStorage } from "@/lib/supabase";
+import { uploadFile } from "@/lib/uploads";
 import type { PaperStatus } from "@/data/workspace";
 import { Initials, Meter, PageHeader, Panel, StatusPill, Tag } from "@/components/ui-bits";
 import { Button } from "@/components/ui/button";
@@ -318,6 +318,9 @@ function AddPaperDialog() {
     venue: "",
     doi: "",
     url: "",
+    storage_path: "",
+    mime_type: "",
+    size_bytes: undefined as number | undefined,
     category: "Machine Learning",
     keywords: "",
     abstract: "",
@@ -332,8 +335,14 @@ function AddPaperDialog() {
     setUploadingPdf(true);
     const toastId = toast.loading(`Uploading "${file.name}"...`);
     try {
-      const publicUrl = await uploadFileToStorage(file, file.name, "documents");
-      setForm((prev) => ({ ...prev, url: publicUrl }));
+      const uploadRes = await uploadFile(file, file.name, "papers");
+      setForm((prev) => ({
+        ...prev,
+        url: uploadRes.url,
+        storage_path: uploadRes.storage_path,
+        mime_type: uploadRes.mime_type,
+        size_bytes: uploadRes.size_bytes,
+      }));
       toast.success(`"${file.name}" uploaded successfully!`, { id: toastId });
     } catch (err) {
       console.error(err);
@@ -355,6 +364,9 @@ function AddPaperDialog() {
       venue: form.venue,
       doi: form.doi,
       url: form.url,
+      storage_path: form.storage_path || undefined,
+      mime_type: form.mime_type || undefined,
+      size_bytes: form.size_bytes || undefined,
       category: form.category,
       keywords: form.keywords
         .split(",")

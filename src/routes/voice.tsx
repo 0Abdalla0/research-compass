@@ -3,7 +3,7 @@ import { useState, useRef, useEffect } from "react";
 import { Download, Mic, Pause, Play, Square, Trash2, Volume2, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import { useWorkspace } from "@/lib/workspace-store";
-import { uploadFileToStorage } from "@/lib/supabase";
+import { uploadFile } from "@/lib/uploads";
 import { Initials, PageHeader, Panel } from "@/components/ui-bits";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -137,18 +137,22 @@ function VoicePage() {
         const toastId = toast.loading("Uploading voice recording to Supabase Storage...");
 
         const audioBlob = new Blob(audioChunksRef.current, { type: mimeType });
-        const ext = mimeType.split(";")[0].split("/")[1] || "webm";
+        const mimeFirst = mimeType.split(";")[0] || "";
+        const ext = mimeFirst.split("/")[1] || "webm";
         const voiceTitle = title.trim() || `Voice Note ${new Date().toLocaleTimeString()}`;
 
         try {
-          const publicUrl = await uploadFileToStorage(audioBlob, `${voiceTitle}.${ext}`, "documents");
+          const uploadRes = await uploadFile(audioBlob, `${voiceTitle}.${ext}`, "voice");
 
-          ws.addVoiceNote({
+          await ws.addVoiceNote({
             title: voiceTitle,
             seconds: elapsedSeconds || 1,
             authorId: ws.currentUser ? ws.currentUser.id : "m1",
             description: `Recorded in the browser (${mimeType.split(";")[0]}).`,
-            url: publicUrl,
+            url: uploadRes.url,
+            storage_path: uploadRes.storage_path,
+            mime_type: uploadRes.mime_type,
+            size_bytes: uploadRes.size_bytes,
           });
 
           toast.success("Voice note saved successfully!", { id: toastId });

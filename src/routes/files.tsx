@@ -3,7 +3,7 @@ import { useState, useRef } from "react";
 import { Download, FileText, Trash2, Eye, X, UploadCloud, Folder, HardDrive } from "lucide-react";
 import { toast } from "sonner";
 import { useWorkspace } from "@/lib/workspace-store";
-import { uploadFileToStorage } from "@/lib/supabase";
+import { uploadFile } from "@/lib/uploads";
 import { Initials, PageHeader, Panel } from "@/components/ui-bits";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -53,15 +53,18 @@ function FilesPage() {
     const ext = file.name.split(".").pop() || "bin";
 
     try {
-      const publicUrl = await uploadFileToStorage(file, file.name, "documents");
+      const uploadRes = await uploadFile(file, file.name, "files");
 
-      ws.addFile({
+      await ws.addFile({
         name: file.name,
         ext: ext.toLowerCase(),
         folder: folder === "All" ? "Documentation" : folder,
         size: formattedSize,
         uploadedBy: ws.currentUser ? ws.currentUser.id : "m1",
-        url: publicUrl,
+        url: uploadRes.url,
+        storage_path: uploadRes.storage_path,
+        mime_type: uploadRes.mime_type,
+        size_bytes: uploadRes.size_bytes,
       });
 
       toast.success(`"${file.name}" uploaded successfully!`, { id: toastId });
