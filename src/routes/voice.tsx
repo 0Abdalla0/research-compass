@@ -3,6 +3,7 @@ import { useState, useRef, useEffect } from "react";
 import { Download, Mic, Pause, Play, Square, Trash2, Volume2, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import { useWorkspace } from "@/lib/workspace-store";
+import { uploadFileToStorage } from "@/lib/supabase";
 import { Initials, PageHeader, Panel } from "@/components/ui-bits";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -119,7 +120,7 @@ function VoicePage() {
         }
       };
 
-      recorder.onstop = () => {
+      recorder.onstop = async () => {
         // Clean up visualizer analyser loop
         if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
         if (audioContextRef.current) {
@@ -133,21 +134,32 @@ function VoicePage() {
           return;
         }
 
-        const audioBlob = new Blob(audioChunksRef.current, { type: mimeType });
-        const audioUrl = URL.createObjectURL(audioBlob);
+        const toastId = toast.loading("Uploading voice recording to Supabase Storage...");
 
-        ws.addVoiceNote({
-          title: title.trim() || `Voice Note ${new Date().toLocaleTimeString()}`,
-          seconds: elapsedSeconds || 1,
-          authorId: ws.currentUser ? ws.currentUser.id : "m1",
-          description: `Recorded in the browser (${mimeType.split(";")[0]}).`,
-          url: audioUrl,
-        });
+        const audioBlob = new Blob(audioChunksRef.current, { type: mimeType });
+        const ext = mimeType.split(";")[0].split("/")[1] || "webm";
+        const voiceTitle = title.trim() || `Voice Note ${new Date().toLocaleTimeString()}`;
+
+        try {
+          const publicUrl = await uploadFileToStorage(audioBlob, `${voiceTitle}.${ext}`, "voicenotes");
+
+          ws.addVoiceNote({
+            title: voiceTitle,
+            seconds: elapsedSeconds || 1,
+            authorId: ws.currentUser ? ws.currentUser.id : "m1",
+            description: `Recorded in the browser (${mimeType.split(";")[0]}).`,
+            url: publicUrl,
+          });
+
+          toast.success("Voice note saved successfully!", { id: toastId });
+        } catch (err) {
+          console.error(err);
+          toast.error("Failed to upload voice note", { id: toastId });
+        }
 
         setTitle("");
         setElapsedSeconds(0);
         setMicVolume(0);
-        toast.success("Voice note saved successfully!");
 
         // Release microphone stream tracks
         stream.getTracks().forEach((track) => track.stop());

@@ -3,6 +3,7 @@ import { useState, useRef } from "react";
 import { Download, FileText, Trash2, Eye, X, UploadCloud, Folder, HardDrive } from "lucide-react";
 import { toast } from "sonner";
 import { useWorkspace } from "@/lib/workspace-store";
+import { uploadFileToStorage } from "@/lib/supabase";
 import { Initials, PageHeader, Panel } from "@/components/ui-bits";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -36,9 +37,11 @@ function FilesPage() {
     fileInputRef.current?.click();
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
+    const toastId = toast.loading(`Uploading "${file.name}"...`);
 
     let formattedSize = "";
     if (file.size > 1024 * 1024) {
@@ -48,18 +51,24 @@ function FilesPage() {
     }
 
     const ext = file.name.split(".").pop() || "bin";
-    const localUrl = URL.createObjectURL(file);
 
-    ws.addFile({
-      name: file.name,
-      ext: ext.toLowerCase(),
-      folder: folder === "All" ? "Documentation" : folder,
-      size: formattedSize,
-      uploadedBy: ws.currentUser ? ws.currentUser.id : "m1",
-      url: localUrl,
-    });
+    try {
+      const publicUrl = await uploadFileToStorage(file, file.name, "documents");
 
-    toast.success(`"${file.name}" uploaded successfully!`);
+      ws.addFile({
+        name: file.name,
+        ext: ext.toLowerCase(),
+        folder: folder === "All" ? "Documentation" : folder,
+        size: formattedSize,
+        uploadedBy: ws.currentUser ? ws.currentUser.id : "m1",
+        url: publicUrl,
+      });
+
+      toast.success(`"${file.name}" uploaded successfully!`, { id: toastId });
+    } catch (err) {
+      console.error(err);
+      toast.error(`Failed to upload "${file.name}"`, { id: toastId });
+    }
     e.target.value = "";
   };
 

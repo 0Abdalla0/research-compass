@@ -3,6 +3,7 @@ import { useState, useRef } from "react";
 import { Upload, Trash2, MessageSquare, Tag as TagIcon, Globe } from "lucide-react";
 import { toast } from "sonner";
 import { useWorkspace } from "@/lib/workspace-store";
+import { uploadFileToStorage } from "@/lib/supabase";
 import { Initials, PageHeader, Panel, Tag } from "@/components/ui-bits";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -155,33 +156,43 @@ function UploadDialog() {
     setImagePreview(URL.createObjectURL(file));
   };
 
-  const handleUpload = () => {
+  const handleUpload = async () => {
     if (f.title.trim().length < 3) {
       toast.error("Add a title (at least 3 characters)");
       return;
     }
-
-    const payload: Parameters<typeof ws.addShot>[0] = {
-      title: f.title.trim(),
-      description: f.description,
-      tags: f.tags.split(",").map((t) => t.trim()).filter(Boolean),
-      source: f.source,
-      uploadedBy: ws.currentUser ? ws.currentUser.id : "m1",
-      hue: Math.floor(Math.random() * 360),
-    };
-
-    if (imagePreview) {
-      payload.url = imagePreview;
+    if (!imageFile) {
+      toast.error("Please select an image file first");
+      return;
     }
 
-    ws.addShot(payload);
-    toast.success("Screenshot added to the board");
-    
-    // Reset Form
-    setF({ title: "", description: "", tags: "", source: "Own work" });
-    setImageFile(null);
-    setImagePreview(null);
-    setOpen(false);
+    const toastId = toast.loading("Uploading screenshot...");
+
+    try {
+      const publicUrl = await uploadFileToStorage(imageFile, imageFile.name, "screenshots");
+
+      const payload: Parameters<typeof ws.addShot>[0] = {
+        title: f.title.trim(),
+        description: f.description,
+        tags: f.tags.split(",").map((t) => t.trim()).filter(Boolean),
+        source: f.source,
+        uploadedBy: ws.currentUser ? ws.currentUser.id : "m1",
+        hue: Math.floor(Math.random() * 360),
+        url: publicUrl,
+      };
+
+      ws.addShot(payload);
+      toast.success("Screenshot added to the board", { id: toastId });
+
+      // Reset Form
+      setF({ title: "", description: "", tags: "", source: "Own work" });
+      setImageFile(null);
+      setImagePreview(null);
+      setOpen(false);
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to upload screenshot", { id: toastId });
+    }
   };
 
   return (
