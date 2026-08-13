@@ -1,20 +1,11 @@
 -- ============================================================
--- ResearchHub — File Uploads & Storage Optimization Migration
+-- ResearchHub — File Uploads & Storage Columns Migration
 -- Generated: 2026-08-13
 -- ============================================================
-
--- Ensure storage schema holds the documents bucket
-INSERT INTO storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
-VALUES ('documents', 'documents', true, 52428800, null)
-ON CONFLICT (id) DO NOTHING;
-
--- Disable RLS on storage to allow anon uploads as requested
-ALTER TABLE storage.objects DISABLE ROW LEVEL SECURITY;
-ALTER TABLE storage.buckets DISABLE ROW LEVEL SECURITY;
-
--- Grant permissions for storage schema
-GRANT ALL ON storage.objects TO anon, authenticated;
-GRANT ALL ON storage.buckets TO anon, authenticated;
+-- NOTE: Storage bucket ('documents') and its access policies 
+-- should be configured via the Supabase Dashboard UI to avoid 
+-- permission errors on system-owned schemas.
+-- ============================================================
 
 -- Add new metadata fields to track uploaded files in database tables
 ALTER TABLE "files" ADD COLUMN IF NOT EXISTS "storage_path" TEXT;
