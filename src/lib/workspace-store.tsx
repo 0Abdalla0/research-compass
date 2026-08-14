@@ -197,16 +197,16 @@ const WorkspaceContext = createContext<Ctx | null>(null);
 
 export function WorkspaceProvider({ children }: { children: ReactNode }) {
   const [members, setMembers] = useState<typeof seed.members>(seed.members);
-  const [papers, setPapers] = useState<Paper[]>([]);
-  const [tasks, setTasks] = useState<Task[]>([]);
-  const [notes, setNotes] = useState<Note[]>([]);
-  const [shots, setShots] = useState<Shot[]>([]);
-  const [voiceNotes, setVoiceNotes] = useState<VoiceNote[]>([]);
-  const [files, setFiles] = useState<ResearchFile[]>([]);
-  const [links, setLinks] = useState<ResourceLink[]>([]);
-  const [meetings, setMeetings] = useState<Meeting[]>([]);
-  const [events, setEvents] = useState<CalEvent[]>([]);
-  const [activity, setActivity] = useState<Activity[]>([]);
+  const [papers, setPapers] = useState<Paper[]>(seed.papers);
+  const [tasks, setTasks] = useState<Task[]>(seed.tasks);
+  const [notes, setNotes] = useState<Note[]>(seed.notes);
+  const [shots, setShots] = useState<Shot[]>(seed.shots);
+  const [voiceNotes, setVoiceNotes] = useState<VoiceNote[]>(seed.voiceNotes);
+  const [files, setFiles] = useState<ResearchFile[]>(seed.files);
+  const [links, setLinks] = useState<ResourceLink[]>(seed.links);
+  const [meetings, setMeetings] = useState<Meeting[]>(seed.meetings);
+  const [events, setEvents] = useState<CalEvent[]>(seed.events);
+  const [activity, setActivity] = useState<Activity[]>(seed.activity);
   const [phases, setPhases] = useState<Phase[]>(seed.phases);
   const [comments, setComments] = useState<Comment[]>([]);
   const [conversations, setConversations] = useState<Conversation[]>([]);

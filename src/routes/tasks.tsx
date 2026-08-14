@@ -150,7 +150,7 @@ function TasksPage() {
   );
 }
 
-function TaskSheetContent({ task, onClose }: { task: Task; onClose: () => void }) {
+export function TaskSheetContent({ task, onClose }: { task: Task; onClose: () => void }) {
   const ws = useWorkspace();
   const [isEditing, setIsEditing] = useState(false);
   const [title, setTitle] = useState(task.title);

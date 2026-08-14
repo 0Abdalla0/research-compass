@@ -14,6 +14,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { TaskSheetContent } from "./tasks";
 
 export const Route = createFileRoute("/papers/$id")({
   head: () => ({
@@ -44,6 +46,10 @@ function PaperDetail() {
   const ws = useWorkspace();
   const paper = ws.papers.find((p) => p.id === id);
   if (!paper) throw notFound();
+
+  const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
+  const [activeNoteId, setActiveNoteId] = useState<string | null>(null);
+  const [activeShotId, setActiveShotId] = useState<string | null>(null);
 
   const relatedTasks = ws.tasks.filter((t) => t.paperId === paper.id);
   const relatedNotes = ws.notes.filter((n) => n.paperId === paper.id);
@@ -166,7 +172,11 @@ function PaperDetail() {
             action={<AddLinkedTaskDialog paperId={paper.id} />}
           >
             {relatedTasks.map((t) => (
-              <li key={t.id} className="flex items-center justify-between gap-3 rounded-xl border border-border p-3">
+              <li 
+                key={t.id} 
+                onClick={() => setActiveTaskId(t.id)}
+                className="flex items-center justify-between gap-3 rounded-xl border border-border p-3 cursor-pointer hover:bg-secondary/40 hover:border-brand/30 transition-all"
+              >
                 <span className="min-w-0 truncate text-sm font-medium">{t.title}</span>
                 <Initials member={ws.member(t.assigneeId)} size={22} />
               </li>
@@ -179,7 +189,11 @@ function PaperDetail() {
             action={<AddLinkedNoteDialog paperId={paper.id} />}
           >
             {relatedNotes.map((n) => (
-              <li key={n.id} className="rounded-xl border border-border p-3">
+              <li 
+                key={n.id} 
+                onClick={() => setActiveNoteId(n.id)}
+                className="rounded-xl border border-border p-3 cursor-pointer hover:bg-secondary/40 hover:border-brand/30 transition-all"
+              >
                 <p className="text-sm font-medium">{n.title}</p>
                 <p className="text-[11px] text-muted-foreground">
                   {n.type} · updated {n.updated}
@@ -194,7 +208,11 @@ function PaperDetail() {
             action={<UploadLinkedShotDialog paperId={paper.id} />}
           >
             {relatedShots.map((s) => (
-              <li key={s.id} className="flex items-center gap-3 rounded-xl border border-border p-3">
+              <li 
+                key={s.id} 
+                onClick={() => setActiveShotId(s.id)}
+                className="flex items-center gap-3 rounded-xl border border-border p-3 cursor-pointer hover:bg-secondary/40 hover:border-brand/30 transition-all"
+              >
                 <span
                   className="h-10 w-14 shrink-0 rounded-md"
                   style={{ background: `linear-gradient(135deg, oklch(0.72 0.11 ${s.hue}), oklch(0.45 0.13 ${s.hue}))` }}
@@ -262,7 +280,120 @@ function PaperDetail() {
           </Panel>
         </TabsContent>
       </Tabs>
+
+      {/* Sheets and Dialogs for detail previews */}
+      <Sheet open={Boolean(activeTaskId)} onOpenChange={(open) => !open && setActiveTaskId(null)}>
+        <SheetContent className="w-full overflow-y-auto sm:max-w-lg">
+          {activeTaskId && (
+            <TaskSheetContent 
+              task={ws.tasks.find((t) => t.id === activeTaskId)!} 
+              onClose={() => setActiveTaskId(null)} 
+            />
+          )}
+        </SheetContent>
+      </Sheet>
+
+      {activeNoteId && (
+        <NoteDetailsDialog 
+          noteId={activeNoteId} 
+          onClose={() => setActiveNoteId(null)} 
+        />
+      )}
+
+      {activeShotId && (
+        <ScreenshotDetailsDialog 
+          shotId={activeShotId} 
+          onClose={() => setActiveShotId(null)} 
+        />
+      )}
     </div>
+  );
+}
+
+function NoteDetailsDialog({ noteId, onClose }: { noteId: string; onClose: () => void }) {
+  const ws = useWorkspace();
+  const note = ws.notes.find((n) => n.id === noteId);
+  if (!note) return null;
+
+  return (
+    <Dialog open={true} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="sm:max-w-lg max-h-[85vh] overflow-y-auto">
+        <DialogHeader>
+          <div className="flex items-center gap-2 flex-wrap mb-1">
+            <Tag>{note.type}</Tag>
+            {note.tags.map((t) => (
+              <Tag key={t}>#{t}</Tag>
+            ))}
+          </div>
+          <DialogTitle className="mt-2 text-xl font-bold">{note.title}</DialogTitle>
+          <div className="text-xs text-muted-foreground mt-2 flex items-center gap-1.5">
+            <Initials member={ws.member(note.authorId)} size={20} />
+            <span>{ws.member(note.authorId)?.name}</span>
+            <span>·</span>
+            <span>updated {note.updated}</span>
+          </div>
+        </DialogHeader>
+        <div className="py-4 text-sm text-foreground leading-relaxed whitespace-pre-wrap border-t border-b border-border/50">
+          {note.body || <span className="italic text-muted-foreground">This note has no content yet.</span>}
+        </div>
+        <DialogFooter className="pt-2">
+          <Button variant="outline" onClick={onClose} className="cursor-pointer">Close</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function ScreenshotDetailsDialog({ shotId, onClose }: { shotId: string; onClose: () => void }) {
+  const ws = useWorkspace();
+  const shot = ws.shots.find((s) => s.id === shotId);
+  if (!shot) return null;
+
+  return (
+    <Dialog open={true} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <div className="flex items-center gap-2 flex-wrap mb-1">
+            {shot.tags.map((t) => (
+              <Tag key={t}>#{t}</Tag>
+            ))}
+          </div>
+          <DialogTitle className="text-lg font-bold">{shot.title}</DialogTitle>
+          <p className="text-xs text-muted-foreground">
+            Source: <span className="font-semibold">{shot.source}</span> · Uploaded by {ws.member(shot.uploadedBy)?.name}
+          </p>
+        </DialogHeader>
+        
+        <div className="py-3 space-y-4">
+          <div className="rounded-xl overflow-hidden border bg-black/5 flex items-center justify-center max-h-[300px]">
+            {shot.url ? (
+              <img src={shot.url} className="max-h-[300px] object-contain w-full" alt={shot.title} />
+            ) : (
+              <div 
+                className="h-48 w-full flex items-center justify-center font-bold text-white text-lg uppercase"
+                style={{ background: `linear-gradient(135deg, oklch(0.72 0.11 ${shot.hue}), oklch(0.45 0.13 ${shot.hue}))` }}
+              >
+                No Image URL
+              </div>
+            )}
+          </div>
+          
+          {shot.description && (
+            <p className="text-sm leading-relaxed text-foreground bg-secondary/30 p-3 rounded-xl border">
+              {shot.description}
+            </p>
+          )}
+
+          <div className="border-t pt-4">
+            <ThreadView entityId={shot.id} entityType="shot" />
+          </div>
+        </div>
+        
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose} className="cursor-pointer">Close</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
