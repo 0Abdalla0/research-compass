@@ -1081,7 +1081,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
                   "mention",
                   `Mentioned in chat by ${currentUser?.name || "Member"}`,
                   `${currentUser?.name || "Someone"} mentioned you in chat: "${m.content.slice(0, 50)}..."`,
-                  `/chat?conv=${m.conversation_id}`
+                  `/chat?conv=${m.conversation_id}&msg=${newMessage.id}`
                 );
               }
             }
@@ -1099,7 +1099,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
                 "message",
                 `New message from ${currentUser?.name || "Member"}`,
                 m.message_type === "text" ? m.content : `Sent a ${m.message_type}`,
-                `/chat?conv=${m.conversation_id}`
+                `/chat?conv=${m.conversation_id}&msg=${newMessage.id}`
               );
             }
           }

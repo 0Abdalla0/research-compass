@@ -22,8 +22,9 @@ export const Route = createFileRoute("/chat")({
 
 export default function ChatPage() {
   const ws = useWorkspace();
-  const searchParams = Route.useSearch() as { conv?: string };
+  const searchParams = Route.useSearch() as { conv?: string; msg?: string };
   const [activeConvId, setActiveConvId] = useState<string | null>(null);
+  const [highlightedMsgId, setHighlightedMsgId] = useState<string | null>(null);
   
   // Search state
   const [searchQuery, setSearchQuery] = useState("");
@@ -41,13 +42,34 @@ export default function ChatPage() {
     }
   }, [searchParams.conv, ws.conversations]);
 
-  // Auto scroll to bottom
+  // Handle URL message parameter highlight
+  useEffect(() => {
+    if (searchParams.msg) {
+      setHighlightedMsgId(searchParams.msg);
+      const timer = setTimeout(() => {
+        setHighlightedMsgId(null);
+      }, 5000);
+      return () => clearTimeout(timer);
+    }
+    return undefined;
+  }, [searchParams.msg]);
+
+  // Auto scroll to bottom or scroll to specific message if targeted
   const activeMessages = ws.messages.filter((m) => m.conversation_id === activeConvId && !m.deleted_at);
   useEffect(() => {
-    if (scrollRef.current) {
+    if (searchParams.msg) {
+      const timer = setTimeout(() => {
+        const element = document.getElementById(`msg-${searchParams.msg}`);
+        if (element) {
+          element.scrollIntoView({ behavior: "smooth", block: "center" });
+        }
+      }, 300);
+      return () => clearTimeout(timer);
+    } else if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [activeMessages]);
+    return undefined;
+  }, [activeMessages, searchParams.msg]);
 
   const activeConv = ws.conversations.find((c) => c.id === activeConvId);
 
@@ -331,8 +353,15 @@ export default function ChatPage() {
                   role: "Member",
                 };
                 const isOwn = ws.currentUser && ws.currentUser.id === msg.sender_id;
+                const isHighlighted = msg.id === highlightedMsgId;
                 return (
-                  <div key={msg.id} className={`flex items-start gap-2.5 ${isOwn ? "flex-row-reverse" : ""}`}>
+                  <div
+                    key={msg.id}
+                    id={`msg-${msg.id}`}
+                    className={`flex items-start gap-2.5 ${isOwn ? "flex-row-reverse" : ""} transition-all duration-500 ${
+                      isHighlighted ? "bg-amber-500/15 dark:bg-amber-500/25 border-l-4 border-amber-500 p-2 rounded-xl" : ""
+                    }`}
+                  >
                     <div
                       className="h-8 w-8 rounded-full flex items-center justify-center font-bold text-xs uppercase border shrink-0 shadow-sm"
                       style={{
