@@ -50,6 +50,7 @@ function PaperDetail() {
   const [activeTaskId, setActiveTaskId] = useState<string | null>(null);
   const [activeNoteId, setActiveNoteId] = useState<string | null>(null);
   const [activeShotId, setActiveShotId] = useState<string | null>(null);
+  const [activeVoiceId, setActiveVoiceId] = useState<string | null>(null);
 
   const relatedTasks = ws.tasks.filter((t) => t.paperId === paper.id);
   const relatedNotes = ws.notes.filter((n) => n.paperId === paper.id);
@@ -228,10 +229,19 @@ function PaperDetail() {
             title="Voice notes & resources"
             icon={<Mic className="h-4 w-4" />}
             empty="Nothing attached yet."
-            action={<AddLinkedResourceDialog paperId={paper.id} />}
+            action={
+              <div className="flex items-center gap-1.5">
+                <AddLinkedResourceDialog paperId={paper.id} />
+                <AddLinkedVoiceDialog paperId={paper.id} />
+              </div>
+            }
           >
             {relatedVoice.map((v) => (
-              <li key={v.id} className="flex items-center gap-3 rounded-xl border border-border p-3">
+              <li 
+                key={v.id} 
+                onClick={() => setActiveVoiceId(v.id)}
+                className="flex items-center gap-3 rounded-xl border border-border p-3 cursor-pointer hover:bg-secondary/40 hover:border-brand/30 transition-all"
+              >
                 <Mic className="h-4 w-4 shrink-0 text-brand" />
                 <span className="min-w-0 flex-1 truncate text-sm font-medium">{v.title}</span>
                 <span className="text-xs text-muted-foreground">
@@ -242,7 +252,7 @@ function PaperDetail() {
             {relatedLinks.map((l) => (
               <li key={l.id} className="flex items-center gap-3 rounded-xl border border-border p-3">
                 <Link2 className="h-4 w-4 shrink-0 text-brand" />
-                <a href={l.url} target="_blank" rel="noreferrer" className="min-w-0 flex-1 truncate text-sm font-medium hover:text-brand">
+                <a href={l.url} target="_blank" rel="noreferrer" className="min-w-0 flex-1 truncate text-sm font-medium hover:text-brand" onClick={(e) => e.stopPropagation()}>
                   {l.title}
                 </a>
               </li>
@@ -267,16 +277,6 @@ function PaperDetail() {
         <TabsContent value="discussion" className="mt-4">
           <Panel className="p-6">
             <ThreadView entityId={paper.id} entityType="paper" />
-            <div className="mt-8 pt-8 border-t border-border">
-              <h3 className="font-semibold text-sm mb-4">Chat Channel</h3>
-              {paperChat ? (
-                <PaperChatView conversationId={paperChat.id} />
-              ) : (
-                <div className="text-center py-10 text-muted-foreground text-sm">
-                  Setting up paper chat room...
-                </div>
-              )}
-            </div>
           </Panel>
         </TabsContent>
       </Tabs>
@@ -304,6 +304,13 @@ function PaperDetail() {
         <ScreenshotDetailsDialog 
           shotId={activeShotId} 
           onClose={() => setActiveShotId(null)} 
+        />
+      )}
+
+      {activeVoiceId && (
+        <VoiceNotePlayDialog 
+          voiceId={activeVoiceId} 
+          onClose={() => setActiveVoiceId(null)} 
         />
       )}
     </div>
@@ -841,138 +848,237 @@ function LinkedPanel({
   );
 }
 
-function PaperChatView({ conversationId }: { conversationId: string }) {
+function AddLinkedVoiceDialog({ paperId }: { paperId: string }) {
   const ws = useWorkspace();
-  const chatMessages = ws.messages.filter((m) => m.conversation_id === conversationId && !m.deleted_at);
-  const typingList = ws.typingStates[conversationId] || {};
-  const typingMembers = Object.keys(typingList)
-    .filter((mId) => typingList[mId] && mId !== ws.currentUser?.id)
-    .map((mId) => ws.members.find((m) => m.id === mId)?.name || "Someone");
+  const [open, setOpen] = useState(false);
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingSeconds, setRecordingSeconds] = useState(0);
+  const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
+  const [audioUrl, setAudioUrl] = useState<string | null>(null);
+  const [isPlayingPreview, setIsPlayingPreview] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
 
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const recordingTimerRef = useRef<any>(null);
+  const audioPreviewRef = useRef<HTMLAudioElement | null>(null);
 
-  useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+  const startRecording = async () => {
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      toast.error("Audio recording not supported in this browser.");
+      return;
     }
-  }, [chatMessages]);
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mimeType = MediaRecorder.isTypeSupported("audio/mp4") ? "audio/mp4" : "audio/webm";
+      const recorder = new MediaRecorder(stream, { mimeType });
+      mediaRecorderRef.current = recorder;
+      const chunks: Blob[] = [];
 
-  const handleSendMessage = async (data: any) => {
-    await ws.addMessage({
-      conversation_id: conversationId,
-      sender_id: ws.currentUser?.id || "m1",
-      message_type: data.type,
-      content: data.content,
-      url: data.attachment?.url,
-      storage_path: data.attachment?.storage_path,
-      mime_type: data.attachment?.mime_type,
-      size_bytes: data.attachment?.size_bytes,
-    });
-    ws.broadcastTyping(conversationId, false);
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) chunks.push(e.data);
+      };
+
+      recorder.onstop = () => {
+        const blob = new Blob(chunks, { type: mimeType });
+        setAudioBlob(blob);
+        setAudioUrl(URL.createObjectURL(blob));
+        stream.getTracks().forEach((track) => track.stop());
+      };
+
+      setIsRecording(true);
+      setRecordingSeconds(0);
+      recorder.start();
+
+      recordingTimerRef.current = setInterval(() => {
+        setRecordingSeconds((s) => s + 1);
+      }, 1000);
+    } catch (err) {
+      console.error(err);
+      toast.error("Microphone access denied.");
+    }
+  };
+
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && isRecording) {
+      mediaRecorderRef.current.stop();
+      setIsRecording(false);
+      if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
+    }
+  };
+
+  const cancelRecording = () => {
+    setIsRecording(false);
+    if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
+    setAudioBlob(null);
+    setAudioUrl(null);
+    setIsPlayingPreview(false);
+  };
+
+  const handlePreviewPlay = () => {
+    if (!audioUrl) return;
+    if (!audioPreviewRef.current) {
+      audioPreviewRef.current = new Audio(audioUrl);
+      audioPreviewRef.current.onended = () => setIsPlayingPreview(false);
+    }
+    if (isPlayingPreview) {
+      audioPreviewRef.current.pause();
+      setIsPlayingPreview(false);
+    } else {
+      audioPreviewRef.current.play();
+      setIsPlayingPreview(true);
+    }
+  };
+
+  const handleSave = async () => {
+    if (!title.trim()) {
+      toast.error("Title is required");
+      return;
+    }
+    if (!audioBlob) {
+      toast.error("Please record some audio first");
+      return;
+    }
+
+    setIsUploading(true);
+    const toastId = toast.loading("Uploading voice note...");
+
+    try {
+      const ext = audioBlob.type.split(";")[0]?.split("/")[1] || "webm";
+      const fileName = `voice_note_${Date.now()}.${ext}`;
+      const uploadRes = await uploadFile(audioBlob, fileName, "voice");
+
+      await ws.addVoiceNote({
+        title: title.trim(),
+        description: description.trim(),
+        seconds: recordingSeconds,
+        authorId: ws.currentUser ? ws.currentUser.id : "m1",
+        url: uploadRes.url,
+        storage_path: uploadRes.storage_path,
+        mime_type: uploadRes.mime_type,
+        size_bytes: uploadRes.size_bytes,
+        paperId: paperId,
+      });
+
+      toast.success("Voice note added and linked", { id: toastId });
+      setOpen(false);
+      setTitle("");
+      setDescription("");
+      setAudioBlob(null);
+      setAudioUrl(null);
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to upload voice note", { id: toastId });
+    } finally {
+      setIsUploading(false);
+    }
   };
 
   return (
-    <div className="flex flex-col h-[500px]">
-      {/* Messages list */}
-      <div ref={scrollRef} className="flex-1 overflow-y-auto pr-2 space-y-4 mb-4">
-        {chatMessages.length === 0 ? (
-          <div className="text-center py-20 text-muted-foreground/60 text-sm border border-dashed border-border rounded-xl">
-            Welcome to the Paper Chat Room! Send a message to start collaborating.
+    <Dialog open={open} onOpenChange={(v) => { if(!isRecording) { setOpen(v); if(!v) cancelRecording(); } }}>
+      <DialogTrigger asChild>
+        <Button size="sm" variant="outline" className="h-7 px-2 text-xs cursor-pointer">
+          <Mic className="mr-1 h-3.5 w-3.5" /> Record Voice
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Record Voice Note for this Paper</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4 py-2 text-sm">
+          <div>
+            <Label className="mb-1.5 block text-xs font-semibold text-muted-foreground font-semibold">Title</Label>
+            <Input placeholder="e.g. Core findings discussion" value={title} onChange={(e) => setTitle(e.target.value)} disabled={isRecording} />
           </div>
-        ) : (
-          chatMessages.map((msg) => {
-            const sender = ws.members.find((m) => m.id === msg.sender_id) || {
-              name: "Researcher",
-              initials: "R",
-              color: "#6b7280",
-              role: "Member",
-            };
-            const isOwn = ws.currentUser && ws.currentUser.id === msg.sender_id;
-            return (
-              <div key={msg.id} className={`flex items-start gap-2.5 ${isOwn ? "flex-row-reverse" : ""}`}>
-                <div
-                  className="h-8 w-8 rounded-full flex items-center justify-center font-bold text-xs uppercase border shrink-0 shadow-sm"
-                  style={{
-                    backgroundColor: `${sender.color}15`,
-                    color: sender.color,
-                    borderColor: `${sender.color}35`,
-                  }}
-                >
-                  {sender.initials}
-                </div>
-                <div className={`flex flex-col max-w-[70%] ${isOwn ? "items-end" : ""}`}>
-                  <div className="flex items-center gap-1.5 mb-1 text-xs text-muted-foreground">
-                    <span className="font-semibold text-foreground">{sender.name}</span>
-                    <span>•</span>
-                    <span>{new Date(msg.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
-                  </div>
-                  <div className={`p-3 rounded-2xl text-sm ${
-                    isOwn ? "bg-brand text-brand-foreground rounded-tr-none" : "bg-secondary text-foreground rounded-tl-none"
-                  }`}>
-                    {msg.content && <p className="whitespace-pre-wrap">{msg.content}</p>}
-                    {msg.url && (
-                      <div className="mt-2 pt-2 border-t border-current/20">
-                        {msg.message_type === "image" ? (
-                          <img src={msg.url} alt="Shared" className="rounded-lg max-h-40 object-cover" />
-                        ) : msg.message_type === "voice" ? (
-                          <div className="flex items-center gap-2">
-                            <PlayAudioButton url={msg.url} />
-                            <span className="text-xs opacity-80">Voice Note</span>
-                          </div>
-                        ) : (
-                          <a href={msg.url} download target="_blank" rel="noreferrer" className="flex items-center gap-1.5 underline text-xs font-semibold">
-                            <Download className="h-3.5 w-3.5" /> Download attachment
-                          </a>
-                        )}
-                      </div>
-                    )}
-                  </div>
+          <div>
+            <Label className="mb-1.5 block text-xs font-semibold text-muted-foreground font-semibold">Description</Label>
+            <Input placeholder="Short description of this recording..." value={description} onChange={(e) => setDescription(e.target.value)} disabled={isRecording} />
+          </div>
+
+          <div className="flex flex-col items-center justify-center p-4 border border-dashed rounded-xl bg-secondary/10">
+            {isRecording ? (
+              <div className="text-center space-y-3">
+                <span className="inline-flex h-3 w-3 rounded-full bg-destructive animate-ping mr-2" />
+                <span className="text-sm font-semibold text-destructive">Recording: {Math.floor(recordingSeconds / 60)}:{(recordingSeconds % 60).toString().padStart(2, "0")}</span>
+                <div className="flex justify-center gap-2 mt-2">
+                  <Button variant="destructive" size="sm" onClick={stopRecording}>Stop & Preview</Button>
+                  <Button variant="ghost" size="sm" onClick={cancelRecording}>Cancel</Button>
                 </div>
               </div>
-            );
-          })
-        )}
-      </div>
-
-      {/* Typing indicator */}
-      {typingMembers.length > 0 && (
-        <p className="text-xs text-muted-foreground mb-1 italic">
-          {typingMembers.join(", ")} {typingMembers.length === 1 ? "is" : "are"} typing...
-        </p>
-      )}
-
-      {/* Input composer */}
-      <UniversalComposer
-        placeholder="Type a message to the team..."
-        onSend={handleSendMessage}
-        onTyping={(isTyping) => ws.broadcastTyping(conversationId, isTyping)}
-      />
-    </div>
+            ) : audioUrl ? (
+              <div className="text-center space-y-3 w-full">
+                <div className="flex items-center justify-center gap-2">
+                  <Button size="icon" variant="ghost" onClick={handlePreviewPlay} className="h-8 w-8 text-brand">
+                    {isPlayingPreview ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+                  </Button>
+                  <span className="text-xs text-muted-foreground font-mono">
+                    Recording preview ({Math.floor(recordingSeconds / 60)}:{(recordingSeconds % 60).toString().padStart(2, "0")})
+                  </span>
+                </div>
+                <div className="flex justify-center gap-2">
+                  <Button variant="outline" size="sm" onClick={startRecording}>Re-record</Button>
+                  <Button variant="ghost" size="sm" onClick={cancelRecording} className="text-destructive">Delete</Button>
+                </div>
+              </div>
+            ) : (
+              <div className="text-center space-y-2 py-1">
+                <Mic className="h-6 w-6 mx-auto text-muted-foreground animate-pulse" />
+                <p className="text-xs text-muted-foreground font-medium">Click below to start recording with your microphone</p>
+                <Button onClick={startRecording} size="sm" className="gap-1.5 mt-1">
+                  <Mic className="h-3.5 w-3.5" /> Start Recording
+                </Button>
+              </div>
+            )}
+          </div>
+        </div>
+        <DialogFooter className="flex flex-row justify-end gap-2">
+          <Button variant="outline" onClick={() => setOpen(false)} disabled={isRecording || isUploading} className="cursor-pointer">Cancel</Button>
+          <Button onClick={handleSave} disabled={isRecording || isUploading || !audioBlob} className="cursor-pointer">Save Voice Note</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
-function PlayAudioButton({ url }: { url: string }) {
-  const [playing, setPlaying] = useState(false);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-
-  const toggle = () => {
-    if (!audioRef.current) {
-      audioRef.current = new Audio(url);
-      audioRef.current.onended = () => setPlaying(false);
-    }
-    if (playing) {
-      audioRef.current.pause();
-      setPlaying(playing => !playing);
-    } else {
-      audioRef.current.play();
-      setPlaying(playing => !playing);
-    }
-  };
+function VoiceNotePlayDialog({ voiceId, onClose }: { voiceId: string; onClose: () => void }) {
+  const ws = useWorkspace();
+  const voice = ws.voiceNotes.find((v) => v.id === voiceId);
+  if (!voice) return null;
 
   return (
-    <button onClick={toggle} className="p-1 hover:bg-current/15 rounded text-current">
-      {playing ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
-    </button>
+    <Dialog open={true} onOpenChange={(open) => !open && onClose()}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle className="text-lg font-bold flex items-center gap-2">
+            <Mic className="h-5 w-5 text-brand" /> {voice.title}
+          </DialogTitle>
+          <p className="text-xs text-muted-foreground">
+            Recorded by {ws.member(voice.authorId)?.name} on {new Date(voice.date).toLocaleDateString()}
+          </p>
+        </DialogHeader>
+        
+        <div className="py-4 space-y-3">
+          {voice.description && (
+            <p className="text-sm text-foreground bg-secondary/35 p-3 rounded-xl border">
+              {voice.description}
+            </p>
+          )}
+
+          <div className="flex items-center justify-center p-4 border rounded-xl bg-brand/5">
+            {voice.url ? (
+              <audio controls src={voice.url} className="w-full" />
+            ) : (
+              <p className="text-xs text-muted-foreground">No audio URL available</p>
+            )}
+          </div>
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose} className="cursor-pointer">Close</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 
