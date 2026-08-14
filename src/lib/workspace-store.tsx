@@ -987,6 +987,20 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
               }
             }
           }
+
+          // Reply notification trigger
+          if (c.parent_comment_id) {
+            const parentComment = comments.find((x) => x.id === c.parent_comment_id);
+            if (parentComment && parentComment.user_id !== (currentUser?.id || "m1")) {
+              await addNotification(
+                parentComment.user_id,
+                "reply",
+                "Replied to your comment",
+                `${currentUser?.name || "Someone"} replied to your comment: "${c.content.slice(0, 50)}..."`,
+                c.paper_id ? `/papers/${c.paper_id}` : c.task_id ? `/tasks` : undefined
+              );
+            }
+          }
         } catch (err) {
           console.error("Failed to add comment, rolling back:", err);
           setComments((prev) => prev.filter((x) => x.id !== id));
@@ -1066,19 +1080,45 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
         try {
           await addMessageServer({ data: newMessage });
 
-          // Send notifications to other members
+          // 1. Process @mentions in chat text to trigger special mention notifications
+          const mentionRegex = /@(\w+)/g;
+          let match;
+          const mentionedIds = new Set<string>();
+
+          while ((match = mentionRegex.exec(m.content)) !== null) {
+            const username = match[1];
+            if (username) {
+              const matchedMember = members.find(
+                (x) => x.name.toLowerCase().replace(/\s+/g, "") === username.toLowerCase()
+              );
+              if (matchedMember && matchedMember.id !== m.sender_id) {
+                mentionedIds.add(matchedMember.id);
+                await addNotification(
+                  matchedMember.id,
+                  "mention",
+                  `Mentioned in chat by ${currentUser?.name || "Member"}`,
+                  `${currentUser?.name || "Someone"} mentioned you in chat: "${m.content.slice(0, 50)}..."`,
+                  `/chat?conv=${m.conversation_id}`
+                );
+              }
+            }
+          }
+
+          // 2. Send standard message notifications to all other conversation members
           const otherMembers = conversationMembers
             .filter((cm) => cm.conversation_id === m.conversation_id && cm.member_id !== m.sender_id)
             .map((cm) => cm.member_id);
 
           for (const mId of otherMembers) {
-            await addNotification(
-              mId,
-              "message",
-              `New message from ${currentUser?.name || "Member"}`,
-              m.message_type === "text" ? m.content : `Sent a ${m.message_type}`,
-              `/chat?conv=${m.conversation_id}`
-            );
+            if (!mentionedIds.has(mId)) {
+              await addNotification(
+                mId,
+                "message",
+                `New message from ${currentUser?.name || "Member"}`,
+                m.message_type === "text" ? m.content : `Sent a ${m.message_type}`,
+                `/chat?conv=${m.conversation_id}`
+              );
+            }
           }
         } catch (err) {
           console.error("Failed to save message, rolling back:", err);

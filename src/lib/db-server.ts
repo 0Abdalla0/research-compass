@@ -838,10 +838,30 @@ export const removeMessageServer = createServerFn({ method: "POST" })
 export const addNotificationServer = createServerFn({ method: "POST" })
   .validator((n: any) => n)
   .handler(async ({ data }) => {
-    if (!hasSupabaseKeys) return data;
+    if (!hasSupabaseKeys) {
+      console.log("\n============================================================");
+      console.log("✉️  [SIMULATED EMAIL DISPATCH (OFFLINE MOCK)]");
+      console.log(`To:      (Recipient member id: ${data.user_id})`);
+      console.log(`Subject: ${data.title}`);
+      console.log(`Body:    ${data.description}`);
+      console.log("============================================================\n");
+      return data;
+    }
     try {
       const { data: res, error } = await supabase.from("notifications").insert([data]).select();
       if (error) throw error;
+
+      // Automatically retrieve recipient email and trigger simulated email dispatch
+      const { data: memberData } = await supabase.from("members").select("email").eq("id", data.user_id).single();
+      if (memberData?.email) {
+        console.log("\n============================================================");
+        console.log("✉️  [SIMULATED EMAIL DISPATCH]");
+        console.log(`To:      ${memberData.email}`);
+        console.log(`Subject: ${data.title}`);
+        console.log(`Body:    ${data.description}`);
+        console.log("============================================================\n");
+      }
+
       return res?.[0] || data;
     } catch (e) {
       console.error("Supabase addNotification error:", e);
