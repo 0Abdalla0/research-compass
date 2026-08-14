@@ -44,8 +44,10 @@ export async function uploadFile(
 
     const fileExt = name.split(".").pop() || "bin";
     const cleanFolder = folder.replace(/\/+$/, "");
-    const randomPrefix = Math.random().toString(36).substring(2, 15);
-    const storagePath = `${cleanFolder}/${randomPrefix}_${Date.now()}.${fileExt}`;
+    const uniqueId = typeof crypto !== "undefined" && crypto.randomUUID
+      ? crypto.randomUUID()
+      : Math.random().toString(36).substring(2, 15);
+    const storagePath = `${cleanFolder}/${uniqueId}_${Date.now()}.${fileExt}`;
 
     const { error } = await supabase.storage
       .from("documents")
@@ -69,14 +71,10 @@ export async function uploadFile(
       size_bytes: sizeBytes,
     };
   } catch (err) {
-    console.error("Supabase storage upload error, falling back to Base64 Data URL:", err);
-    const url = await convertToBase64(file);
-    return {
-      url,
-      storage_path: `fallback/${folder}/${Date.now()}_${name}`,
-      mime_type: mimeType,
-      size_bytes: sizeBytes,
-    };
+    console.error("Supabase storage upload failed:", err);
+    throw new Error(
+      `File upload failed: ${err instanceof Error ? err.message : "Unknown storage error"}. Please check your connection and try again.`
+    );
   }
 }
 

@@ -192,12 +192,14 @@ export const getWorkspaceDataServer = createServerFn({ method: "GET" })
         tags: parseJSONB(s.tags, []),
         comments: parseJSONB(s.comments, []),
         paperId: s.paperId ?? undefined,
+        url: s.url || (s.storage_path ? supabase.storage.from("documents").getPublicUrl(s.storage_path).data.publicUrl : undefined),
       }));
 
       const formattedVoiceNotes: VoiceNote[] = voiceNotes.map((v: any) => cleanOptional({
         ...v,
         paperId: v.paperId ?? undefined,
         taskId: v.taskId ?? undefined,
+        url: v.url || (v.storage_path ? supabase.storage.from("documents").getPublicUrl(v.storage_path).data.publicUrl : undefined),
       }));
 
       const formattedLinks: ResourceLink[] = links.map((l: any) => cleanOptional({
@@ -242,7 +244,10 @@ export const getWorkspaceDataServer = createServerFn({ method: "GET" })
         notes: formattedNotes,
         shots: formattedShots,
         voiceNotes: formattedVoiceNotes,
-        files: files as ResearchFile[],
+        files: files.map((f: any) => ({
+          ...f,
+          url: f.url || (f.storage_path ? supabase.storage.from("documents").getPublicUrl(f.storage_path).data.publicUrl : undefined),
+        })) as ResearchFile[],
         links: formattedLinks,
         meetings: formattedMeetings,
         events: formattedEvents,
@@ -283,7 +288,7 @@ export const addPaperServer = createServerFn({ method: "POST" })
       return res?.[0] || data;
     } catch (e) {
       console.error("Supabase insert paper error:", e);
-      return data;
+      throw e;
     }
   });
 
@@ -401,12 +406,16 @@ export const addShotServer = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     if (!hasSupabaseKeys) return data;
     try {
-      const { data: res, error } = await supabase.from("shots").insert([data]).select();
+      const { url, ...dbPayload } = data;
+      const { data: res, error } = await supabase.from("shots").insert([dbPayload]).select();
       if (error) throw error;
-      return res?.[0] || data;
+      return {
+        ...data,
+        ...(res?.[0] || {})
+      };
     } catch (e) {
       console.error("Supabase insert screenshot error:", e);
-      return data;
+      throw e;
     }
   });
 
@@ -440,12 +449,16 @@ export const addVoiceNoteServer = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     if (!hasSupabaseKeys) return data;
     try {
-      const { data: res, error } = await supabase.from("voiceNotes").insert([data]).select();
+      const { url, ...dbPayload } = data;
+      const { data: res, error } = await supabase.from("voiceNotes").insert([dbPayload]).select();
       if (error) throw error;
-      return res?.[0] || data;
+      return {
+        ...data,
+        ...(res?.[0] || {})
+      };
     } catch (e) {
       console.error("Supabase insert voiceNote error:", e);
-      return data;
+      throw e;
     }
   });
 
@@ -478,12 +491,16 @@ export const addFileServer = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     if (!hasSupabaseKeys) return data;
     try {
-      const { data: res, error } = await supabase.from("files").insert([data]).select();
+      const { url, ...dbPayload } = data;
+      const { data: res, error } = await supabase.from("files").insert([dbPayload]).select();
       if (error) throw error;
-      return res?.[0] || data;
+      return {
+        ...data,
+        ...(res?.[0] || {})
+      };
     } catch (e) {
       console.error("Supabase insert file error:", e);
-      return data;
+      throw e;
     }
   });
 
@@ -496,6 +513,7 @@ export const removeFileServer = createServerFn({ method: "POST" })
       if (error) throw error;
     } catch (e) {
       console.error("Supabase delete file error:", e);
+      throw e;
     }
   });
 

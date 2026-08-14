@@ -1,12 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState, useRef } from "react";
-import { Download, FileText, Trash2, Eye, X, UploadCloud, Folder, HardDrive } from "lucide-react";
+import { Download, FileText, Trash2, Eye, X, UploadCloud, Folder, HardDrive, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useWorkspace } from "@/lib/workspace-store";
-import { uploadFile } from "@/lib/uploads";
 import { Initials, PageHeader, Panel } from "@/components/ui-bits";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useFilesQuery, useFileUploadMutation, useDeleteFileMutation } from "@/hooks/use-files";
 
 const FOLDERS = ["All", "Research Papers", "Datasets", "Screenshots", "Presentations", "Documentation", "Meeting Files", "Experiments"];
 
@@ -22,16 +22,22 @@ export const Route = createFileRoute("/files")({
   component: FilesPage,
 });
 
-type FileType = ReturnType<typeof useWorkspace>["files"][number];
+type FileType = ReturnType<typeof useFilesQuery>["data"] extends (infer T)[] | undefined ? T : never;
 
 function FilesPage() {
   const ws = useWorkspace();
+  const filesQuery = useFilesQuery();
+  const uploadMutation = useFileUploadMutation();
+  const deleteMutation = useDeleteFileMutation();
+
+  const files = filesQuery.data ?? [];
+
   const [folder, setFolder] = useState("All");
   const [q, setQ] = useState("");
   const [previewFile, setPreviewFile] = useState<FileType | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-  const list = ws.files.filter((f) => (folder === "All" || f.folder === folder) && f.name.toLowerCase().includes(q.toLowerCase()));
+  const list = files.filter((f) => (folder === "All" || f.folder === folder) && f.name.toLowerCase().includes(q.toLowerCase()));
 
   const handleUploadClick = () => {
     fileInputRef.current?.click();
@@ -43,28 +49,11 @@ function FilesPage() {
 
     const toastId = toast.loading(`Uploading "${file.name}"...`);
 
-    let formattedSize = "";
-    if (file.size > 1024 * 1024) {
-      formattedSize = `${(file.size / (1024 * 1024)).toFixed(1)} MB`;
-    } else {
-      formattedSize = `${(file.size / 1024).toFixed(1)} KB`;
-    }
-
-    const ext = file.name.split(".").pop() || "bin";
-
     try {
-      const uploadRes = await uploadFile(file, file.name, "files");
-
-      await ws.addFile({
-        name: file.name,
-        ext: ext.toLowerCase(),
-        folder: folder === "All" ? "Documentation" : folder,
-        size: formattedSize,
-        uploadedBy: ws.currentUser ? ws.currentUser.id : "m1",
-        url: uploadRes.url,
-        storage_path: uploadRes.storage_path,
-        mime_type: uploadRes.mime_type,
-        size_bytes: uploadRes.size_bytes,
+      await uploadMutation.mutateAsync({
+        file,
+        folder,
+        userId: ws.currentUser ? ws.currentUser.id : "m1",
       });
 
       toast.success(`"${file.name}" uploaded successfully!`, { id: toastId });
@@ -87,7 +76,7 @@ function FilesPage() {
     <div className="space-y-4 md:space-y-6">
       <PageHeader
         title="Files"
-        subtitle={`${ws.files.length} files`}
+        subtitle={`${files.length} files`}
         actions={
           <>
             <input
@@ -208,8 +197,13 @@ function FilesPage() {
                             variant="ghost"
                             onClick={() => {
                               if (confirm(`Are you sure you want to delete "${f.name}"?`)) {
-                                ws.removeFile(f.id);
-                                toast.success("File deleted");
+                                deleteMutation.mutate(
+                                  { id: f.id, storage_path: f.storage_path },
+                                  {
+                                    onSuccess: () => toast.success("File deleted"),
+                                    onError: () => toast.error("Failed to delete file"),
+                                  },
+                                );
                               }
                             }}
                             title="Delete File"
@@ -272,8 +266,13 @@ function FilesPage() {
                     variant="ghost"
                     onClick={() => {
                       if (confirm(`Delete "${f.name}"?`)) {
-                        ws.removeFile(f.id);
-                        toast.success("File deleted");
+                        deleteMutation.mutate(
+                          { id: f.id, storage_path: f.storage_path },
+                          {
+                            onSuccess: () => toast.success("File deleted"),
+                            onError: () => toast.error("Failed to delete file"),
+                          },
+                        );
                       }
                     }}
                     className="h-8 px-2 text-xs font-semibold text-destructive hover:bg-destructive/10 cursor-pointer"
