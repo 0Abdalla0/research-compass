@@ -1,4 +1,4 @@
-import { Link, useRouterState } from "@tanstack/react-router";
+import { Link, useRouterState, useNavigate } from "@tanstack/react-router";
 import { useEffect, useState, type ReactNode } from "react";
 import { toast } from "sonner";
 import {
@@ -64,6 +64,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const ws = useWorkspace();
   const { theme, toggleTheme, currentUser, notifications, clearNotifications, markNotificationRead } = ws;
+  const navigate = useNavigate();
   const [openNav, setOpenNav] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
 
@@ -216,8 +217,10 @@ export function AppShell({ children }: { children: ReactNode }) {
                         <DropdownMenuItem 
                           key={n.id} 
                           onClick={() => {
+                            if (n.link) {
+                              navigate({ to: n.link });
+                            }
                             markNotificationRead(n.id);
-                            toast.success("Marked as read");
                           }}
                           className="flex flex-col items-start gap-0.5 py-2 px-3 cursor-pointer focus:bg-muted/50"
                         >

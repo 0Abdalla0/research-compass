@@ -1032,9 +1032,9 @@ export const progressSeries = [
 ];
 
 export const notifications = [
-  { id: "nt1", title: "Dr. Laila mentioned you", body: "\"Add a feedback loop from clinician acknowledgement.\"", time: "8 h", unread: true },
-  { id: "nt2", title: "Task due tomorrow", body: "Complete analysis of ClinicalBERT paper", time: "10 h", unread: true },
-  { id: "nt3", title: "Paper assigned to you", body: "Ontology-Enhanced RAG for Clinical Q&A", time: "1 d", unread: true },
-  { id: "nt4", title: "Meeting reminder", body: "Weekly Research Meeting · Tue 10:00", time: "1 d", unread: false },
-  { id: "nt5", title: "New file in Datasets", body: "mimiciv_cohort_v3.csv uploaded by Maria", time: "2 d", unread: false },
+  { id: "nt1", title: "Dr. Laila mentioned you", body: "\"Add a feedback loop from clinician acknowledgement.\"", time: "8 h", unread: true, link: "/papers/p1" },
+  { id: "nt2", title: "Task due tomorrow", body: "Complete analysis of ClinicalBERT paper", time: "10 h", unread: true, link: "/tasks" },
+  { id: "nt3", title: "Paper assigned to you", body: "Ontology-Enhanced RAG for Clinical Q&A", time: "1 d", unread: true, link: "/papers/p2" },
+  { id: "nt4", title: "Meeting reminder", body: "Weekly Research Meeting · Tue 10:00", time: "1 d", unread: false, link: "/calendar" },
+  { id: "nt5", title: "New file in Datasets", body: "mimiciv_cohort_v3.csv uploaded by Maria", time: "2 d", unread: false, link: "/media" },
 ];

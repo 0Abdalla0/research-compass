@@ -82,6 +82,7 @@ export type NotificationItem = {
   body: string;
   time: string;
   unread: boolean;
+  link?: string;
 };
 
 export type Preferences = {
