@@ -1,11 +1,12 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { useState, useEffect, useRef, type ReactNode } from "react";
-import { ArrowLeft, ExternalLink, Image as ImageIcon, Link2, Mic, NotebookPen, Save, MessageSquare, Edit3, Pause, Play, Download, FileText } from "lucide-react";
+import { ArrowLeft, ExternalLink, Image as ImageIcon, Link2, Mic, NotebookPen, Save, MessageSquare, Edit3, Pause, Play, Download, FileText, Plus, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { useWorkspace } from "@/lib/workspace-store";
 import { ThreadView } from "@/components/thread-view";
 import { UniversalComposer } from "@/components/universal-composer";
-import { ANALYSIS_SECTIONS, Paper } from "@/data/workspace";
+import { uploadFile } from "@/lib/uploads";
+import { ANALYSIS_SECTIONS, Paper, Priority, TaskStatus } from "@/data/workspace";
 import { Initials, Meter, Panel, StatusPill, Tag } from "@/components/ui-bits";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -146,8 +147,7 @@ function PaperDetail() {
           <TabsTrigger value="analysis">Analysis workspace</TabsTrigger>
           <TabsTrigger value="linked">Linked items</TabsTrigger>
           <TabsTrigger value="related">Related papers</TabsTrigger>
-          <TabsTrigger value="discussion">Discussion</TabsTrigger>
-          <TabsTrigger value="chat">Chat Channel</TabsTrigger>
+          <TabsTrigger value="discussion">Discussion & Chat</TabsTrigger>
         </TabsList>
 
         <TabsContent value="analysis" className="mt-4 space-y-4">
@@ -159,7 +159,12 @@ function PaperDetail() {
         </TabsContent>
 
         <TabsContent value="linked" className="mt-4 grid gap-4 lg:grid-cols-2">
-          <LinkedPanel title="Tasks" icon={<NotebookPen className="h-4 w-4" />} empty="No tasks linked to this paper yet.">
+          <LinkedPanel
+            title="Tasks"
+            icon={<NotebookPen className="h-4 w-4" />}
+            empty="No tasks linked to this paper yet."
+            action={<AddLinkedTaskDialog paperId={paper.id} />}
+          >
             {relatedTasks.map((t) => (
               <li key={t.id} className="flex items-center justify-between gap-3 rounded-xl border border-border p-3">
                 <span className="min-w-0 truncate text-sm font-medium">{t.title}</span>
@@ -167,7 +172,12 @@ function PaperDetail() {
               </li>
             ))}
           </LinkedPanel>
-          <LinkedPanel title="Notes" icon={<NotebookPen className="h-4 w-4" />} empty="No notes yet.">
+          <LinkedPanel
+            title="Notes"
+            icon={<NotebookPen className="h-4 w-4" />}
+            empty="No notes yet."
+            action={<AddLinkedNoteDialog paperId={paper.id} />}
+          >
             {relatedNotes.map((n) => (
               <li key={n.id} className="rounded-xl border border-border p-3">
                 <p className="text-sm font-medium">{n.title}</p>
@@ -177,7 +187,12 @@ function PaperDetail() {
               </li>
             ))}
           </LinkedPanel>
-          <LinkedPanel title="Screenshots" icon={<ImageIcon className="h-4 w-4" />} empty="No screenshots yet.">
+          <LinkedPanel
+            title="Screenshots"
+            icon={<ImageIcon className="h-4 w-4" />}
+            empty="No screenshots yet."
+            action={<UploadLinkedShotDialog paperId={paper.id} />}
+          >
             {relatedShots.map((s) => (
               <li key={s.id} className="flex items-center gap-3 rounded-xl border border-border p-3">
                 <span
@@ -191,7 +206,12 @@ function PaperDetail() {
               </li>
             ))}
           </LinkedPanel>
-          <LinkedPanel title="Voice notes & resources" icon={<Mic className="h-4 w-4" />} empty="Nothing attached yet.">
+          <LinkedPanel
+            title="Voice notes & resources"
+            icon={<Mic className="h-4 w-4" />}
+            empty="Nothing attached yet."
+            action={<AddLinkedResourceDialog paperId={paper.id} />}
+          >
             {relatedVoice.map((v) => (
               <li key={v.id} className="flex items-center gap-3 rounded-xl border border-border p-3">
                 <Mic className="h-4 w-4 shrink-0 text-brand" />
@@ -229,18 +249,16 @@ function PaperDetail() {
         <TabsContent value="discussion" className="mt-4">
           <Panel className="p-6">
             <ThreadView entityId={paper.id} entityType="paper" />
-          </Panel>
-        </TabsContent>
-
-        <TabsContent value="chat" className="mt-4">
-          <Panel className="p-6">
-            {paperChat ? (
-              <PaperChatView conversationId={paperChat.id} />
-            ) : (
-              <div className="text-center py-10 text-muted-foreground text-sm">
-                Setting up paper chat room...
-              </div>
-            )}
+            <div className="mt-8 pt-8 border-t border-border">
+              <h3 className="font-semibold text-sm mb-4">Chat Channel</h3>
+              {paperChat ? (
+                <PaperChatView conversationId={paperChat.id} />
+              ) : (
+                <div className="text-center py-10 text-muted-foreground text-sm">
+                  Setting up paper chat room...
+                </div>
+              )}
+            </div>
           </Panel>
         </TabsContent>
       </Tabs>
@@ -254,6 +272,441 @@ function Row({ k, v }: { k: string; v: number }) {
       <dt className="text-muted-foreground">{k}</dt>
       <dd className="font-semibold">{v}</dd>
     </div>
+  );
+}
+
+function AddLinkedTaskDialog({ paperId }: { paperId: string }) {
+  const ws = useWorkspace();
+  const [open, setOpen] = useState(false);
+  const [f, setF] = useState({
+    title: "",
+    description: "",
+    assigneeId: "m1",
+    priority: "MEDIUM" as Priority,
+    status: "todo" as TaskStatus,
+    due: new Date(Date.now() + 7 * 24 * 3600 * 1000).toISOString().slice(0, 10),
+    label: "Research",
+  });
+
+  const handleSave = () => {
+    if (f.title.trim().length < 3) {
+      toast.error("Add a task title (at least 3 characters)");
+      return;
+    }
+    ws.addTask({
+      title: f.title.trim(),
+      description: f.description,
+      assigneeId: f.assigneeId,
+      priority: f.priority,
+      status: f.status,
+      due: f.due,
+      labels: [f.label],
+      paperId: paperId,
+    });
+    toast.success("Task created and linked");
+    setOpen(false);
+    setF({
+      title: "",
+      description: "",
+      assigneeId: "m1",
+      priority: "MEDIUM",
+      status: "todo",
+      due: new Date(Date.now() + 7 * 24 * 3600 * 1000).toISOString().slice(0, 10),
+      label: "Research",
+    });
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button size="sm" variant="outline" className="h-7 px-2 text-xs cursor-pointer">
+          <Plus className="mr-1 h-3.5 w-3.5" /> Add Task
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>New Task for this Paper</DialogTitle>
+        </DialogHeader>
+        <div className="grid gap-3 py-2 text-sm">
+          <div>
+            <Label className="mb-1.5 block text-xs text-muted-foreground font-semibold">Title</Label>
+            <Input value={f.title} onChange={(e) => setF({ ...f, title: e.target.value })} maxLength={160} />
+          </div>
+          <div>
+            <Label className="mb-1.5 block text-xs text-muted-foreground font-semibold">Description</Label>
+            <Textarea rows={3} value={f.description} onChange={(e) => setF({ ...f, description: e.target.value })} maxLength={1000} />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label className="mb-1.5 block text-xs text-muted-foreground font-semibold">Assignee</Label>
+              <select
+                value={f.assigneeId}
+                onChange={(e) => setF({ ...f, assigneeId: e.target.value })}
+                className="w-full h-10 px-3 border border-border rounded-xl bg-card text-xs cursor-pointer focus:outline-none"
+              >
+                {ws.members.map((m) => (
+                  <option key={m.id} value={m.id}>{m.name}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <Label className="mb-1.5 block text-xs text-muted-foreground font-semibold">Priority</Label>
+              <select
+                value={f.priority}
+                onChange={(e) => setF({ ...f, priority: e.target.value as Priority })}
+                className="w-full h-10 px-3 border border-border rounded-xl bg-card text-xs cursor-pointer focus:outline-none"
+              >
+                <option value="LOW">LOW</option>
+                <option value="MEDIUM">MEDIUM</option>
+                <option value="HIGH">HIGH</option>
+                <option value="URGENT">URGENT</option>
+              </select>
+            </div>
+            <div>
+              <Label className="mb-1.5 block text-xs text-muted-foreground font-semibold">Column</Label>
+              <select
+                value={f.status}
+                onChange={(e) => setF({ ...f, status: e.target.value as TaskStatus })}
+                className="w-full h-10 px-3 border border-border rounded-xl bg-card text-xs cursor-pointer focus:outline-none"
+              >
+                <option value="backlog">Backlog</option>
+                <option value="todo">To Do</option>
+                <option value="progress">In Progress</option>
+                <option value="review">Review</option>
+                <option value="done">Completed</option>
+              </select>
+            </div>
+            <div>
+              <Label className="mb-1.5 block text-xs text-muted-foreground font-semibold">Due date</Label>
+              <Input type="date" value={f.due} onChange={(e) => setF({ ...f, due: e.target.value })} />
+            </div>
+            <div className="col-span-2">
+              <Label className="mb-1.5 block text-xs text-muted-foreground font-semibold">Label</Label>
+              <select
+                value={f.label}
+                onChange={(e) => setF({ ...f, label: e.target.value })}
+                className="w-full h-10 px-3 border border-border rounded-xl bg-card text-xs cursor-pointer focus:outline-none"
+              >
+                <option value="Research">Research</option>
+                <option value="Development">Development</option>
+                <option value="Dataset">Dataset</option>
+                <option value="Paper">Paper</option>
+                <option value="Meeting">Meeting</option>
+                <option value="Documentation">Documentation</option>
+                <option value="Presentation">Presentation</option>
+                <option value="Testing">Testing</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="ghost" onClick={() => setOpen(false)} className="cursor-pointer">Cancel</Button>
+          <Button onClick={handleSave} className="cursor-pointer">Create task</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function AddLinkedNoteDialog({ paperId }: { paperId: string }) {
+  const ws = useWorkspace();
+  const [open, setOpen] = useState(false);
+  const [f, setF] = useState({
+    title: "",
+    type: "Research" as const,
+    tags: "",
+    body: "",
+  });
+
+  const handleSave = () => {
+    if (f.title.trim().length < 3) {
+      toast.error("Add a note title (at least 3 characters)");
+      return;
+    }
+    ws.addNote({
+      title: f.title.trim(),
+      type: f.type,
+      authorId: ws.currentUser ? ws.currentUser.id : "m1",
+      tags: f.tags.split(",").map((t) => t.trim()).filter(Boolean),
+      body: f.body,
+      paperId: paperId,
+    });
+    toast.success("Note created and linked");
+    setOpen(false);
+    setF({
+      title: "",
+      type: "Research",
+      tags: "",
+      body: "",
+    });
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button size="sm" variant="outline" className="h-7 px-2 text-xs cursor-pointer">
+          <Plus className="mr-1 h-3.5 w-3.5" /> Add Note
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>New Note for this Paper</DialogTitle>
+        </DialogHeader>
+        <div className="grid gap-3 py-2 text-sm">
+          <div>
+            <Label className="mb-1.5 block text-xs text-muted-foreground font-semibold">Title</Label>
+            <Input value={f.title} onChange={(e) => setF({ ...f, title: e.target.value })} maxLength={140} placeholder="e.g. Findings overview" />
+          </div>
+          <div>
+            <Label className="mb-1.5 block text-xs text-muted-foreground font-semibold">Type</Label>
+            <select
+              value={f.type}
+              onChange={(e) => setF({ ...f, type: e.target.value as any })}
+              className="w-full h-10 px-3 border border-border rounded-xl bg-card text-xs cursor-pointer focus:outline-none"
+            >
+              <option value="Research">Research Note</option>
+              <option value="Literature Review">Literature Review</option>
+              <option value="Experiment">Experiment Log</option>
+              <option value="Brainstorm">Brainstorming</option>
+              <option value="Idea">Idea</option>
+            </select>
+          </div>
+          <div>
+            <Label className="mb-1.5 block text-xs text-muted-foreground font-semibold">Tags (comma separated)</Label>
+            <Input value={f.tags} onChange={(e) => setF({ ...f, tags: e.target.value })} placeholder="gap, logic, findings" />
+          </div>
+          <div>
+            <Label className="mb-1.5 block text-xs text-muted-foreground font-semibold">Content (markdown supported)</Label>
+            <Textarea rows={6} value={f.body} onChange={(e) => setF({ ...f, body: e.target.value })} maxLength={8000} placeholder="Write note body..." />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="ghost" onClick={() => setOpen(false)} className="cursor-pointer">Cancel</Button>
+          <Button onClick={handleSave} className="cursor-pointer">Create note</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function UploadLinkedShotDialog({ paperId }: { paperId: string }) {
+  const ws = useWorkspace();
+  const [open, setOpen] = useState(false);
+  const [f, setF] = useState({ title: "", description: "", tags: "", source: "Own work" });
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setImageFile(file);
+    setImagePreview(URL.createObjectURL(file));
+  };
+
+  const handleUpload = async () => {
+    if (f.title.trim().length < 3) {
+      toast.error("Add a title (at least 3 characters)");
+      return;
+    }
+    if (!imageFile) {
+      toast.error("Please select an image file first");
+      return;
+    }
+
+    const toastId = toast.loading("Uploading screenshot...");
+
+    try {
+      const uploadRes = await uploadFile(imageFile, imageFile.name, "media");
+
+      await ws.addShot({
+        title: f.title.trim(),
+        description: f.description,
+        tags: f.tags.split(",").map((t) => t.trim()).filter(Boolean),
+        source: f.source,
+        uploadedBy: ws.currentUser ? ws.currentUser.id : "m1",
+        hue: Math.floor(Math.random() * 360),
+        url: uploadRes.url,
+        storage_path: uploadRes.storage_path,
+        mime_type: uploadRes.mime_type,
+        size_bytes: uploadRes.size_bytes,
+        paperId: paperId,
+      });
+      toast.success("Screenshot added and linked", { id: toastId });
+
+      // Reset Form
+      setF({ title: "", description: "", tags: "", source: "Own work" });
+      setImageFile(null);
+      setImagePreview(null);
+      setOpen(false);
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to upload screenshot", { id: toastId });
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button size="sm" variant="outline" className="h-7 px-2 text-xs cursor-pointer">
+          <Plus className="mr-1 h-3.5 w-3.5" /> Add Screenshot
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Upload Image for this Paper</DialogTitle>
+        </DialogHeader>
+        <div className="grid gap-3 py-2 text-sm">
+          <div>
+            <Label className="mb-1.5 block text-xs text-muted-foreground font-semibold">Title</Label>
+            <Input value={f.title} onChange={(e) => setF({ ...f, title: e.target.value })} maxLength={140} placeholder="e.g. Model precision plot" />
+          </div>
+          <div>
+            <Label className="mb-1.5 block text-xs text-muted-foreground font-semibold">Description</Label>
+            <Input value={f.description} onChange={(e) => setF({ ...f, description: e.target.value })} maxLength={300} placeholder="Details about this figure..." />
+          </div>
+          <div>
+            <Label className="mb-1.5 block text-xs text-muted-foreground font-semibold">Source</Label>
+            <Input value={f.source} onChange={(e) => setF({ ...f, source: e.target.value })} />
+          </div>
+          <div>
+            <Label className="mb-1.5 block text-xs text-muted-foreground font-semibold">Tags</Label>
+            <Input value={f.tags} onChange={(e) => setF({ ...f, tags: e.target.value })} placeholder="figure, results, evaluation" />
+          </div>
+          <div>
+            <Label className="mb-1.5 block text-xs text-muted-foreground font-semibold">Image File</Label>
+            <input
+              type="file"
+              ref={fileInputRef}
+              accept="image/*"
+              onChange={handleImageChange}
+              className="hidden"
+            />
+            <div 
+              onClick={() => fileInputRef.current?.click()}
+              className="rounded-xl border border-dashed border-border p-4 text-center text-xs text-muted-foreground hover:bg-secondary/40 cursor-pointer transition-colors"
+            >
+              {imagePreview ? (
+                <div className="space-y-2">
+                  <img src={imagePreview} className="max-h-20 mx-auto object-contain rounded" alt="Preview" />
+                  <p className="text-brand font-semibold">Change selected image</p>
+                </div>
+              ) : (
+                <div className="space-y-1.5 py-1">
+                  <Upload className="h-5 w-5 mx-auto text-muted-foreground" />
+                  <p className="font-medium text-foreground text-center">Click to upload your image file</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="ghost" onClick={() => setOpen(false)} className="cursor-pointer">Cancel</Button>
+          <Button onClick={handleUpload} className="cursor-pointer">Upload</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function AddLinkedResourceDialog({ paperId }: { paperId: string }) {
+  const ws = useWorkspace();
+  const [open, setOpen] = useState(false);
+  const [title, setTitle] = useState("");
+  const [url, setUrl] = useState("");
+  const [description, setDescription] = useState("");
+  const [category, setCategory] = useState("Research Tool");
+  const [tagsStr, setTagsStr] = useState("");
+
+  const handleSave = () => {
+    if (!title.trim() || !url.trim()) {
+      toast.error("Title and URL are required");
+      return;
+    }
+    const tags = tagsStr.split(",").map((t) => t.trim()).filter(Boolean);
+    ws.addLink({
+      title: title.trim(),
+      url: url.trim(),
+      description: description.trim(),
+      category: category.trim(),
+      tags,
+      addedBy: ws.currentUser ? ws.currentUser.id : "m1",
+      paperId: paperId,
+    });
+    toast.success("Resource link added and linked");
+    setOpen(false);
+    setTitle("");
+    setUrl("");
+    setDescription("");
+    setTagsStr("");
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button size="sm" variant="outline" className="h-7 px-2 text-xs cursor-pointer">
+          <Plus className="mr-1 h-3.5 w-3.5" /> Add Link
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Add Resource Link for this Paper</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4 py-2 text-sm">
+          <div>
+            <Label className="mb-1.5 block text-xs font-semibold text-muted-foreground">Title</Label>
+            <Input placeholder="e.g. Dataset on Zenodo" value={title} onChange={(e) => setTitle(e.target.value)} />
+          </div>
+          <div>
+            <Label className="mb-1.5 block text-xs font-semibold text-muted-foreground">URL</Label>
+            <Input placeholder="https://..." value={url} onChange={(e) => setUrl(e.target.value)} />
+          </div>
+          <div>
+            <Label className="mb-1.5 block text-xs font-semibold text-muted-foreground">Description</Label>
+            <Input placeholder="Short description of this resource..." value={description} onChange={(e) => setDescription(e.target.value)} />
+          </div>
+          <div>
+            <Label className="mb-1.5 block text-xs font-semibold text-muted-foreground">Category</Label>
+            <Input placeholder="e.g. Dataset, Code, Tool" value={category} onChange={(e) => setCategory(e.target.value)} />
+          </div>
+          <div>
+            <Label className="mb-1.5 block text-xs font-semibold text-muted-foreground">Tags (comma separated)</Label>
+            <Input placeholder="e.g. python, ontology, dataset" value={tagsStr} onChange={(e) => setTagsStr(e.target.value)} />
+          </div>
+        </div>
+        <DialogFooter className="flex flex-row justify-end gap-2">
+          <Button variant="outline" onClick={() => setOpen(false)} className="cursor-pointer">Cancel</Button>
+          <Button onClick={handleSave} className="cursor-pointer">Add Resource</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function LinkedPanel({
+  title,
+  icon,
+  empty,
+  action,
+  children,
+}: {
+  title: string;
+  icon: React.ReactNode;
+  empty: string;
+  action?: React.ReactNode;
+  children: React.ReactNode;
+}) {
+  const has = Array.isArray(children) ? children.flat().length > 0 : Boolean(children);
+  return (
+    <Panel className="p-5">
+      <div className="flex items-center justify-between mb-3.5">
+        <h3 className="font-display flex items-center gap-2 text-sm font-semibold text-foreground">
+          {icon} {title}
+        </h3>
+        {action}
+      </div>
+      {has ? <ul className="space-y-2">{children}</ul> : <p className="text-xs text-muted-foreground">{empty}</p>}
+    </Panel>
   );
 }
 
@@ -389,28 +842,6 @@ function PlayAudioButton({ url }: { url: string }) {
     <button onClick={toggle} className="p-1 hover:bg-current/15 rounded text-current">
       {playing ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
     </button>
-  );
-}
-
-function LinkedPanel({
-  title,
-  icon,
-  empty,
-  children,
-}: {
-  title: string;
-  icon: React.ReactNode;
-  empty: string;
-  children: React.ReactNode;
-}) {
-  const has = Array.isArray(children) ? children.flat().length > 0 : Boolean(children);
-  return (
-    <Panel className="p-5">
-      <h3 className="font-display flex items-center gap-2 text-sm font-semibold">
-        {icon} {title}
-      </h3>
-      {has ? <ul className="mt-3 space-y-2">{children}</ul> : <p className="mt-3 text-sm text-muted-foreground">{empty}</p>}
-    </Panel>
   );
 }
 

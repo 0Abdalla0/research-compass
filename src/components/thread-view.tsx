@@ -17,6 +17,14 @@ export function ThreadView({ entityId, entityType }: ThreadViewProps) {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editText, setEditText] = useState("");
 
+  const conversationId = `${entityType}_${entityId}`;
+  
+  // Realtime typing indicators state from workspace context
+  const typingList = ws.typingStates[conversationId] || {};
+  const typingMembers = Object.keys(typingList)
+    .filter((mId) => typingList[mId] && mId !== ws.currentUser?.id)
+    .map((mId) => ws.members.find((m) => m.id === mId)?.name || "Someone");
+
   // Get active comments matching the specified entity context
   const comments = ws.comments.filter((c) => {
     if (entityType === "project") return c.project_id === entityId;
@@ -52,6 +60,7 @@ export function ThreadView({ entityId, entityType }: ThreadViewProps) {
       mime_type: data.attachment?.mime_type,
       size_bytes: data.attachment?.size_bytes,
     });
+    ws.broadcastTyping(conversationId, false);
     setReplyingTo(null);
   };
 
@@ -81,7 +90,15 @@ export function ThreadView({ entityId, entityType }: ThreadViewProps) {
         <UniversalComposer
           placeholder="Join the discussion..."
           onSend={(data) => handleCreateComment(data)}
+          onTyping={(isTyping) => ws.broadcastTyping(conversationId, isTyping)}
         />
+
+        {/* Typing indicator */}
+        {typingMembers.length > 0 && (
+          <p className="text-xs text-muted-foreground italic px-1 animate-pulse">
+            {typingMembers.join(", ")} {typingMembers.length === 1 ? "is" : "are"} typing...
+          </p>
+        )}
       </div>
 
       {/* Render Comment Cards */}
