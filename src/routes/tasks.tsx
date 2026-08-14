@@ -13,6 +13,8 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogT
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Checkbox } from "@/components/ui/checkbox";
+import { ThreadView } from "@/components/thread-view";
+
 
 export const Route = createFileRoute("/tasks")({
   head: () => ({
@@ -341,6 +343,9 @@ function TaskSheetContent({ task, onClose }: { task: Task; onClose: () => void }
                 </Button>
               ))}
             </div>
+          </div>
+          <div className="border-t border-border/50 pt-5 mt-5">
+            <ThreadView entityId={task.id} entityType="task" />
           </div>
         </div>
       )}

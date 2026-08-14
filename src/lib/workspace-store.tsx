@@ -22,6 +22,11 @@ import type {
   TaskStatus,
   VoiceNote,
   Phase,
+  Comment,
+  Conversation,
+  ConversationMember,
+  Message,
+  DbNotification,
 } from "@/data/workspace";
 import {
   getWorkspaceDataServer,
@@ -58,6 +63,17 @@ import {
   addPhaseServer,
   updatePhaseServer,
   removePhaseServer,
+  addCommentServer,
+  updateCommentServer,
+  removeCommentServer,
+  addConversationServer,
+  addConversationMembersServer,
+  addMessageServer,
+  updateMessageServer,
+  removeMessageServer,
+  addNotificationServer,
+  markNotificationReadServer,
+  clearNotificationsServer,
 } from "@/lib/db-server";
 
 export type NotificationItem = {
@@ -160,6 +176,21 @@ type Ctx = {
   markNotificationRead: (id: string) => void;
   theme: "light" | "dark";
   toggleTheme: () => void;
+  comments: Comment[];
+  addComment: (c: Omit<Comment, "id" | "created_at" | "updated_at">) => Promise<void>;
+  updateComment: (id: string, content: string) => Promise<void>;
+  removeComment: (id: string) => Promise<void>;
+  conversations: Conversation[];
+  conversationMembers: ConversationMember[];
+  addConversation: (name: string | undefined, is_group: boolean, memberIds: string[], paperId?: string, phaseId?: string) => Promise<string>;
+  messages: Message[];
+  addMessage: (m: Omit<Message, "id" | "created_at" | "updated_at" | "deleted_at">) => Promise<void>;
+  updateMessage: (id: string, content: string) => Promise<void>;
+  removeMessage: (id: string) => Promise<void>;
+  addNotification: (userId: string, type: string, title: string, description: string, link?: string) => Promise<void>;
+  onlineMembers: Record<string, { online_at: string; name: string }>;
+  typingStates: Record<string, Record<string, boolean>>;
+  broadcastTyping: (conversationId: string, isTyping: boolean) => void;
 };
 
 const WorkspaceContext = createContext<Ctx | null>(null);
@@ -177,6 +208,12 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
   const [events, setEvents] = useState<CalEvent[]>([]);
   const [activity, setActivity] = useState<Activity[]>([]);
   const [phases, setPhases] = useState<Phase[]>(seed.phases);
+  const [comments, setComments] = useState<Comment[]>([]);
+  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [conversationMembers, setConversationMembers] = useState<ConversationMember[]>([]);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [onlineMembers, setOnlineMembers] = useState<Record<string, { online_at: string; name: string }>>({});
+  const [typingStates, setTypingStates] = useState<Record<string, Record<string, boolean>>>({});
   const [theme, setTheme] = useState<"light" | "dark">("light");
   const [currentUser, setCurrentUser] = useState<(typeof seed.members)[number] | null>(null);
   const [project, setProject] = useState<typeof seed.project>(seed.project);
@@ -246,6 +283,23 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  // Helper to format timestamps dynamically
+  const formatTimeAgo = (dateStr: string): string => {
+    try {
+      const elapsed = Date.now() - new Date(dateStr).getTime();
+      const secs = Math.floor(elapsed / 1000);
+      if (secs < 60) return "just now";
+      const mins = Math.floor(secs / 60);
+      if (mins < 60) return `${mins} m`;
+      const hours = Math.floor(mins / 60);
+      if (hours < 24) return `${hours} h`;
+      const days = Math.floor(hours / 24);
+      return `${days} d`;
+    } catch {
+      return "just now";
+    }
+  };
+
   // Load from database on mount
   useEffect(() => {
     getWorkspaceDataServer()
@@ -266,6 +320,23 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
         if (data.phases && data.phases.length > 0) {
           setPhases(data.phases);
         }
+        setComments(data.comments || []);
+        setConversations(data.conversations || []);
+        setConversationMembers(data.conversationMembers || []);
+        setMessages(data.messages || []);
+        
+        // Map database-backed notifications to the UI's NotificationItem format
+        if (data.notifications) {
+          const mapped = data.notifications.map((n: DbNotification) => ({
+            id: n.id,
+            title: n.title,
+            body: n.description,
+            time: formatTimeAgo(n.created_at),
+            unread: !n.is_read,
+            link: n.link,
+          }));
+          setNotifications(mapped);
+        }
       })
       .catch((err) => console.error("Error loading initial DB workspace data:", err));
   }, []);
@@ -273,6 +344,166 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     document.documentElement.classList.toggle("dark", theme === "dark");
   }, [theme]);
+
+  // Broadcast typing status
+  const broadcastTyping = (conversationId: string, isTyping: boolean) => {
+    if (!hasSupabaseKeys || !currentUser) return;
+    supabase.channel("room-presence").send({
+      type: "broadcast",
+      event: "typing",
+      payload: { conversationId, memberId: currentUser.id, isTyping },
+    });
+  };
+
+  // Realtime subscription
+  useEffect(() => {
+    if (!hasSupabaseKeys) return;
+
+    // 1. Subscribe to DB updates
+    const dbChannel = supabase
+      .channel("db-changes")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "comments" },
+        (payload: any) => {
+          if (payload.eventType === "INSERT") {
+            setComments((prev) => {
+              if (prev.some((x) => x.id === payload.new.id)) return prev;
+              return [...prev, payload.new as Comment];
+            });
+          } else if (payload.eventType === "UPDATE") {
+            setComments((prev) =>
+              prev.map((c) => (c.id === payload.new.id ? (payload.new as Comment) : c))
+            );
+          } else if (payload.eventType === "DELETE") {
+            setComments((prev) => prev.filter((c) => c.id !== payload.old.id));
+          }
+        }
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "conversations" },
+        (payload: any) => {
+          if (payload.eventType === "INSERT") {
+            setConversations((prev) => {
+              if (prev.some((x) => x.id === payload.new.id)) return prev;
+              return [payload.new as Conversation, ...prev];
+            });
+          }
+        }
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "conversation_members" },
+        (payload: any) => {
+          if (payload.eventType === "INSERT") {
+            setConversationMembers((prev) => {
+              if (prev.some((x) => x.conversation_id === payload.new.conversation_id && x.member_id === payload.new.member_id)) return prev;
+              return [...prev, payload.new as ConversationMember];
+            });
+          }
+        }
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "messages" },
+        (payload: any) => {
+          if (payload.eventType === "INSERT") {
+            setMessages((prev) => {
+              if (prev.some((x) => x.id === payload.new.id)) return prev;
+              return [...prev, payload.new as Message];
+            });
+          } else if (payload.eventType === "UPDATE") {
+            setMessages((prev) =>
+              prev.map((m) => (m.id === payload.new.id ? (payload.new as Message) : m))
+            );
+          }
+        }
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "notifications" },
+        (payload: any) => {
+          if (payload.eventType === "INSERT") {
+            const n = payload.new as DbNotification;
+            if (n.user_id === (currentUser?.id || "m1")) {
+              setNotifications((prev) => {
+                if (prev.some((x) => x.id === n.id)) return prev;
+                return [
+                  {
+                    id: n.id,
+                    title: n.title,
+                    body: n.description,
+                    time: "just now",
+                    unread: !n.is_read,
+                    link: n.link,
+                  },
+                  ...prev,
+                ];
+              });
+            }
+          } else if (payload.eventType === "UPDATE") {
+            const n = payload.new as DbNotification;
+            if (n.user_id === (currentUser?.id || "m1")) {
+              setNotifications((prev) =>
+                prev.map((x) => (x.id === n.id ? { ...x, unread: !n.is_read } : x))
+              );
+            }
+          } else if (payload.eventType === "DELETE") {
+            setNotifications([]);
+          }
+        }
+      )
+      .subscribe();
+
+    // 2. Subscribe to Presence and broadcasted typing indicators
+    const presenceChannel = supabase.channel("room-presence", {
+      config: {
+        presence: {
+          key: currentUser?.id || "anonymous",
+        },
+      },
+    });
+
+    presenceChannel
+      .on("presence", { event: "sync" }, () => {
+        const state = presenceChannel.presenceState();
+        const formatted: Record<string, { online_at: string; name: string }> = {};
+        Object.keys(state).forEach((key) => {
+          const userPresences = state[key];
+          if (userPresences && userPresences[0]) {
+            formatted[key] = {
+              online_at: (userPresences[0] as any).online_at || new Date().toISOString(),
+              name: (userPresences[0] as any).name || "Member",
+            };
+          }
+        });
+        setOnlineMembers(formatted);
+      })
+      .on("broadcast", { event: "typing" }, (payload: any) => {
+        const { conversationId, memberId, isTyping } = payload.payload;
+        setTypingStates((prev) => ({
+          ...prev,
+          [conversationId]: {
+            ...(prev[conversationId] || {}),
+            [memberId]: isTyping,
+          },
+        }));
+      })
+      .subscribe(async (status: any) => {
+        if (status === "SUBSCRIBED" && currentUser) {
+          await presenceChannel.track({
+            online_at: new Date().toISOString(),
+            name: currentUser.name,
+          });
+        }
+      });
+
+    return () => {
+      supabase.removeChannel(dbChannel);
+      supabase.removeChannel(presenceChannel);
+    };
+  }, [currentUser]);
 
   const log = useCallback(
     (action: string, object: string, kind: Activity["kind"]) => {
@@ -285,6 +516,42 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       );
     },
     [currentUser],
+  );
+
+  const addNotification = useCallback(
+    async (userId: string, type: string, title: string, description: string, link?: string) => {
+      const notifId = uid();
+      const newDbNotif = {
+        id: notifId,
+        user_id: userId,
+        type,
+        title,
+        description,
+        is_read: false,
+        link: link || undefined,
+        created_at: new Date().toISOString(),
+      };
+
+      if (userId === (currentUser?.id || "m1")) {
+        setNotifications((prev) => [
+          {
+            id: notifId,
+            title,
+            body: description,
+            time: "just now",
+            unread: true,
+            link: link || undefined,
+          },
+          ...prev,
+        ]);
+      }
+      try {
+        await addNotificationServer({ data: newDbNotif });
+      } catch (err) {
+        console.error("Failed to add notification:", err);
+      }
+    },
+    [currentUser]
   );
 
   const today = () => new Date().toISOString().slice(0, 10);
@@ -667,16 +934,210 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       notifications,
       clearNotifications: () => {
         setNotifications([]);
-        localStorage.setItem("research_hub_notifications", JSON.stringify([]));
+        if (currentUser) {
+          clearNotificationsServer({ data: currentUser.id }).catch((err) =>
+            console.error("Error clearing DB notifications:", err)
+          );
+        }
         log("cleared all", "notifications", "comment");
       },
-      markNotificationRead: (id) => {
-        setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, unread: false } : n)));
+      markNotificationRead: (notifId) => {
+        setNotifications((prev) => prev.map((n) => (n.id === notifId ? { ...n, unread: false } : n)));
+        markNotificationReadServer({ data: { id: notifId, is_read: true } }).catch((err) =>
+          console.error("Error marking notification read in DB:", err)
+        );
       },
       theme,
       toggleTheme: () => setTheme((t) => (t === "light" ? "dark" : "light")),
+      comments,
+      conversations,
+      conversationMembers,
+      messages,
+      onlineMembers,
+      typingStates,
+      broadcastTyping,
+      addComment: async (c) => {
+        const id = uid();
+        const newComment: Comment = {
+          ...c,
+          id,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        };
+        setComments((prev) => [...prev, newComment]);
+        try {
+          await addCommentServer({ data: newComment });
+          
+          const mentionRegex = /@(\w+)/g;
+          let match;
+          while ((match = mentionRegex.exec(c.content)) !== null) {
+            const username = match[1];
+            if (username) {
+              const matchedMember = members.find(
+                (m) => m.name.toLowerCase().replace(/\s+/g, "") === username.toLowerCase()
+              );
+              if (matchedMember && matchedMember.id !== (currentUser?.id || "m1")) {
+                await addNotification(
+                  matchedMember.id,
+                  "mention",
+                  "Mentioned in comment",
+                  `${currentUser?.name || "Someone"} mentioned you in a comment: "${c.content.slice(0, 50)}..."`,
+                  c.paper_id ? `/papers/${c.paper_id}` : c.task_id ? `/tasks` : undefined
+                );
+              }
+            }
+          }
+        } catch (err) {
+          console.error("Failed to add comment, rolling back:", err);
+          setComments((prev) => prev.filter((x) => x.id !== id));
+          if (c.storage_path) {
+            await removeStorageObject(c.storage_path);
+          }
+          throw err;
+        }
+      },
+      updateComment: async (id, content) => {
+        setComments((prev) =>
+          prev.map((c) => (c.id === id ? { ...c, content, updated_at: new Date().toISOString() } : c))
+        );
+        try {
+          await updateCommentServer({ data: { id, patch: { content, updated_at: new Date().toISOString() } } });
+        } catch (err) {
+          console.error("Failed to update comment:", err);
+        }
+      },
+      removeComment: async (id) => {
+        const c = comments.find((x) => x.id === id);
+        setComments((prev) => prev.filter((x) => x.id !== id));
+        try {
+          await removeCommentServer({ data: id });
+          if (c && c.storage_path) {
+            await removeStorageObject(c.storage_path);
+          }
+        } catch (err) {
+          console.error("Failed to remove comment:", err);
+        }
+      },
+      addConversation: async (name, is_group, memberIds, paperId, phaseId) => {
+        if (!is_group && memberIds.length === 2) {
+          const existing = conversations.find((c) => {
+            if (c.is_group) return false;
+            if (c.paper_id || c.phase_id) return false;
+            const cm = conversationMembers.filter((x) => x.conversation_id === c.id).map((x) => x.member_id);
+            return cm.length === 2 && memberIds.every((mId) => cm.includes(mId));
+          });
+          if (existing) return existing.id;
+        }
+
+        const id = uid();
+        const newConv = {
+          id,
+          name: name || undefined,
+          is_group,
+          paper_id: paperId || undefined,
+          phase_id: phaseId || undefined,
+          created_at: new Date().toISOString(),
+        };
+
+        setConversations((prev) => [newConv, ...prev]);
+        const membersToAdd = memberIds.map((mId) => ({ conversation_id: id, member_id: mId }));
+        setConversationMembers((prev) => [...prev, ...membersToAdd]);
+
+        try {
+          await addConversationServer({ data: newConv });
+          await addConversationMembersServer({ data: membersToAdd });
+          return id;
+        } catch (err) {
+          console.error("Failed to create conversation:", err);
+          setConversations((prev) => prev.filter((c) => c.id !== id));
+          setConversationMembers((prev) => prev.filter((cm) => cm.conversation_id !== id));
+          throw err;
+        }
+      },
+      addMessage: async (m) => {
+        const id = uid();
+        const newMessage: Message = {
+          ...m,
+          id,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        };
+        setMessages((prev) => [...prev, newMessage]);
+        try {
+          await addMessageServer({ data: newMessage });
+
+          // Send notifications to other members
+          const otherMembers = conversationMembers
+            .filter((cm) => cm.conversation_id === m.conversation_id && cm.member_id !== m.sender_id)
+            .map((cm) => cm.member_id);
+
+          for (const mId of otherMembers) {
+            await addNotification(
+              mId,
+              "message",
+              `New message from ${currentUser?.name || "Member"}`,
+              m.message_type === "text" ? m.content : `Sent a ${m.message_type}`,
+              `/chat?conv=${m.conversation_id}`
+            );
+          }
+        } catch (err) {
+          console.error("Failed to save message, rolling back:", err);
+          setMessages((prev) => prev.filter((x) => x.id !== id));
+          if (m.storage_path) {
+            await removeStorageObject(m.storage_path);
+          }
+          throw err;
+        }
+      },
+      updateMessage: async (id, content) => {
+        setMessages((prev) =>
+          prev.map((m) => (m.id === id ? { ...m, content, updated_at: new Date().toISOString() } : m))
+        );
+        try {
+          await updateMessageServer({ data: { id, patch: { content, updated_at: new Date().toISOString() } } });
+        } catch (err) {
+          console.error("Failed to update message:", err);
+        }
+      },
+      removeMessage: async (id) => {
+        setMessages((prev) =>
+          prev.map((x) => (x.id === id ? { ...x, deleted_at: new Date().toISOString() } : x))
+        );
+        try {
+          await removeMessageServer({ data: id });
+        } catch (err) {
+          console.error("Failed to soft delete message:", err);
+        }
+      },
+      addNotification,
     }),
-    [members, papers, tasks, notes, shots, voiceNotes, files, links, meetings, events, phases, activity, theme, currentUser, project, preferences, notifications, log],
+    [
+      members,
+      papers,
+      tasks,
+      notes,
+      shots,
+      voiceNotes,
+      files,
+      links,
+      meetings,
+      events,
+      phases,
+      activity,
+      theme,
+      currentUser,
+      project,
+      preferences,
+      notifications,
+      comments,
+      conversations,
+      conversationMembers,
+      messages,
+      onlineMembers,
+      typingStates,
+      log,
+      addNotification,
+    ],
   );
 
   return <WorkspaceContext.Provider value={value}>{children}</WorkspaceContext.Provider>;

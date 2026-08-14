@@ -1,8 +1,10 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
-import { useState, type ReactNode } from "react";
-import { ArrowLeft, ExternalLink, Image as ImageIcon, Link2, Mic, NotebookPen, Save, MessageSquare, Edit3 } from "lucide-react";
+import { useState, useEffect, useRef, type ReactNode } from "react";
+import { ArrowLeft, ExternalLink, Image as ImageIcon, Link2, Mic, NotebookPen, Save, MessageSquare, Edit3, Pause, Play, Download, FileText } from "lucide-react";
 import { toast } from "sonner";
 import { useWorkspace } from "@/lib/workspace-store";
+import { ThreadView } from "@/components/thread-view";
+import { UniversalComposer } from "@/components/universal-composer";
 import { ANALYSIS_SECTIONS, Paper } from "@/data/workspace";
 import { Initials, Meter, Panel, StatusPill, Tag } from "@/components/ui-bits";
 import { Button } from "@/components/ui/button";
@@ -48,6 +50,19 @@ function PaperDetail() {
   const relatedVoice = ws.voiceNotes.filter((v) => v.paperId === paper.id);
   const relatedLinks = ws.links.filter((l) => l.paperId === paper.id);
   const relatedPapers = ws.papers.filter((p) => p.id !== paper.id && p.category === paper.category).slice(0, 3);
+
+  const paperChat = ws.conversations.find((c) => c.paper_id === paper.id);
+
+  useEffect(() => {
+    if (!paperChat && paper.id && ws.currentUser && ws.members.length > 0) {
+      ws.addConversation(
+        `${paper.title.slice(0, 24)}... Chat`,
+        true,
+        ws.members.map((m) => m.id),
+        paper.id
+      ).catch((err) => console.error("Error auto-creating paper chat room:", err));
+    }
+  }, [paperChat, paper.id, ws.currentUser, ws.members]);
 
   return (
     <div className="space-y-6">
@@ -131,6 +146,8 @@ function PaperDetail() {
           <TabsTrigger value="analysis">Analysis workspace</TabsTrigger>
           <TabsTrigger value="linked">Linked items</TabsTrigger>
           <TabsTrigger value="related">Related papers</TabsTrigger>
+          <TabsTrigger value="discussion">Discussion</TabsTrigger>
+          <TabsTrigger value="chat">Chat Channel</TabsTrigger>
         </TabsList>
 
         <TabsContent value="analysis" className="mt-4 space-y-4">
@@ -208,6 +225,24 @@ function PaperDetail() {
             </Link>
           ))}
         </TabsContent>
+
+        <TabsContent value="discussion" className="mt-4">
+          <Panel className="p-6">
+            <ThreadView entityId={paper.id} entityType="paper" />
+          </Panel>
+        </TabsContent>
+
+        <TabsContent value="chat" className="mt-4">
+          <Panel className="p-6">
+            {paperChat ? (
+              <PaperChatView conversationId={paperChat.id} />
+            ) : (
+              <div className="text-center py-10 text-muted-foreground text-sm">
+                Setting up paper chat room...
+              </div>
+            )}
+          </Panel>
+        </TabsContent>
       </Tabs>
     </div>
   );
@@ -219,6 +254,141 @@ function Row({ k, v }: { k: string; v: number }) {
       <dt className="text-muted-foreground">{k}</dt>
       <dd className="font-semibold">{v}</dd>
     </div>
+  );
+}
+
+function PaperChatView({ conversationId }: { conversationId: string }) {
+  const ws = useWorkspace();
+  const chatMessages = ws.messages.filter((m) => m.conversation_id === conversationId && !m.deleted_at);
+  const typingList = ws.typingStates[conversationId] || {};
+  const typingMembers = Object.keys(typingList)
+    .filter((mId) => typingList[mId] && mId !== ws.currentUser?.id)
+    .map((mId) => ws.members.find((m) => m.id === mId)?.name || "Someone");
+
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [chatMessages]);
+
+  const handleSendMessage = async (data: any) => {
+    await ws.addMessage({
+      conversation_id: conversationId,
+      sender_id: ws.currentUser?.id || "m1",
+      message_type: data.type,
+      content: data.content,
+      url: data.attachment?.url,
+      storage_path: data.attachment?.storage_path,
+      mime_type: data.attachment?.mime_type,
+      size_bytes: data.attachment?.size_bytes,
+    });
+    ws.broadcastTyping(conversationId, false);
+  };
+
+  return (
+    <div className="flex flex-col h-[500px]">
+      {/* Messages list */}
+      <div ref={scrollRef} className="flex-1 overflow-y-auto pr-2 space-y-4 mb-4">
+        {chatMessages.length === 0 ? (
+          <div className="text-center py-20 text-muted-foreground/60 text-sm border border-dashed border-border rounded-xl">
+            Welcome to the Paper Chat Room! Send a message to start collaborating.
+          </div>
+        ) : (
+          chatMessages.map((msg) => {
+            const sender = ws.members.find((m) => m.id === msg.sender_id) || {
+              name: "Researcher",
+              initials: "R",
+              color: "#6b7280",
+              role: "Member",
+            };
+            const isOwn = ws.currentUser && ws.currentUser.id === msg.sender_id;
+            return (
+              <div key={msg.id} className={`flex items-start gap-2.5 ${isOwn ? "flex-row-reverse" : ""}`}>
+                <div
+                  className="h-8 w-8 rounded-full flex items-center justify-center font-bold text-xs uppercase border shrink-0 shadow-sm"
+                  style={{
+                    backgroundColor: `${sender.color}15`,
+                    color: sender.color,
+                    borderColor: `${sender.color}35`,
+                  }}
+                >
+                  {sender.initials}
+                </div>
+                <div className={`flex flex-col max-w-[70%] ${isOwn ? "items-end" : ""}`}>
+                  <div className="flex items-center gap-1.5 mb-1 text-xs text-muted-foreground">
+                    <span className="font-semibold text-foreground">{sender.name}</span>
+                    <span>•</span>
+                    <span>{new Date(msg.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
+                  </div>
+                  <div className={`p-3 rounded-2xl text-sm ${
+                    isOwn ? "bg-brand text-brand-foreground rounded-tr-none" : "bg-secondary text-foreground rounded-tl-none"
+                  }`}>
+                    {msg.content && <p className="whitespace-pre-wrap">{msg.content}</p>}
+                    {msg.url && (
+                      <div className="mt-2 pt-2 border-t border-current/20">
+                        {msg.message_type === "image" ? (
+                          <img src={msg.url} alt="Shared" className="rounded-lg max-h-40 object-cover" />
+                        ) : msg.message_type === "voice" ? (
+                          <div className="flex items-center gap-2">
+                            <PlayAudioButton url={msg.url} />
+                            <span className="text-xs opacity-80">Voice Note</span>
+                          </div>
+                        ) : (
+                          <a href={msg.url} download target="_blank" rel="noreferrer" className="flex items-center gap-1.5 underline text-xs font-semibold">
+                            <Download className="h-3.5 w-3.5" /> Download attachment
+                          </a>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
+          })
+        )}
+      </div>
+
+      {/* Typing indicator */}
+      {typingMembers.length > 0 && (
+        <p className="text-xs text-muted-foreground mb-1 italic">
+          {typingMembers.join(", ")} {typingMembers.length === 1 ? "is" : "are"} typing...
+        </p>
+      )}
+
+      {/* Input composer */}
+      <UniversalComposer
+        placeholder="Type a message to the team..."
+        onSend={handleSendMessage}
+        onTyping={(isTyping) => ws.broadcastTyping(conversationId, isTyping)}
+      />
+    </div>
+  );
+}
+
+function PlayAudioButton({ url }: { url: string }) {
+  const [playing, setPlaying] = useState(false);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+
+  const toggle = () => {
+    if (!audioRef.current) {
+      audioRef.current = new Audio(url);
+      audioRef.current.onended = () => setPlaying(false);
+    }
+    if (playing) {
+      audioRef.current.pause();
+      setPlaying(playing => !playing);
+    } else {
+      audioRef.current.play();
+      setPlaying(playing => !playing);
+    }
+  };
+
+  return (
+    <button onClick={toggle} className="p-1 hover:bg-current/15 rounded text-current">
+      {playing ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+    </button>
   );
 }
 

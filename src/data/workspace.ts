@@ -155,6 +155,68 @@ export type CalEvent = {
   attendees: string[];
 };
 
+export type Comment = {
+  id: string;
+  user_id: string;
+  project_id?: string | undefined;
+  paper_id?: string | undefined;
+  task_id?: string | undefined;
+  note_id?: string | undefined;
+  file_id?: string | undefined;
+  shot_id?: string | undefined;
+  parent_comment_id?: string | undefined;
+  content: string;
+  url?: string | undefined;
+  storage_path?: string | undefined;
+  mime_type?: string | undefined;
+  size_bytes?: number | undefined;
+  created_at: string;
+  updated_at: string;
+};
+
+export type Conversation = {
+  id: string;
+  name?: string | undefined;
+  is_group: boolean;
+  paper_id?: string | undefined;
+  phase_id?: string | undefined;
+  created_at: string;
+};
+
+export type ConversationMember = {
+  conversation_id: string;
+  member_id: string;
+};
+
+export type MessageType = "text" | "voice" | "image" | "file" | "link" | "system";
+
+export type Message = {
+  id: string;
+  conversation_id: string;
+  sender_id: string;
+  message_type: MessageType;
+  content: string;
+  reply_to_message_id?: string | undefined;
+  url?: string | undefined;
+  storage_path?: string | undefined;
+  mime_type?: string | undefined;
+  size_bytes?: number | undefined;
+  created_at: string;
+  updated_at: string;
+  deleted_at?: string | undefined;
+};
+
+export type DbNotification = {
+  id: string;
+  user_id: string;
+  type: string;
+  title: string;
+  description: string;
+  is_read: boolean;
+  link?: string | undefined;
+  created_at: string;
+};
+
 export type Phase = {
   id: string;
   index: number;

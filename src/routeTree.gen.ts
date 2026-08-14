@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ActivityRouteImport } from './routes/activity'
 import { Route as CalendarRouteImport } from './routes/calendar'
+import { Route as ChatRouteImport } from './routes/chat'
 import { Route as FilesRouteImport } from './routes/files'
 import { Route as LinksRouteImport } from './routes/links'
 import { Route as MediaRouteImport } from './routes/media'
@@ -39,6 +40,11 @@ const ActivityRoute = ActivityRouteImport.update({
 const CalendarRoute = CalendarRouteImport.update({
   id: '/calendar',
   path: '/calendar',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ChatRoute = ChatRouteImport.update({
+  id: '/chat',
+  path: '/chat',
   getParentRoute: () => rootRouteImport,
 } as any)
 const FilesRoute = FilesRouteImport.update({
@@ -111,6 +117,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/activity': typeof ActivityRoute
   '/calendar': typeof CalendarRoute
+  '/chat': typeof ChatRoute
   '/files': typeof FilesRoute
   '/links': typeof LinksRoute
   '/media': typeof MediaRoute
@@ -129,6 +136,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/activity': typeof ActivityRoute
   '/calendar': typeof CalendarRoute
+  '/chat': typeof ChatRoute
   '/files': typeof FilesRoute
   '/links': typeof LinksRoute
   '/media': typeof MediaRoute
@@ -148,6 +156,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/activity': typeof ActivityRoute
   '/calendar': typeof CalendarRoute
+  '/chat': typeof ChatRoute
   '/files': typeof FilesRoute
   '/links': typeof LinksRoute
   '/media': typeof MediaRoute
@@ -168,6 +177,7 @@ export interface FileRouteTypes {
     | '/'
     | '/activity'
     | '/calendar'
+    | '/chat'
     | '/files'
     | '/links'
     | '/media'
@@ -186,6 +196,7 @@ export interface FileRouteTypes {
     | '/'
     | '/activity'
     | '/calendar'
+    | '/chat'
     | '/files'
     | '/links'
     | '/media'
@@ -204,6 +215,7 @@ export interface FileRouteTypes {
     | '/'
     | '/activity'
     | '/calendar'
+    | '/chat'
     | '/files'
     | '/links'
     | '/media'
@@ -223,6 +235,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ActivityRoute: typeof ActivityRoute
   CalendarRoute: typeof CalendarRoute
+  ChatRoute: typeof ChatRoute
   FilesRoute: typeof FilesRoute
   LinksRoute: typeof LinksRoute
   MediaRoute: typeof MediaRoute
@@ -259,6 +272,13 @@ declare module '@tanstack/react-router' {
       path: '/calendar'
       fullPath: '/calendar'
       preLoaderRoute: typeof CalendarRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/chat': {
+      id: '/chat'
+      path: '/chat'
+      fullPath: '/chat'
+      preLoaderRoute: typeof ChatRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/files': {
@@ -359,6 +379,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ActivityRoute: ActivityRoute,
   CalendarRoute: CalendarRoute,
+  ChatRoute: ChatRoute,
   FilesRoute: FilesRoute,
   LinksRoute: LinksRoute,
   MediaRoute: MediaRoute,

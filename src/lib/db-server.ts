@@ -18,6 +18,11 @@ import type {
   VoiceNote,
   Member,
   Phase,
+  Comment,
+  Conversation,
+  ConversationMember,
+  Message,
+  DbNotification,
 } from "@/data/workspace";
 
 function cleanOptional<T extends object>(obj: T): any {
@@ -59,6 +64,11 @@ export const getWorkspaceDataServer = createServerFn({ method: "GET" })
         events: seed.events,
         activity: seed.activity,
         phases: seed.phases,
+        comments: [],
+        conversations: [],
+        conversationMembers: [],
+        messages: [],
+        notifications: [],
       };
     }
 
@@ -76,6 +86,11 @@ export const getWorkspaceDataServer = createServerFn({ method: "GET" })
         eventsRes,
         activityRes,
         phasesRes,
+        commentsRes,
+        conversationsRes,
+        conversationMembersRes,
+        messagesRes,
+        notificationsRes,
       ] = await Promise.all([
         supabase.from("members").select("*"),
         supabase.from("papers").select("*").order("created_at", { ascending: false }),
@@ -89,6 +104,11 @@ export const getWorkspaceDataServer = createServerFn({ method: "GET" })
         supabase.from("events").select("*").order("date", { ascending: true }),
         supabase.from("recent_activity").select("*"),
         supabase.from("phases").select("*").order("index", { ascending: true }),
+        supabase.from("comments").select("*").order("created_at", { ascending: true }),
+        supabase.from("conversations").select("*").order("created_at", { ascending: false }),
+        supabase.from("conversation_members").select("*"),
+        supabase.from("messages").select("*").order("created_at", { ascending: true }),
+        supabase.from("notifications").select("*").order("created_at", { ascending: false }),
       ]);
 
       if (
@@ -103,7 +123,12 @@ export const getWorkspaceDataServer = createServerFn({ method: "GET" })
         meetingsRes.error ||
         eventsRes.error ||
         activityRes.error ||
-        phasesRes.error
+        phasesRes.error ||
+        commentsRes.error ||
+        conversationsRes.error ||
+        conversationMembersRes.error ||
+        messagesRes.error ||
+        notificationsRes.error
       ) {
         console.error("Error fetching from Supabase, falling back to static seed data.");
         throw new Error("Supabase response error");
@@ -121,6 +146,11 @@ export const getWorkspaceDataServer = createServerFn({ method: "GET" })
       const events = eventsRes.data || [];
       const activity = activityRes.data || [];
       const phases = phasesRes.data || [];
+      const comments = commentsRes.data || [];
+      const conversations = conversationsRes.data || [];
+      const conversationMembers = conversationMembersRes.data || [];
+      const messages = messagesRes.data || [];
+      const notifications = notificationsRes.data || [];
 
       const formattedMembers: Member[] = members.map((m: any) => cleanOptional({
         ...m,
@@ -218,6 +248,11 @@ export const getWorkspaceDataServer = createServerFn({ method: "GET" })
         events: formattedEvents,
         activity: formattedActivity,
         phases: formattedPhases,
+        comments: comments as Comment[],
+        conversations: conversations as Conversation[],
+        conversationMembers: conversationMembers as ConversationMember[],
+        messages: messages as Message[],
+        notifications: notifications as DbNotification[],
       };
     } catch (e) {
       console.error("Supabase failed, returning static mock data:", e);
@@ -675,6 +710,148 @@ export const removePhaseServer = createServerFn({ method: "POST" })
       if (error) throw error;
     } catch (e) {
       console.error("Supabase removePhase error:", e);
+    }
+  });
+
+export const addCommentServer = createServerFn({ method: "POST" })
+  .validator((c: any) => c)
+  .handler(async ({ data }) => {
+    if (!hasSupabaseKeys) return data;
+    try {
+      const { data: res, error } = await supabase.from("comments").insert([data]).select();
+      if (error) throw error;
+      return res?.[0] || data;
+    } catch (e) {
+      console.error("Supabase addComment error:", e);
+      return data;
+    }
+  });
+
+export const updateCommentServer = createServerFn({ method: "POST" })
+  .validator((d: { id: string; patch: any }) => d)
+  .handler(async ({ data }) => {
+    if (!hasSupabaseKeys) return;
+    try {
+      const { error } = await supabase.from("comments").update(data.patch).eq("id", data.id);
+      if (error) throw error;
+    } catch (e) {
+      console.error("Supabase updateComment error:", e);
+    }
+  });
+
+export const removeCommentServer = createServerFn({ method: "POST" })
+  .validator((id: string) => id)
+  .handler(async ({ data: id }) => {
+    if (!hasSupabaseKeys) return;
+    try {
+      const { error } = await supabase.from("comments").delete().eq("id", id);
+      if (error) throw error;
+    } catch (e) {
+      console.error("Supabase removeComment error:", e);
+    }
+  });
+
+export const addConversationServer = createServerFn({ method: "POST" })
+  .validator((c: any) => c)
+  .handler(async ({ data }) => {
+    if (!hasSupabaseKeys) return data;
+    try {
+      const { data: res, error } = await supabase.from("conversations").insert([data]).select();
+      if (error) throw error;
+      return res?.[0] || data;
+    } catch (e) {
+      console.error("Supabase addConversation error:", e);
+      return data;
+    }
+  });
+
+export const addConversationMembersServer = createServerFn({ method: "POST" })
+  .validator((m: any[]) => m)
+  .handler(async ({ data }) => {
+    if (!hasSupabaseKeys) return data;
+    try {
+      const { data: res, error } = await supabase.from("conversation_members").insert(data).select();
+      if (error) throw error;
+      return res || data;
+    } catch (e) {
+      console.error("Supabase addConversationMembers error:", e);
+      return data;
+    }
+  });
+
+export const addMessageServer = createServerFn({ method: "POST" })
+  .validator((m: any) => m)
+  .handler(async ({ data }) => {
+    if (!hasSupabaseKeys) return data;
+    try {
+      const { data: res, error } = await supabase.from("messages").insert([data]).select();
+      if (error) throw error;
+      return res?.[0] || data;
+    } catch (e) {
+      console.error("Supabase addMessage error:", e);
+      return data;
+    }
+  });
+
+export const updateMessageServer = createServerFn({ method: "POST" })
+  .validator((d: { id: string; patch: any }) => d)
+  .handler(async ({ data }) => {
+    if (!hasSupabaseKeys) return;
+    try {
+      const { error } = await supabase.from("messages").update(data.patch).eq("id", data.id);
+      if (error) throw error;
+    } catch (e) {
+      console.error("Supabase updateMessage error:", e);
+    }
+  });
+
+export const removeMessageServer = createServerFn({ method: "POST" })
+  .validator((id: string) => id)
+  .handler(async ({ data: id }) => {
+    if (!hasSupabaseKeys) return;
+    try {
+      const { error } = await supabase.from("messages").update({ deleted_at: new Date().toISOString() }).eq("id", id);
+      if (error) throw error;
+    } catch (e) {
+      console.error("Supabase removeMessage error:", e);
+    }
+  });
+
+export const addNotificationServer = createServerFn({ method: "POST" })
+  .validator((n: any) => n)
+  .handler(async ({ data }) => {
+    if (!hasSupabaseKeys) return data;
+    try {
+      const { data: res, error } = await supabase.from("notifications").insert([data]).select();
+      if (error) throw error;
+      return res?.[0] || data;
+    } catch (e) {
+      console.error("Supabase addNotification error:", e);
+      return data;
+    }
+  });
+
+export const markNotificationReadServer = createServerFn({ method: "POST" })
+  .validator((d: { id: string; is_read: boolean }) => d)
+  .handler(async ({ data }) => {
+    if (!hasSupabaseKeys) return;
+    try {
+      const { error } = await supabase.from("notifications").update({ is_read: data.is_read }).eq("id", data.id);
+      if (error) throw error;
+    } catch (e) {
+      console.error("Supabase markNotificationRead error:", e);
+    }
+  });
+
+export const clearNotificationsServer = createServerFn({ method: "POST" })
+  .validator((userId: string) => userId)
+  .handler(async ({ data: userId }) => {
+    if (!hasSupabaseKeys) return;
+    try {
+      const { error } = await supabase.from("notifications").delete().eq("user_id", userId);
+      if (error) throw error;
+    } catch (e) {
+      console.error("Supabase clearNotifications error:", e);
     }
   });
 
