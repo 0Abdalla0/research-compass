@@ -218,6 +218,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
   const [currentUser, setCurrentUser] = useState<(typeof seed.members)[number] | null>(null);
   const [project, setProject] = useState<typeof seed.project>(seed.project);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+  const [rawNotifications, setRawNotifications] = useState<DbNotification[]>([]);
   const [preferences, setPreferences] = useState<Preferences>({
     onlyLeadersDelete: false,
     membersInvite: true,
@@ -325,18 +326,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
         setConversationMembers(data.conversationMembers || []);
         setMessages(data.messages || []);
         
-        // Map database-backed notifications to the UI's NotificationItem format
-        if (data.notifications) {
-          const mapped = data.notifications.map((n: DbNotification) => ({
-            id: n.id,
-            title: n.title,
-            body: n.description,
-            time: formatTimeAgo(n.created_at),
-            unread: !n.is_read,
-            link: n.link,
-          }));
-          setNotifications(mapped);
-        }
+        setRawNotifications(data.notifications || []);
       })
       .catch((err) => console.error("Error loading initial DB workspace data:", err));
   }, []);
@@ -344,6 +334,25 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     document.documentElement.classList.toggle("dark", theme === "dark");
   }, [theme]);
+
+  // Derived user-specific unread notifications list
+  useEffect(() => {
+    if (currentUser) {
+      const filtered = rawNotifications
+        .filter((n) => n.user_id === currentUser.id && !n.is_read)
+        .map((n) => ({
+          id: n.id,
+          title: n.title,
+          body: n.description,
+          time: formatTimeAgo(n.created_at),
+          unread: true,
+          link: n.link,
+        }));
+      setNotifications(filtered);
+    } else {
+      setNotifications([]);
+    }
+  }, [currentUser, rawNotifications]);
 
   // Broadcast typing status
   const broadcastTyping = (conversationId: string, isTyping: boolean) => {
@@ -425,32 +434,16 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
         { event: "*", schema: "public", table: "notifications" },
         (payload: any) => {
           if (payload.eventType === "INSERT") {
-            const n = payload.new as DbNotification;
-            if (n.user_id === (currentUser?.id || "m1")) {
-              setNotifications((prev) => {
-                if (prev.some((x) => x.id === n.id)) return prev;
-                return [
-                  {
-                    id: n.id,
-                    title: n.title,
-                    body: n.description,
-                    time: "just now",
-                    unread: !n.is_read,
-                    link: n.link,
-                  },
-                  ...prev,
-                ];
-              });
-            }
+            setRawNotifications((prev) => {
+              if (prev.some((x) => x.id === payload.new.id)) return prev;
+              return [payload.new as DbNotification, ...prev];
+            });
           } else if (payload.eventType === "UPDATE") {
-            const n = payload.new as DbNotification;
-            if (n.user_id === (currentUser?.id || "m1")) {
-              setNotifications((prev) =>
-                prev.map((x) => (x.id === n.id ? { ...x, unread: !n.is_read } : x))
-              );
-            }
+            setRawNotifications((prev) =>
+              prev.map((n) => (n.id === payload.new.id ? (payload.new as DbNotification) : n))
+            );
           } else if (payload.eventType === "DELETE") {
-            setNotifications([]);
+            setRawNotifications([]);
           }
         }
       )
@@ -532,26 +525,14 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
         created_at: new Date().toISOString(),
       };
 
-      if (userId === (currentUser?.id || "m1")) {
-        setNotifications((prev) => [
-          {
-            id: notifId,
-            title,
-            body: description,
-            time: "just now",
-            unread: true,
-            link: link || undefined,
-          },
-          ...prev,
-        ]);
-      }
+      setRawNotifications((prev) => [newDbNotif, ...prev]);
       try {
         await addNotificationServer({ data: newDbNotif });
       } catch (err) {
         console.error("Failed to add notification:", err);
       }
     },
-    [currentUser]
+    []
   );
 
   const today = () => new Date().toISOString().slice(0, 10);
@@ -934,6 +915,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       notifications,
       clearNotifications: () => {
         setNotifications([]);
+        setRawNotifications([]);
         if (currentUser) {
           clearNotificationsServer({ data: currentUser.id }).catch((err) =>
             console.error("Error clearing DB notifications:", err)
@@ -942,7 +924,8 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
         log("cleared all", "notifications", "comment");
       },
       markNotificationRead: (notifId) => {
-        setNotifications((prev) => prev.map((n) => (n.id === notifId ? { ...n, unread: false } : n)));
+        setNotifications((prev) => prev.filter((n) => n.id !== notifId));
+        setRawNotifications((prev) => prev.filter((n) => n.id !== notifId));
         markNotificationReadServer({ data: { id: notifId, is_read: true } }).catch((err) =>
           console.error("Error marking notification read in DB:", err)
         );
