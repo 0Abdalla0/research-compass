@@ -9,6 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { toast } from "sonner";
+import { ThreadView } from "@/components/thread-view";
 
 export const Route = createFileRoute("/chat")({
   head: () => ({
@@ -27,7 +28,10 @@ export default function ChatPage() {
   const ws = useWorkspace();
   const searchParams = Route.useSearch() as { conv?: string; msg?: string };
   const [activeConvId, setActiveConvId] = useState<string | null>(null);
+  const [activePaperId, setActivePaperId] = useState<string | null>(null);
   const [highlightedMsgId, setHighlightedMsgId] = useState<string | null>(null);
+  
+  const activePaper = ws.papers.find((p) => p.id === activePaperId);
   
   // Search state
   const [searchQuery, setSearchQuery] = useState("");
@@ -40,7 +44,8 @@ export default function ChatPage() {
   useEffect(() => {
     if (searchParams.conv) {
       setActiveConvId(searchParams.conv);
-    } else if (ws.conversations.length > 0 && !activeConvId) {
+      setActivePaperId(null);
+    } else if (ws.conversations.length > 0 && !activeConvId && !activePaperId) {
       setActiveConvId(ws.conversations[0]?.id || null);
     }
   }, [searchParams.conv, ws.conversations]);
@@ -144,8 +149,8 @@ export default function ChatPage() {
   const channels = ws.conversations.filter(
     (c) => c.is_group && !c.paper_id && !c.phase_id && c.name?.toLowerCase().includes(sidebarSearch.toLowerCase())
   );
-  const paperChats = ws.conversations.filter(
-    (c) => c.paper_id && c.name?.toLowerCase().includes(sidebarSearch.toLowerCase())
+  const paperChats = ws.papers.filter(
+    (p) => p.title.toLowerCase().includes(sidebarSearch.toLowerCase())
   );
   const directMessages = ws.conversations.filter((c) => {
     if (c.is_group) return false;
@@ -197,7 +202,10 @@ export default function ChatPage() {
                     return (
                       <button
                         key={member.id}
-                        onClick={() => handleStartDM(member.id)}
+                        onClick={() => {
+                          handleStartDM(member.id);
+                          setActivePaperId(null);
+                        }}
                         className={`w-full text-left px-2 py-1.5 rounded-xl text-xs flex items-center justify-between transition-colors ${
                           isActive ? "bg-brand text-brand-foreground font-semibold" : "hover:bg-secondary"
                         }`}
@@ -228,7 +236,10 @@ export default function ChatPage() {
                 {channels.map((c) => (
                   <button
                     key={c.id}
-                    onClick={() => setActiveConvId(c.id)}
+                    onClick={() => {
+                      setActiveConvId(c.id);
+                      setActivePaperId(null);
+                    }}
                     className={`w-full text-left px-3 py-2 rounded-xl text-xs flex items-center gap-2 transition-colors ${
                       c.id === activeConvId ? "bg-brand text-brand-foreground font-semibold" : "hover:bg-secondary"
                     }`}
@@ -244,16 +255,19 @@ export default function ChatPage() {
             <div>
               <p className="px-2 mb-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground/80">Paper Chats</p>
               <div className="space-y-0.5">
-                {paperChats.map((c) => (
+                {paperChats.map((p) => (
                   <button
-                    key={c.id}
-                    onClick={() => setActiveConvId(c.id)}
+                    key={p.id}
+                    onClick={() => {
+                      setActivePaperId(p.id);
+                      setActiveConvId(null);
+                    }}
                     className={`w-full text-left px-3 py-2 rounded-xl text-xs flex items-center gap-2 transition-colors ${
-                      c.id === activeConvId ? "bg-brand text-brand-foreground font-semibold" : "hover:bg-secondary"
+                      p.id === activePaperId ? "bg-brand text-brand-foreground font-semibold" : "hover:bg-secondary"
                     }`}
                   >
                     <BookOpen className="h-4 w-4 shrink-0" />
-                    <span className="truncate">{c.name}</span>
+                    <span className="truncate">{p.title}</span>
                   </button>
                 ))}
               </div>
@@ -262,7 +276,7 @@ export default function ChatPage() {
         </Panel>
 
         {/* Right Active Chat View */}
-        {!activeConvId ? (
+        {!activeConvId && !activePaperId ? (
           <Panel className="flex-1 flex flex-col items-center justify-center text-center p-8 bg-card/65 backdrop-blur-md border-border/80 min-h-0">
             <MessageSquare className="h-16 w-16 text-brand mb-4 opacity-75 animate-bounce" />
             <h2 className="text-xl font-bold font-display">SehatMasr Communication Center</h2>
@@ -276,14 +290,17 @@ export default function ChatPage() {
             <div className="flex items-center justify-between border-b border-border/40 pb-3 mb-4">
               <div>
                 <h2 className="font-display font-semibold text-base leading-none">
-                  {activeConv?.name || (() => {
-                    const cm = ws.conversationMembers.filter((x) => x.conversation_id === activeConvId);
-                    const otherId = cm.find((x) => x.member_id !== ws.currentUser?.id)?.member_id;
-                    const other = ws.members.find((m) => m.id === otherId);
-                    return other ? `Direct Message with ${other.name}` : "Chat Workspace";
-                  })()}
+                  {activePaper
+                    ? `Discussion on: ${activePaper.title}`
+                    : activeConv?.name || (() => {
+                        const cm = ws.conversationMembers.filter((x) => x.conversation_id === activeConvId);
+                        const otherId = cm.find((x) => x.member_id !== ws.currentUser?.id)?.member_id;
+                        const other = ws.members.find((m) => m.id === otherId);
+                        return other ? `Direct Message with ${other.name}` : "Chat Workspace";
+                      })()
+                  }
                 </h2>
-                {activeConv?.paper_id && (
+                {(activeConv?.paper_id || activePaperId) && (
                   <p className="text-[10px] text-muted-foreground mt-1">
                     Discussion tied directly to Research Paper
                   </p>
@@ -291,31 +308,33 @@ export default function ChatPage() {
               </div>
 
               {/* Msg search block */}
-              <div className="flex items-center gap-1.5">
-                <div className="relative">
-                  <Search className="absolute left-2.5 top-2 h-3.5 w-3.5 text-muted-foreground/60" />
-                  <Input
-                    value={searchQuery}
-                    onChange={(e) => {
-                      setSearchQuery(e.target.value);
-                      setShowSearchResults(e.target.value.length > 0);
-                    }}
-                    placeholder="Search in messages..."
-                    className="h-8 pl-8 text-xs w-48"
-                  />
-                  {searchQuery && (
-                    <button
-                      onClick={() => {
-                        setSearchQuery("");
-                        setShowSearchResults(false);
+              {!activePaperId && (
+                <div className="flex items-center gap-1.5">
+                  <div className="relative">
+                    <Search className="absolute left-2.5 top-2 h-3.5 w-3.5 text-muted-foreground/60" />
+                    <Input
+                      value={searchQuery}
+                      onChange={(e) => {
+                        setSearchQuery(e.target.value);
+                        setShowSearchResults(e.target.value.length > 0);
                       }}
-                      className="absolute right-2 top-2 text-muted-foreground hover:text-foreground"
-                    >
-                      <X className="h-3 w-3" />
-                    </button>
-                  )}
+                      placeholder="Search in messages..."
+                      className="h-8 pl-8 text-xs w-48"
+                    />
+                    {searchQuery && (
+                      <button
+                        onClick={() => {
+                          setSearchQuery("");
+                          setShowSearchResults(false);
+                        }}
+                        className="absolute right-2 top-2 text-muted-foreground hover:text-foreground"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    )}
+                  </div>
                 </div>
-              </div>
+              )}
             </div>
 
             {/* Search Results overlay pane */}
@@ -361,89 +380,97 @@ export default function ChatPage() {
               </div>
             ) : null}
 
-            {/* Chat Messages Log */}
-            <div ref={scrollRef} className="flex-1 overflow-y-auto space-y-4 mb-4 pr-1">
-              {activeMessages.length === 0 ? (
-                <div className="flex flex-col items-center justify-center h-full text-center p-8 text-muted-foreground/60">
-                  <MessageSquare className="h-10 w-10 mb-2 opacity-50 text-brand" />
-                  <p className="text-sm font-semibold">No messages in this chat yet</p>
-                  <p className="text-xs">Send a text, file, or voice message below to start collaborating!</p>
-                </div>
-              ) : (
-                activeMessages.map((msg) => {
-                  const sender = ws.members.find((m) => m.id === msg.sender_id) || {
-                    name: "Researcher",
-                    initials: "R",
-                    color: "#6b7280",
-                    role: "Member",
-                  };
-                  const isOwn = ws.currentUser && ws.currentUser.id === msg.sender_id;
-                  const isHighlighted = msg.id === highlightedMsgId;
-                  return (
-                    <div
-                      key={msg.id}
-                      id={`msg-${msg.id}`}
-                      className={`flex items-start gap-2.5 ${isOwn ? "flex-row-reverse" : ""} transition-all duration-500 ${
-                        isHighlighted ? "bg-amber-500/15 dark:bg-amber-500/25 border-l-4 border-amber-500 p-2 rounded-xl" : ""
-                      }`}
-                    >
-                      <div
-                        className="h-8 w-8 rounded-full flex items-center justify-center font-bold text-xs uppercase border shrink-0 shadow-sm"
-                        style={{
-                          backgroundColor: `${sender.color}15`,
-                          color: sender.color,
-                          borderColor: `${sender.color}35`,
-                        }}
-                      >
-                        {sender.initials}
-                      </div>
-                      <div className={`flex flex-col max-w-[70%] ${isOwn ? "items-end" : ""}`}>
-                        <div className="flex items-center gap-1.5 mb-1 text-xs text-muted-foreground">
-                          <span className="font-semibold text-foreground">{sender.name}</span>
-                          <span>•</span>
-                          <span>{new Date(msg.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
-                        </div>
-                        <div className={`p-3 rounded-2xl text-sm ${
-                          isOwn ? "bg-brand text-brand-foreground rounded-tr-none" : "bg-secondary text-foreground rounded-tl-none"
-                        }`}>
-                          {msg.content && <p className="whitespace-pre-wrap">{msg.content}</p>}
-                          {msg.url && (
-                            <div className="mt-2 pt-2 border-t border-current/20">
-                              {msg.message_type === "image" ? (
-                                <img src={msg.url} alt="Shared Image" className="rounded-lg max-h-48 object-cover" />
-                              ) : msg.message_type === "voice" ? (
-                                <div className="flex items-center gap-2">
-                                  <PlayAudioButton url={msg.url} />
-                                  <span className="text-xs opacity-80">Voice Note</span>
+            {activePaperId ? (
+              <div className="flex-1 overflow-y-auto min-h-0 bg-secondary/5 border border-border/40 rounded-2xl p-4">
+                <ThreadView entityType="paper" entityId={activePaperId} />
+              </div>
+            ) : (
+              <>
+                {/* Chat Messages Log */}
+                <div ref={scrollRef} className="flex-1 overflow-y-auto space-y-4 mb-4 pr-1">
+                  {activeMessages.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center h-full text-center p-8 text-muted-foreground/60">
+                      <MessageSquare className="h-10 w-10 mb-2 opacity-50 text-brand" />
+                      <p className="text-sm font-semibold">No messages in this chat yet</p>
+                      <p className="text-xs">Send a text, file, or voice message below to start collaborating!</p>
+                    </div>
+                  ) : (
+                    activeMessages.map((msg) => {
+                      const sender = ws.members.find((m) => m.id === msg.sender_id) || {
+                        name: "Researcher",
+                        initials: "R",
+                        color: "#6b7280",
+                        role: "Member",
+                      };
+                      const isOwn = ws.currentUser && ws.currentUser.id === msg.sender_id;
+                      const isHighlighted = msg.id === highlightedMsgId;
+                      return (
+                        <div
+                          key={msg.id}
+                          id={`msg-${msg.id}`}
+                          className={`flex items-start gap-2.5 ${isOwn ? "flex-row-reverse" : ""} transition-all duration-500 ${
+                            isHighlighted ? "bg-amber-500/15 dark:bg-amber-500/25 border-l-4 border-amber-500 p-2 rounded-xl" : ""
+                          }`}
+                        >
+                          <div
+                            className="h-8 w-8 rounded-full flex items-center justify-center font-bold text-xs uppercase border shrink-0 shadow-sm"
+                            style={{
+                              backgroundColor: `${sender.color}15`,
+                              color: sender.color,
+                              borderColor: `${sender.color}35`,
+                            }}
+                          >
+                            {sender.initials}
+                          </div>
+                          <div className={`flex flex-col max-w-[70%] ${isOwn ? "items-end" : ""}`}>
+                            <div className="flex items-center gap-1.5 mb-1 text-xs text-muted-foreground">
+                              <span className="font-semibold text-foreground">{sender.name}</span>
+                              <span>•</span>
+                              <span>{new Date(msg.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
+                            </div>
+                            <div className={`p-3 rounded-2xl text-sm ${
+                              isOwn ? "bg-brand text-brand-foreground rounded-tr-none" : "bg-secondary text-foreground rounded-tl-none"
+                            }`}>
+                              {msg.content && <p className="whitespace-pre-wrap">{msg.content}</p>}
+                              {msg.url && (
+                                <div className="mt-2 pt-2 border-t border-current/20">
+                                  {msg.message_type === "image" ? (
+                                    <img src={msg.url} alt="Shared Image" className="rounded-lg max-h-48 object-cover" />
+                                  ) : msg.message_type === "voice" ? (
+                                    <div className="flex items-center gap-2">
+                                      <PlayAudioButton url={msg.url} />
+                                      <span className="text-xs opacity-80">Voice Note</span>
+                                    </div>
+                                  ) : (
+                                    <a href={msg.url} download target="_blank" rel="noreferrer" className="flex items-center gap-1.5 underline text-xs font-semibold">
+                                      <Download className="h-3.5 w-3.5" /> Download attachment
+                                    </a>
+                                  )}
                                 </div>
-                              ) : (
-                                <a href={msg.url} download target="_blank" rel="noreferrer" className="flex items-center gap-1.5 underline text-xs font-semibold">
-                                  <Download className="h-3.5 w-3.5" /> Download attachment
-                                </a>
                               )}
                             </div>
-                          )}
+                          </div>
                         </div>
-                      </div>
-                    </div>
-                  );
-                })
-              )}
-            </div>
+                      );
+                    })
+                  )}
+                </div>
 
-            {/* Typing Indicator */}
-            {typingMembers.length > 0 && (
-              <p className="text-xs text-muted-foreground mb-1 italic">
-                {typingMembers.join(", ")} {typingMembers.length === 1 ? "is" : "are"} typing...
-              </p>
+                {/* Typing Indicator */}
+                {typingMembers.length > 0 && (
+                  <p className="text-xs text-muted-foreground mb-1 italic">
+                    {typingMembers.join(", ")} {typingMembers.length === 1 ? "is" : "are"} typing...
+                  </p>
+                )}
+
+                {/* Input composer */}
+                <UniversalComposer
+                  placeholder="Type a message to the team..."
+                  onSend={handleSendMessage}
+                  onTyping={(isTyping) => ws.broadcastTyping(activeConvId, isTyping)}
+                />
+              </>
             )}
-
-            {/* Input composer */}
-            <UniversalComposer
-              placeholder="Type a message to the team..."
-              onSend={handleSendMessage}
-              onTyping={(isTyping) => ws.broadcastTyping(activeConvId, isTyping)}
-            />
           </Panel>
         )}
       </div>
