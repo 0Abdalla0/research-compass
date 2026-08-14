@@ -80,6 +80,21 @@ function SettingsPage() {
                   <span className="min-w-0 flex-1 truncate text-sm font-medium">{m.name}</span>
                   <Tag>{m.role}</Tag>
                   <Button size="sm" variant="ghost" onClick={() => toast.info("Role management opens here")}>Manage</Button>
+                  {m.id !== ws.currentUser?.id && (
+                    <Button 
+                      size="sm" 
+                      variant="ghost" 
+                      className="text-destructive hover:bg-destructive/10 cursor-pointer"
+                      onClick={async () => {
+                        if (confirm(`Are you sure you want to remove ${m.name} from the workspace?`)) {
+                          await ws.deleteMember(m.id);
+                          toast.success(`${m.name} has been removed`);
+                        }
+                      }}
+                    >
+                      Remove
+                    </Button>
+                  )}
                 </li>
               ))
             ) : (

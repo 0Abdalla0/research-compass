@@ -238,69 +238,14 @@ export type Activity = {
 };
 
 export const project = {
-  name: "ResearchHub — MedOnto Lab",
+  name: "SehatMasr",
   topic: "Ontology-Driven Clinical NLP for Early Sepsis Risk Detection",
   institution: "Faculty of Computing · Graduation Research Group 07",
   phase: "Phase 3 · Dataset Collection",
   progress: 46,
 };
 
-export const members: Member[] = [
-  {
-    id: "m1",
-    name: "Ahmed Kamal",
-    initials: "AK",
-    role: "Team Leader",
-    email: "ahmed.kamal@uni.edu",
-    responsibilities: "Literature review coordination, research gap analysis, paper writing",
-    color: "#2563eb",
-  },
-  {
-    id: "m2",
-    name: "Abdalla Nasser",
-    initials: "AN",
-    role: "Developer",
-    email: "abdalla.nasser@uni.edu",
-    responsibilities: "System architecture, API layer, ontology reasoning service",
-    color: "#0891b2",
-  },
-  {
-    id: "m3",
-    name: "Maria Fahmy",
-    initials: "MF",
-    role: "Data Scientist",
-    email: "maria.fahmy@uni.edu",
-    responsibilities: "MIMIC-IV extraction, feature engineering, model benchmarking",
-    color: "#16a34a",
-  },
-  {
-    id: "m4",
-    name: "Jumana Saleh",
-    initials: "JS",
-    role: "Member",
-    email: "jumana.saleh@uni.edu",
-    responsibilities: "Clinical NLP survey, annotation guidelines, evaluation protocol",
-    color: "#9333ea",
-  },
-  {
-    id: "m5",
-    name: "Ziad Hosny",
-    initials: "ZH",
-    role: "Documentation",
-    email: "ziad.hosny@uni.edu",
-    responsibilities: "Thesis document, figures, presentation decks, meeting minutes",
-    color: "#ea580c",
-  },
-  {
-    id: "m6",
-    name: "Dr. Laila Mansour",
-    initials: "LM",
-    role: "Supervisor",
-    email: "l.mansour@uni.edu",
-    responsibilities: "Scientific supervision, methodology review, publication strategy",
-    color: "#e11d48",
-  },
-];
+export const members: Member[] = [];
 
 const emptyAnalysis = {};
 

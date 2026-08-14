@@ -29,13 +29,13 @@ import { Initials, Meter, Panel, StatusPill, Stack, Tag } from "@/components/ui-
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Research Workspace Dashboard — ResearchHub" },
+      { title: "Research Workspace Dashboard — SehatMasr" },
       {
         name: "description",
         content:
-          "Today's tasks, upcoming deadlines, research progress, recent papers and team activity for the MedOnto Lab research group.",
+          "Today's tasks, upcoming deadlines, research progress, recent papers and team activity for the SehatMasr research group.",
       },
-      { property: "og:title", content: "Research Workspace Dashboard — ResearchHub" },
+      { property: "og:title", content: "Research Workspace Dashboard — SehatMasr" },
       {
         property: "og:description",
         content: "Everything your research team needs, in one workspace.",

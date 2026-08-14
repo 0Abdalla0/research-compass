@@ -133,7 +133,7 @@ export function LoginScreen() {
     setCvMimeType("");
     setCvSizeBytes(undefined);
 
-    toast.success(`Account created! Welcome to MedOnto Lab, ${regName}!`);
+    toast.success(`Account created! Welcome to SehatMasr, ${regName}!`);
   };
 
   const handleQuickLoginClick = (member: Member) => {
@@ -168,13 +168,13 @@ export function LoginScreen() {
             className="mx-auto grid h-14 w-14 place-items-center rounded-2xl text-xl font-black text-white shadow-lg"
             style={{ background: "var(--gradient-brand)" }}
           >
-            R
+            S
           </div>
           <h2 className="font-display mt-4 text-3xl font-extrabold tracking-tight text-foreground">
-            ResearchHub
+            SehatMasr
           </h2>
           <p className="mt-1.5 text-sm text-muted-foreground max-w-sm mx-auto">
-            Everything your graduation or academic research team needs, in one collaborative workspace.
+            Everything your graduation research team needs, in one collaborative workspace.
           </p>
         </div>
 

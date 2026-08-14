@@ -136,6 +136,7 @@ type Ctx = {
     cv_mime_type?: string,
     cv_size_bytes?: number
   ) => void;
+  deleteMember: (memberId: string) => Promise<void>;
   addPaper: (p: Omit<Paper, "id" | "analysis" | "progress">) => void;
   updatePaper: (id: string, patch: Partial<Paper>) => void;
   setAnalysis: (paperId: string, section: string, value: string) => void;
@@ -306,9 +307,18 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     getWorkspaceDataServer()
       .then((data) => {
-        if (data.members && data.members.length > 0) {
-          setMembers(data.members);
+        const rawMembers = data.members || [];
+        const isFake = (m: any) => m.email.endsWith("@uni.edu") || !!m.id.match(/^m[1-6]$/);
+        const fakes = rawMembers.filter(isFake);
+        const reals = rawMembers.filter((m) => !isFake(m));
+
+        if (fakes.length > 0 && hasSupabaseKeys) {
+          Promise.all(fakes.map((fm) => supabase.from("members").delete().eq("id", fm.id)))
+            .then(() => console.info("Purged mock members from live database."))
+            .catch((err) => console.error("Error purging mock members:", err));
         }
+
+        setMembers(reals);
         setPapers(data.papers);
         setTasks(data.tasks);
         setNotes(data.notes);
@@ -621,6 +631,17 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
               console.error("Error inserting member to live Supabase DB:", err);
             }
           })();
+        }
+      },
+      deleteMember: async (memberId: string) => {
+        setMembers((prev) => prev.filter((m) => m.id !== memberId));
+        if (hasSupabaseKeys) {
+          try {
+            const { error } = await supabase.from("members").delete().eq("id", memberId);
+            if (error) throw error;
+          } catch (err) {
+            console.error("Error deleting member from live Supabase DB:", err);
+          }
         }
       },
       addPaper: (p) => {
@@ -1064,6 +1085,13 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
         try {
           await addMessageServer({ data: newMessage });
 
+          const conversation = conversations.find((c) => c.id === m.conversation_id);
+          const link = conversation?.paper_id
+            ? `/papers/${conversation.paper_id}`
+            : conversation?.task_id
+            ? `/tasks`
+            : `/chat?conv=${m.conversation_id}&msg=${newMessage.id}`;
+
           // 1. Process @mentions in chat text to trigger special mention notifications
           const mentionRegex = /@(\w+)/g;
           let match;
@@ -1082,7 +1110,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
                   "mention",
                   `Mentioned in chat by ${currentUser?.name || "Member"}`,
                   `${currentUser?.name || "Someone"} mentioned you in chat: "${m.content.slice(0, 50)}..."`,
-                  `/chat?conv=${m.conversation_id}&msg=${newMessage.id}`
+                  link
                 );
               }
             }
@@ -1100,7 +1128,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
                 "message",
                 `New message from ${currentUser?.name || "Member"}`,
                 m.message_type === "text" ? m.content : `Sent a ${m.message_type}`,
-                `/chat?conv=${m.conversation_id}&msg=${newMessage.id}`
+                link
               );
             }
           }

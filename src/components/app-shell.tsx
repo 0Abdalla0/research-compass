@@ -90,13 +90,13 @@ export function AppShell({ children }: { children: ReactNode }) {
           className="grid h-9 w-9 shrink-0 place-items-center rounded-xl text-sm font-black text-white"
           style={{ background: "var(--gradient-brand)" }}
         >
-          R
+          S
         </span>
         <span className="min-w-0">
           <span className="font-display block truncate text-[15px] font-bold leading-tight text-sidebar-foreground">
-            ResearchHub
+            SehatMasr
           </span>
-          <span className="block truncate text-[11px] text-sidebar-foreground/60">MedOnto Lab</span>
+          <span className="block truncate text-[11px] text-sidebar-foreground/60">Research Workspace</span>
         </span>
       </Link>
 

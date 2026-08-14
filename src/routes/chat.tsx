@@ -6,6 +6,8 @@ import { PageHeader, Panel, Initials } from "@/components/ui-bits";
 import { UniversalComposer } from "@/components/universal-composer";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/chat")({
@@ -79,9 +81,10 @@ export default function ChatPage() {
     .filter((mId) => typingList[mId] && mId !== ws.currentUser?.id)
     .map((mId) => ws.members.find((m) => m.id === mId)?.name || "Someone");
 
-  // Create general channel and project rooms if they don't exist yet
+  // Create general channel if it doesn't exist yet
+  const hasGeneralChannel = ws.conversations.some((c) => c.name === "General Research Team");
   useEffect(() => {
-    if (ws.currentUser && ws.members.length > 0 && ws.conversations.length === 0) {
+    if (ws.currentUser && ws.members.length > 0 && !hasGeneralChannel) {
       // Auto-create General Research Team conversation
       ws.addConversation(
         "General Research Team",
@@ -89,7 +92,7 @@ export default function ChatPage() {
         ws.members.map((m) => m.id)
       ).catch((err) => console.error(err));
     }
-  }, [ws.currentUser, ws.members, ws.conversations]);
+  }, [ws.currentUser, ws.members, hasGeneralChannel]);
 
   // Start new DM conversation
   const handleStartDM = async (memberId: string) => {
@@ -183,11 +186,20 @@ export default function ChatPage() {
                   .filter((m) => m.id !== ws.currentUser?.id)
                   .map((member) => {
                     const isOnline = !!ws.onlineMembers[member.id];
+                    const dmConv = ws.conversations.find((c) => {
+                      if (c.is_group) return false;
+                      const cMembers = ws.conversationMembers.filter((cm) => cm.conversation_id === c.id);
+                      return cMembers.some((cm) => cm.member_id === member.id) && 
+                             cMembers.some((cm) => cm.member_id === ws.currentUser?.id);
+                    });
+                    const isActive = dmConv && dmConv.id === activeConvId;
                     return (
                       <button
                         key={member.id}
                         onClick={() => handleStartDM(member.id)}
-                        className="w-full text-left px-2 py-1.5 rounded-xl text-xs hover:bg-secondary flex items-center justify-between transition-colors"
+                        className={`w-full text-left px-2 py-1.5 rounded-xl text-xs flex items-center justify-between transition-colors ${
+                          isActive ? "bg-brand text-brand-foreground font-semibold" : "hover:bg-secondary"
+                        }`}
                       >
                         <div className="flex items-center gap-2 min-w-0">
                           <div className="relative">
@@ -198,7 +210,7 @@ export default function ChatPage() {
                           </div>
                           <span className="font-medium truncate">{member.name}</span>
                         </div>
-                        <span className="text-[10px] text-muted-foreground opacity-75">{member.role}</span>
+                        <span className={`text-[10px] opacity-75 ${isActive ? "text-brand-foreground/80" : "text-muted-foreground"}`}>{member.role}</span>
                       </button>
                     );
                   })}
@@ -207,7 +219,10 @@ export default function ChatPage() {
 
             {/* Channels Section */}
             <div>
-              <p className="px-2 mb-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground/80">Channels</p>
+              <div className="flex items-center justify-between px-2 mb-2">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground/80">Channels</p>
+                <CreateChannelDialog />
+              </div>
               <div className="space-y-0.5">
                 {channels.map((c) => (
                   <button
@@ -246,187 +261,190 @@ export default function ChatPage() {
         </Panel>
 
         {/* Right Active Chat View */}
-        <Panel className="p-4 flex flex-col min-h-0 bg-card/65 backdrop-blur-md border-border/80 relative">
-          {/* Header & In-conversation Search Bar */}
-          <div className="flex items-center justify-between border-b border-border/40 pb-3 mb-4">
-            <div>
-              <h2 className="font-display font-semibold text-base leading-none">
-                {activeConv?.name || (() => {
-                  const cm = ws.conversationMembers.filter((x) => x.conversation_id === activeConvId);
-                  const otherId = cm.find((x) => x.member_id !== ws.currentUser?.id)?.member_id;
-                  const other = ws.members.find((m) => m.id === otherId);
-                  return other ? `Direct Message with ${other.name}` : "Chat Workspace";
-                })()}
-              </h2>
-              {activeConv?.paper_id && (
-                <p className="text-[10px] text-muted-foreground mt-1">
-                  Discussion tied directly to Research Paper
-                </p>
-              )}
+        {!activeConvId ? (
+          <Panel className="flex-1 flex flex-col items-center justify-center text-center p-8 bg-card/65 backdrop-blur-md border-border/80 min-h-0">
+            <MessageSquare className="h-16 w-16 text-brand mb-4 opacity-75 animate-bounce" />
+            <h2 className="text-xl font-bold font-display">SehatMasr Communication Center</h2>
+            <p className="text-sm text-muted-foreground max-w-md mt-2 leading-relaxed">
+              Select any direct message, channel, or research paper chat from the sidebar to start discussing ontology-driven clinical NLP in real-time.
+            </p>
+          </Panel>
+        ) : (
+          <Panel className="p-4 flex flex-col min-h-0 bg-card/65 backdrop-blur-md border-border/80 relative">
+            {/* Header & In-conversation Search Bar */}
+            <div className="flex items-center justify-between border-b border-border/40 pb-3 mb-4">
+              <div>
+                <h2 className="font-display font-semibold text-base leading-none">
+                  {activeConv?.name || (() => {
+                    const cm = ws.conversationMembers.filter((x) => x.conversation_id === activeConvId);
+                    const otherId = cm.find((x) => x.member_id !== ws.currentUser?.id)?.member_id;
+                    const other = ws.members.find((m) => m.id === otherId);
+                    return other ? `Direct Message with ${other.name}` : "Chat Workspace";
+                  })()}
+                </h2>
+                {activeConv?.paper_id && (
+                  <p className="text-[10px] text-muted-foreground mt-1">
+                    Discussion tied directly to Research Paper
+                  </p>
+                )}
+              </div>
+
+              {/* Msg search block */}
+              <div className="flex items-center gap-1.5">
+                <div className="relative">
+                  <Search className="absolute left-2.5 top-2 h-3.5 w-3.5 text-muted-foreground/60" />
+                  <Input
+                    value={searchQuery}
+                    onChange={(e) => {
+                      setSearchQuery(e.target.value);
+                      setShowSearchResults(e.target.value.length > 0);
+                    }}
+                    placeholder="Search in messages..."
+                    className="h-8 pl-8 text-xs w-48"
+                  />
+                  {searchQuery && (
+                    <button
+                      onClick={() => {
+                        setSearchQuery("");
+                        setShowSearchResults(false);
+                      }}
+                      className="absolute right-2 top-2 text-muted-foreground hover:text-foreground"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  )}
+                </div>
+              </div>
             </div>
 
-            {/* Msg search block */}
-            <div className="flex items-center gap-1.5">
-              <div className="relative">
-                <Search className="absolute left-2.5 top-2 h-3.5 w-3.5 text-muted-foreground/60" />
-                <Input
-                  value={searchQuery}
-                  onChange={(e) => {
-                    setSearchQuery(e.target.value);
-                    setShowSearchResults(e.target.value.length > 0);
-                  }}
-                  placeholder="Search in messages..."
-                  className="h-8 pl-8 text-xs w-48"
-                />
-                {searchQuery && (
+            {/* Search Results overlay pane */}
+            {showSearchResults ? (
+              <div className="absolute inset-x-4 top-16 bottom-4 bg-popover text-popover-foreground rounded-xl border border-border/80 shadow-2xl p-4 overflow-y-auto z-40 flex flex-col gap-3">
+                <div className="flex items-center justify-between border-b pb-2">
+                  <h3 className="font-semibold text-sm">Search Results ({allFilteredMessages.length})</h3>
                   <button
                     onClick={() => {
                       setSearchQuery("");
                       setShowSearchResults(false);
                     }}
-                    className="absolute right-2 top-2 text-muted-foreground hover:text-foreground"
+                    className="p-1 hover:bg-secondary rounded-lg"
                   >
-                    <X className="h-3 w-3" />
+                    <X className="h-4 w-4" />
                   </button>
-                )}
+                </div>
+                <div className="space-y-3">
+                  {allFilteredMessages.length === 0 ? (
+                    <div className="text-center py-10 text-muted-foreground text-sm">
+                      No matching messages found.
+                    </div>
+                  ) : (
+                    allFilteredMessages.map(({ msg, conv, sender }) => (
+                      <button
+                        key={msg.id}
+                        onClick={() => {
+                          setActiveConvId(msg.conversation_id);
+                          setShowSearchResults(false);
+                          setSearchQuery("");
+                        }}
+                        className="w-full text-left p-3 rounded-xl border hover:bg-muted flex flex-col gap-1 transition-colors"
+                      >
+                        <div className="flex items-center justify-between text-xs text-muted-foreground">
+                          <span className="font-semibold text-foreground">{sender?.name || "Researcher"}</span>
+                          <span>{conv?.name || "Private DM"}</span>
+                        </div>
+                        <p className="text-xs text-foreground/90 mt-1 line-clamp-2">{msg.content}</p>
+                      </button>
+                    ))
+                  )}
+                </div>
               </div>
-            </div>
-          </div>
+            ) : null}
 
-          {/* Search Results overlay pane */}
-          {showSearchResults ? (
-            <div className="absolute inset-x-4 top-16 bottom-4 bg-popover text-popover-foreground rounded-xl border border-border/80 shadow-2xl p-4 overflow-y-auto z-40 flex flex-col gap-3">
-              <div className="flex items-center justify-between border-b pb-2">
-                <h3 className="font-semibold text-sm">Search Results ({allFilteredMessages.length})</h3>
-                <button
-                  onClick={() => {
-                    setSearchQuery("");
-                    setShowSearchResults(false);
-                  }}
-                  className="p-1 hover:bg-secondary rounded-lg"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              </div>
-              <div className="space-y-3">
-                {allFilteredMessages.length === 0 ? (
-                  <div className="text-center py-10 text-muted-foreground text-sm">
-                    No matching messages found.
-                  </div>
-                ) : (
-                  allFilteredMessages.map(({ msg, conv, sender }) => (
-                    <button
-                      key={msg.id}
-                      onClick={() => {
-                        setActiveConvId(msg.conversation_id);
-                        setShowSearchResults(false);
-                        setSearchQuery("");
-                      }}
-                      className="w-full text-left p-3 rounded-xl border hover:bg-muted flex flex-col gap-1 transition-colors"
-                    >
-                      <div className="flex items-center justify-between text-xs text-muted-foreground">
-                        <span className="font-semibold text-foreground">{sender?.name || "Researcher"}</span>
-                        <span>{conv?.name || "Private DM"}</span>
-                      </div>
-                      <p className="text-xs text-foreground/90 mt-1 line-clamp-2">{msg.content}</p>
-                    </button>
-                  ))
-                )}
-              </div>
-            </div>
-          ) : null}
-
-          {/* Chat Messages Log */}
-          <div ref={scrollRef} className="flex-1 overflow-y-auto space-y-4 mb-4 pr-1">
-            {activeMessages.length === 0 ? (
-              <div className="flex flex-col items-center justify-center h-full text-center p-8 text-muted-foreground/60">
-                <MessageSquare className="h-10 w-10 mb-2 opacity-50 text-brand" />
-                <p className="text-sm font-semibold">No messages in this chat yet</p>
-                <p className="text-xs">Send a text, file, or voice message below to start collaborating!</p>
-              </div>
-            ) : (
-              activeMessages.map((msg) => {
-                const sender = ws.members.find((m) => m.id === msg.sender_id) || {
-                  name: "Researcher",
-                  initials: "R",
-                  color: "#6b7280",
-                  role: "Member",
-                };
-                const isOwn = ws.currentUser && ws.currentUser.id === msg.sender_id;
-                const isHighlighted = msg.id === highlightedMsgId;
-                return (
-                  <div
-                    key={msg.id}
-                    id={`msg-${msg.id}`}
-                    className={`flex items-start gap-2.5 ${isOwn ? "flex-row-reverse" : ""} transition-all duration-500 ${
-                      isHighlighted ? "bg-amber-500/15 dark:bg-amber-500/25 border-l-4 border-amber-500 p-2 rounded-xl" : ""
-                    }`}
-                  >
+            {/* Chat Messages Log */}
+            <div ref={scrollRef} className="flex-1 overflow-y-auto space-y-4 mb-4 pr-1">
+              {activeMessages.length === 0 ? (
+                <div className="flex flex-col items-center justify-center h-full text-center p-8 text-muted-foreground/60">
+                  <MessageSquare className="h-10 w-10 mb-2 opacity-50 text-brand" />
+                  <p className="text-sm font-semibold">No messages in this chat yet</p>
+                  <p className="text-xs">Send a text, file, or voice message below to start collaborating!</p>
+                </div>
+              ) : (
+                activeMessages.map((msg) => {
+                  const sender = ws.members.find((m) => m.id === msg.sender_id) || {
+                    name: "Researcher",
+                    initials: "R",
+                    color: "#6b7280",
+                    role: "Member",
+                  };
+                  const isOwn = ws.currentUser && ws.currentUser.id === msg.sender_id;
+                  const isHighlighted = msg.id === highlightedMsgId;
+                  return (
                     <div
-                      className="h-8 w-8 rounded-full flex items-center justify-center font-bold text-xs uppercase border shrink-0 shadow-sm"
-                      style={{
-                        backgroundColor: `${sender.color}15`,
-                        color: sender.color,
-                        borderColor: `${sender.color}35`,
-                      }}
+                      key={msg.id}
+                      id={`msg-${msg.id}`}
+                      className={`flex items-start gap-2.5 ${isOwn ? "flex-row-reverse" : ""} transition-all duration-500 ${
+                        isHighlighted ? "bg-amber-500/15 dark:bg-amber-500/25 border-l-4 border-amber-500 p-2 rounded-xl" : ""
+                      }`}
                     >
-                      {sender.initials}
-                    </div>
-                    <div className={`flex flex-col max-w-[70%] ${isOwn ? "items-end" : ""}`}>
-                      <div className="flex items-center gap-1.5 mb-1 text-xs text-muted-foreground">
-                        <span className="font-semibold text-foreground">{sender.name}</span>
-                        <span>•</span>
-                        <span>{new Date(msg.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
+                      <div
+                        className="h-8 w-8 rounded-full flex items-center justify-center font-bold text-xs uppercase border shrink-0 shadow-sm"
+                        style={{
+                          backgroundColor: `${sender.color}15`,
+                          color: sender.color,
+                          borderColor: `${sender.color}35`,
+                        }}
+                      >
+                        {sender.initials}
                       </div>
-                      <div className={`p-3 rounded-2xl text-sm ${
-                        isOwn ? "bg-brand text-brand-foreground rounded-tr-none" : "bg-secondary text-foreground rounded-tl-none"
-                      }`}>
-                        {msg.content && <p className="whitespace-pre-wrap">{msg.content}</p>}
-                        {msg.url && (
-                          <div className="mt-2 pt-2 border-t border-current/20">
-                            {msg.message_type === "image" ? (
-                              <img src={msg.url} alt="Shared Image" className="rounded-lg max-h-48 object-cover" />
-                            ) : msg.message_type === "voice" ? (
-                              <div className="flex items-center gap-2">
-                                <PlayAudioButton url={msg.url} />
-                                <span className="text-xs opacity-80">Voice Note</span>
-                              </div>
-                            ) : (
-                              <a href={msg.url} download target="_blank" rel="noreferrer" className="flex items-center gap-1.5 underline text-xs font-semibold">
-                                <Download className="h-3.5 w-3.5" /> Download attachment
-                              </a>
-                            )}
-                          </div>
-                        )}
+                      <div className={`flex flex-col max-w-[70%] ${isOwn ? "items-end" : ""}`}>
+                        <div className="flex items-center gap-1.5 mb-1 text-xs text-muted-foreground">
+                          <span className="font-semibold text-foreground">{sender.name}</span>
+                          <span>•</span>
+                          <span>{new Date(msg.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
+                        </div>
+                        <div className={`p-3 rounded-2xl text-sm ${
+                          isOwn ? "bg-brand text-brand-foreground rounded-tr-none" : "bg-secondary text-foreground rounded-tl-none"
+                        }`}>
+                          {msg.content && <p className="whitespace-pre-wrap">{msg.content}</p>}
+                          {msg.url && (
+                            <div className="mt-2 pt-2 border-t border-current/20">
+                              {msg.message_type === "image" ? (
+                                <img src={msg.url} alt="Shared Image" className="rounded-lg max-h-48 object-cover" />
+                              ) : msg.message_type === "voice" ? (
+                                <div className="flex items-center gap-2">
+                                  <PlayAudioButton url={msg.url} />
+                                  <span className="text-xs opacity-80">Voice Note</span>
+                                </div>
+                              ) : (
+                                <a href={msg.url} download target="_blank" rel="noreferrer" className="flex items-center gap-1.5 underline text-xs font-semibold">
+                                  <Download className="h-3.5 w-3.5" /> Download attachment
+                                </a>
+                              )}
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </div>
-                  </div>
-                );
-              })
+                  );
+                })
+              )}
+            </div>
+
+            {/* Typing Indicator */}
+            {typingMembers.length > 0 && (
+              <p className="text-xs text-muted-foreground mb-1 italic">
+                {typingMembers.join(", ")} {typingMembers.length === 1 ? "is" : "are"} typing...
+              </p>
             )}
-          </div>
 
-          {/* Typing Indicator */}
-          {typingMembers.length > 0 && (
-            <p className="text-xs text-muted-foreground mb-1 italic">
-              {typingMembers.join(", ")} {typingMembers.length === 1 ? "is" : "are"} typing...
-            </p>
-          )}
-
-          {/* Input composer */}
-          {activeConvId ? (
+            {/* Input composer */}
             <UniversalComposer
               placeholder="Type a message to the team..."
               onSend={handleSendMessage}
               onTyping={(isTyping) => ws.broadcastTyping(activeConvId, isTyping)}
             />
-          ) : (
-            <div className="bg-destructive/15 border border-destructive/20 text-destructive rounded-xl p-3 flex items-center gap-2 text-xs">
-              <AlertCircle className="h-4 w-4 shrink-0" />
-              Select or open a chat room to send a message.
-            </div>
-          )}
-        </Panel>
+          </Panel>
+        )}
       </div>
     </div>
   );
@@ -454,5 +472,88 @@ function PlayAudioButton({ url }: { url: string }) {
     <button onClick={toggle} className="p-1 hover:bg-current/15 rounded text-current">
       {playing ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
     </button>
+  );
+}
+
+function CreateChannelDialog() {
+  const ws = useWorkspace();
+  const [open, setOpen] = useState(false);
+  const [name, setName] = useState("");
+  const [selectedMembers, setSelectedMembers] = useState<string[]>([]);
+
+  const handleCreate = async () => {
+    if (!name.trim()) {
+      toast.error("Channel name is required");
+      return;
+    }
+    if (!ws.currentUser) return;
+
+    try {
+      const allMembers = Array.from(new Set([ws.currentUser.id, ...selectedMembers]));
+      await ws.addConversation(name.trim(), true, allMembers);
+      toast.success(`Channel #${name} created`);
+      setOpen(false);
+      setName("");
+      setSelectedMembers([]);
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to create channel");
+    }
+  };
+
+  const toggleMember = (mId: string) => {
+    setSelectedMembers((prev) =>
+      prev.includes(mId) ? prev.filter((id) => id !== mId) : [...prev, mId]
+    );
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <button className="text-muted-foreground hover:text-foreground cursor-pointer flex items-center justify-center p-0.5 hover:bg-secondary rounded">
+          <Plus className="h-3.5 w-3.5" />
+        </button>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle>Create a Channel</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4 py-2 text-sm">
+          <div>
+            <Label className="mb-1.5 block text-xs font-semibold text-muted-foreground">Channel Name</Label>
+            <Input placeholder="e.g. sepsis-ontology-survey" value={name} onChange={(e) => setName(e.target.value)} />
+          </div>
+          <div>
+            <Label className="mb-1.5 block text-xs font-semibold text-muted-foreground">Select Members</Label>
+            <div className="max-h-48 overflow-y-auto border border-border rounded-xl p-2 space-y-1 bg-card">
+              {ws.members
+                .filter((m) => m.id !== ws.currentUser?.id)
+                .map((m) => {
+                  const isChecked = selectedMembers.includes(m.id);
+                  return (
+                    <label key={m.id} className="flex items-center gap-2 p-2 hover:bg-secondary/40 rounded-lg cursor-pointer text-xs">
+                      <input
+                        type="checkbox"
+                        checked={isChecked}
+                        onChange={() => toggleMember(m.id)}
+                        className="rounded border-border text-brand focus:ring-brand h-3.5 w-3.5 cursor-pointer"
+                      />
+                      <Initials member={m} size={20} />
+                      <div className="flex-1 min-w-0">
+                        <p className="font-semibold truncate">{m.name}</p>
+                        <p className="text-[10px] text-muted-foreground">{m.role}</p>
+                      </div>
+                    </label>
+                  );
+                })}
+            </div>
+          </div>
+        </div>
+        <DialogFooter className="flex flex-row justify-end gap-2">
+          <Button variant="outline" onClick={() => setOpen(false)} className="cursor-pointer">Cancel</Button>
+          <Button onClick={handleCreate} className="cursor-pointer">Create Channel</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

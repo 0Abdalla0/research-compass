@@ -81,14 +81,14 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "ResearchHub — Research Team Workspace" },
+      { title: "SehatMasr — Research Workspace" },
       {
         name: "description",
         content:
-          "Papers, analysis, tasks, notes, meetings and files for university research teams — in one connected workspace.",
+          "Papers, analysis, tasks, notes, meetings and files for SehatMasr — in one connected workspace.",
       },
-      { name: "author", content: "MedOnto Lab" },
-      { property: "og:title", content: "ResearchHub — Research Team Workspace" },
+      { name: "author", content: "SehatMasr" },
+      { property: "og:title", content: "SehatMasr — Research Workspace" },
       {
         property: "og:description",
         content: "Everything your research team needs, in one workspace.",
