@@ -8,7 +8,7 @@ import { toast } from "sonner";
 export const Route = createFileRoute("/wheel")({
   head: () => ({
     meta: [
-      { title: "Decision Wheel — ResearchHub" },
+      { title: "Decision Wheel — SehatMasr" },
       {
         name: "description",
         content: "Spin the wheel to select a team member or choose random papers/tasks in the workspace.",
@@ -27,18 +27,19 @@ function SpinWheelPage() {
   const ws = useWorkspace();
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
-  const [names, setNames] = useState<string[]>([
-    "Ahmed Kamal",
-    "Abdalla Nasser",
-    "Maria Fahmy",
-    "Jumana Saleh",
-    "Ziad Hosny",
-    "Dr. Laila Mansour",
-  ]);
+  const [names, setNames] = useState<string[]>([]);
   const [newName, setNewName] = useState("");
   const [isSpinning, setIsSpinning] = useState(false);
   const [winner, setWinner] = useState<string | null>(null);
   const [history, setHistory] = useState<WinnerLog[]>([]);
+
+  useEffect(() => {
+    if (ws.members.length > 0) {
+      setNames(ws.members.map((m) => m.name));
+    } else {
+      setNames(["Teammate 1", "Teammate 2"]);
+    }
+  }, [ws.members]);
 
   // Wheel animation state
   const angleRef = useRef(0);

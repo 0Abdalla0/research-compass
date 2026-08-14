@@ -13,13 +13,14 @@ import { toast } from "sonner";
 export const Route = createFileRoute("/chat")({
   head: () => ({
     meta: [
-      { title: "Team Communication Center — ResearchHub" },
+      { title: "Team Communication Center — SehatMasr" },
       {
         name: "description",
         content: "Collaborative, real-time team chat and direct messaging for researchers.",
       },
     ],
   }),
+  component: ChatPage,
 });
 
 export default function ChatPage() {

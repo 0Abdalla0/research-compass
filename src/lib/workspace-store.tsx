@@ -513,7 +513,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     (action: string, object: string, kind: Activity["kind"]) => {
       const actId = uid();
       const memberId = currentUser ? currentUser.id : "m1";
-      const newActivity = { id: actId, memberId, action, object, time: "just now", kind };
+      const newActivity = { id: actId, memberId, action, object, time: new Date().toISOString(), kind };
       setActivity((a) => [newActivity, ...a]);
       addActivityServer({ data: newActivity }).catch((err) =>
         console.error("Error logging activity to DB:", err),

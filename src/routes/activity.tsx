@@ -29,6 +29,28 @@ const kindMeta: Record<Activity["kind"], { icon: React.ReactNode; color: string;
 
 function ActivityPage() {
   const ws = useWorkspace();
+  const formatActivityTime = (timeStr: string) => {
+    if (!timeStr) return "";
+    if (timeStr.includes("T") || timeStr.includes("-")) {
+      try {
+        const date = new Date(timeStr);
+        if (isNaN(date.getTime())) return timeStr;
+        const elapsed = Date.now() - date.getTime();
+        const secs = Math.floor(elapsed / 1000);
+        if (secs < 60) return "just now";
+        const mins = Math.floor(secs / 60);
+        if (mins < 60) return `${mins} m ago`;
+        const hours = Math.floor(mins / 60);
+        if (hours < 24) return `${hours} h ago`;
+        const days = Math.floor(hours / 24);
+        return `${days} d ago`;
+      } catch {
+        return timeStr;
+      }
+    }
+    return timeStr;
+  };
+
   const [filter, setFilter] = useState<Activity["kind"] | "all">("all");
 
   const kinds: Activity["kind"][] = ["paper", "task", "note", "file", "voice", "image", "comment"];
@@ -99,7 +121,7 @@ function ActivityPage() {
 
               {/* Time + kind tag */}
               <div className="shrink-0 flex flex-col items-end gap-1">
-                <span className="text-[11px] text-muted-foreground">{a.time}</span>
+                <span className="text-[11px] text-muted-foreground">{formatActivityTime(a.time)}</span>
                 <Tag>{meta.label}</Tag>
               </div>
             </div>
