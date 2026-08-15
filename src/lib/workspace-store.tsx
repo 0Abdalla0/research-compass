@@ -652,6 +652,16 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
         log("added a paper", p.title, "paper");
       },
       updatePaper: (id, patch) => {
+        const paper = papers.find((p) => p.id === id);
+        if (paper) {
+          if (patch.status && patch.status !== paper.status) {
+            log(`changed paper status to ${patch.status}`, paper.title, "paper");
+          } else if (patch.progress !== undefined && patch.progress !== paper.progress) {
+            log(`updated progress to ${patch.progress}% on`, paper.title, "paper");
+          } else {
+            log("updated details of paper", paper.title, "paper");
+          }
+        }
         setPapers((prev) => prev.map((p) => (p.id === id ? { ...p, ...patch } : p)));
         updatePaperServer({ data: { id, patch } }).catch((err) =>
           console.error("Error updating paper in DB:", err),
@@ -675,12 +685,24 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
         log("created a task", t.title, "task");
       },
       moveTask: (id, status) => {
+        const task = tasks.find((t) => t.id === id);
+        if (task) {
+          log(`moved task to ${status}`, task.title, "task");
+        }
         setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, status } : t)));
         moveTaskServer({ data: { id, status } }).catch((err) =>
           console.error("Error moving task status in DB:", err),
         );
       },
       updateTask: (id, patch) => {
+        const task = tasks.find((t) => t.id === id);
+        if (task) {
+          if (patch.status && patch.status !== task.status) {
+            log(`moved task to ${patch.status}`, task.title, "task");
+          } else {
+            log("updated task details of", task.title, "task");
+          }
+        }
         setTasks((prev) => prev.map((t) => (t.id === id ? { ...t, ...patch } : t)));
         updateTaskServer({ data: { id, patch } }).catch((err) =>
           console.error("Error updating task in DB:", err),
@@ -973,6 +995,14 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
         try {
           await addCommentServer({ data: newComment });
           
+          if (c.paper_id) {
+            const paper = papers.find((p) => p.id === c.paper_id);
+            if (paper) log("commented on paper", paper.title, "comment");
+          } else if (c.task_id) {
+            const task = tasks.find((t) => t.id === c.task_id);
+            if (task) log("commented on task", task.title, "comment");
+          }
+
           const mentionRegex = /@(\w+)/g;
           let match;
           while ((match = mentionRegex.exec(c.content)) !== null) {
@@ -1086,6 +1116,18 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
           await addMessageServer({ data: newMessage });
 
           const conversation = conversations.find((c) => c.id === m.conversation_id);
+          if (conversation) {
+            if (conversation.paper_id) {
+              const paper = papers.find((p) => p.id === conversation.paper_id);
+              if (paper) log("discussed paper", paper.title, "comment");
+            } else if (conversation.task_id) {
+              const task = tasks.find((t) => t.id === conversation.task_id);
+              if (task) log("discussed task", task.title, "comment");
+            } else {
+              log("sent a message in", conversation.name || "team chat", "comment");
+            }
+          }
+
           const link = conversation?.paper_id
             ? `/papers/${conversation.paper_id}`
             : conversation?.task_id

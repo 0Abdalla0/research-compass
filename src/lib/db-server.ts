@@ -228,7 +228,19 @@ export const getWorkspaceDataServer = createServerFn({ method: "GET" })
           ...a,
           kind: a.kind as Activity["kind"],
         }))
-        .sort((a: any, b: any) => b.id.localeCompare(a.id));
+        .sort((a: any, b: any) => {
+          const dateA = new Date(a.time).getTime();
+          const dateB = new Date(b.time).getTime();
+          if (!isNaN(dateA) && !isNaN(dateB)) {
+            return dateB - dateA;
+          }
+          const catA = a.created_at ? new Date(a.created_at).getTime() : 0;
+          const catB = b.created_at ? new Date(b.created_at).getTime() : 0;
+          if (catA && catB) {
+            return catB - catA;
+          }
+          return b.id.localeCompare(a.id);
+        });
 
       const formattedPhases: Phase[] = phases
         .map((p: any) => ({

@@ -956,16 +956,16 @@ export const phases: Phase[] = [
 ];
 
 export const activity: Activity[] = [
-  { id: "a1", memberId: "m3", action: "uploaded", object: "mimiciv_cohort_v3.csv", time: "12 min ago", kind: "file" },
-  { id: "a2", memberId: "m2", action: "added a screenshot", object: "System architecture v0.4", time: "1 h ago", kind: "image" },
-  { id: "a3", memberId: "m1", action: "moved", object: "Complete analysis of ClinicalBERT paper → Review", time: "2 h ago", kind: "task" },
-  { id: "a4", memberId: "m4", action: "added a voice note", object: "Annotation edge cases to discuss", time: "4 h ago", kind: "voice" },
-  { id: "a5", memberId: "m5", action: "updated the note", object: "Meeting minutes — Weekly Research Sync", time: "6 h ago", kind: "note" },
-  { id: "a6", memberId: "m6", action: "commented on", object: "System architecture v0.4", time: "8 h ago", kind: "comment" },
-  { id: "a7", memberId: "m2", action: "added a paper", object: "Ontology-Enhanced RAG for Clinical Q&A", time: "Yesterday", kind: "paper" },
-  { id: "a8", memberId: "m1", action: "completed", object: "Systematic search: 2021–2025 sepsis NLP papers", time: "Yesterday", kind: "task" },
-  { id: "a9", memberId: "m3", action: "added a link", object: "PhysioNet — MIMIC-IV v2.2", time: "2 days ago", kind: "file" },
-  { id: "a10", memberId: "m4", action: "created a note", object: "Experiment log — negation tagger pilot", time: "2 days ago", kind: "note" },
+  { id: "a1", memberId: "m3", action: "uploaded", object: "mimiciv_cohort_v3.csv", time: new Date(Date.now() - 12 * 60 * 1000).toISOString(), kind: "file" },
+  { id: "a2", memberId: "m2", action: "added a screenshot", object: "System architecture v0.4", time: new Date(Date.now() - 60 * 60 * 1000).toISOString(), kind: "image" },
+  { id: "a3", memberId: "m1", action: "moved", object: "Complete analysis of ClinicalBERT paper → Review", time: new Date(Date.now() - 2 * 3600 * 1000).toISOString(), kind: "task" },
+  { id: "a4", memberId: "m4", action: "added a voice note", object: "Annotation edge cases to discuss", time: new Date(Date.now() - 4 * 3600 * 1000).toISOString(), kind: "voice" },
+  { id: "a5", memberId: "m5", action: "updated the note", object: "Meeting minutes — Weekly Research Sync", time: new Date(Date.now() - 6 * 3600 * 1000).toISOString(), kind: "note" },
+  { id: "a6", memberId: "m6", action: "commented on", object: "System architecture v0.4", time: new Date(Date.now() - 8 * 3600 * 1000).toISOString(), kind: "comment" },
+  { id: "a7", memberId: "m2", action: "added a paper", object: "Ontology-Enhanced RAG for Clinical Q&A", time: new Date(Date.now() - 24 * 3600 * 1000).toISOString(), kind: "paper" },
+  { id: "a8", memberId: "m1", action: "completed", object: "Systematic search: 2021–2025 sepsis NLP papers", time: new Date(Date.now() - 36 * 3600 * 1000).toISOString(), kind: "task" },
+  { id: "a9", memberId: "m3", action: "added a link", object: "PhysioNet — MIMIC-IV v2.2", time: new Date(Date.now() - 48 * 3600 * 1000).toISOString(), kind: "file" },
+  { id: "a10", memberId: "m4", action: "created a note", object: "Experiment log — negation tagger pilot", time: new Date(Date.now() - 72 * 3600 * 1000).toISOString(), kind: "note" },
 ];
 
 export const progressSeries = [
