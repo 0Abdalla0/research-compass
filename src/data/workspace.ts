@@ -101,6 +101,7 @@ export type VoiceNote = {
   description: string;
   paperId?: string | undefined;
   taskId?: string | undefined;
+  meetingId?: string | undefined;
   url?: string | undefined;
   storage_path?: string | undefined;
   mime_type?: string | undefined;

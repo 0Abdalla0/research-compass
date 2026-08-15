@@ -29,7 +29,10 @@ function VoicePage() {
   const [isPaused, setIsPaused] = useState(false);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
+  const [linkType, setLinkType] = useState<"none" | "paper" | "task" | "meeting">("none");
   const [paperId, setPaperId] = useState("");
+  const [taskId, setTaskId] = useState("");
+  const [meetingId, setMeetingId] = useState("");
   const [playingId, setPlayingId] = useState<string | null>(null);
   
   // Real-time recording stats
@@ -156,7 +159,9 @@ function VoicePage() {
             storage_path: uploadRes.storage_path,
             mime_type: uploadRes.mime_type,
             size_bytes: uploadRes.size_bytes,
-            paperId: paperId || undefined,
+            paperId: linkType === "paper" ? (paperId || undefined) : undefined,
+            taskId: linkType === "task" ? (taskId || undefined) : undefined,
+            meetingId: linkType === "meeting" ? (meetingId || undefined) : undefined,
           });
 
           toast.success("Voice note saved successfully!", { id: toastId });
@@ -167,7 +172,10 @@ function VoicePage() {
 
         setTitle("");
         setDescription("");
+        setLinkType("none");
         setPaperId("");
+        setTaskId("");
+        setMeetingId("");
         setElapsedSeconds(0);
         setMicVolume(0);
 
@@ -288,7 +296,7 @@ function VoicePage() {
       {/* Real Recorder Panel */}
       <Panel className="p-4 sm:p-5 border border-border bg-card">
         <div className="space-y-4">
-          <div className="grid gap-4 md:grid-cols-2">
+          <div className="grid gap-4 md:grid-cols-3">
             <div>
               <Label className="mb-1.5 block text-xs font-semibold text-muted-foreground">Title</Label>
               <Input 
@@ -300,20 +308,76 @@ function VoicePage() {
               />
             </div>
             <div>
-              <Label className="mb-1.5 block text-xs font-semibold text-muted-foreground">Link to Research Paper (Optional)</Label>
+              <Label className="mb-1.5 block text-xs font-semibold text-muted-foreground">Link Item Type</Label>
               <select
-                value={paperId}
-                onChange={(e) => setPaperId(e.target.value)}
+                value={linkType}
+                onChange={(e) => setLinkType(e.target.value as any)}
                 disabled={recording}
                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
               >
-                <option value="">None (General Note)</option>
-                {ws.papers.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.title}
-                  </option>
-                ))}
+                <option value="none">None (General Note)</option>
+                <option value="paper">Research Paper</option>
+                <option value="task">Task</option>
+                <option value="meeting">Meeting</option>
               </select>
+            </div>
+            <div>
+              {linkType === "paper" && (
+                <>
+                  <Label className="mb-1.5 block text-xs font-semibold text-muted-foreground">Link to Research Paper</Label>
+                  <select
+                    value={paperId}
+                    onChange={(e) => setPaperId(e.target.value)}
+                    disabled={recording}
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none disabled:cursor-not-allowed"
+                  >
+                    <option value="">Select Paper...</option>
+                    {ws.papers.map((p) => (
+                      <option key={p.id} value={p.id}>{p.title}</option>
+                    ))}
+                  </select>
+                </>
+              )}
+              {linkType === "task" && (
+                <>
+                  <Label className="mb-1.5 block text-xs font-semibold text-muted-foreground">Link to Task</Label>
+                  <select
+                    value={taskId}
+                    onChange={(e) => setTaskId(e.target.value)}
+                    disabled={recording}
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none disabled:cursor-not-allowed"
+                  >
+                    <option value="">Select Task...</option>
+                    {ws.tasks.map((t) => (
+                      <option key={t.id} value={t.id}>{t.title}</option>
+                    ))}
+                  </select>
+                </>
+              )}
+              {linkType === "meeting" && (
+                <>
+                  <Label className="mb-1.5 block text-xs font-semibold text-muted-foreground">Link to Meeting</Label>
+                  <select
+                    value={meetingId}
+                    onChange={(e) => setMeetingId(e.target.value)}
+                    disabled={recording}
+                    className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none disabled:cursor-not-allowed"
+                  >
+                    <option value="">Select Meeting...</option>
+                    {ws.meetings.map((m) => (
+                      <option key={m.id} value={m.id}>{m.title}</option>
+                    ))}
+                  </select>
+                </>
+              )}
+              {linkType === "none" && (
+                <>
+                  <Label className="mb-1.5 block text-xs font-semibold text-muted-foreground">Linked Entity</Label>
+                  <div className="flex h-10 w-full rounded-md border border-border bg-secondary/40 px-3 py-2 text-xs text-muted-foreground items-center">
+                    No linked entity selected
+                  </div>
+                </>
+              )}
             </div>
           </div>
           <div>
@@ -391,6 +455,24 @@ function VoicePage() {
                       {v.title}
                     </p>
                     <p className="mt-1 text-xs text-muted-foreground line-clamp-2">{v.description}</p>
+                    
+                    {/* Linked Entity Info Tag */}
+                    {(v.paperId || v.taskId || v.meetingId) && (
+                      <div className="mt-2 flex flex-wrap gap-1">
+                        {v.paperId && (() => {
+                          const p = ws.papers.find((x) => x.id === v.paperId);
+                          return p ? <Tag variant="secondary" className="text-[10px] py-0.5">Paper: {p.title.slice(0, 30)}...</Tag> : null;
+                        })()}
+                        {v.taskId && (() => {
+                          const t = ws.tasks.find((x) => x.id === v.taskId);
+                          return t ? <Tag variant="secondary" className="text-[10px] py-0.5">Task: {t.title.slice(0, 30)}...</Tag> : null;
+                        })()}
+                        {v.meetingId && (() => {
+                          const m = ws.meetings.find((x) => x.id === v.meetingId);
+                          return m ? <Tag variant="secondary" className="text-[10px] py-0.5">Meeting: {m.title.slice(0, 30)}...</Tag> : null;
+                        })()}
+                      </div>
+                    )}
                   </div>
                   <span className="shrink-0 text-xs font-bold tabular-nums text-muted-foreground bg-secondary/60 px-2 py-0.5 rounded-md">
                     {isPlaying ? `${fmt(Math.floor(currentPlayTime))} / ` : ""}{fmt(v.seconds)}

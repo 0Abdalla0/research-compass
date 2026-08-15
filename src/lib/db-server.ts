@@ -199,6 +199,7 @@ export const getWorkspaceDataServer = createServerFn({ method: "GET" })
         ...v,
         paperId: v.paperId ?? undefined,
         taskId: v.taskId ?? undefined,
+        meetingId: v.meetingId ?? undefined,
         url: v.url || (v.storage_path ? supabase.storage.from("documents").getPublicUrl(v.storage_path).data.publicUrl : undefined),
       }));
 

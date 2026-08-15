@@ -158,6 +158,7 @@ export function TaskSheetContent({ task, onClose }: { task: Task; onClose: () =>
   const [priority, setPriority] = useState<Task["priority"]>(task.priority);
   const [assigneeId, setAssigneeId] = useState(task.assigneeId);
   const [due, setDue] = useState(task.due);
+  const [paperId, setPaperId] = useState(task.paperId || "");
 
   const handleSave = () => {
     if (!title.trim()) {
@@ -170,6 +171,7 @@ export function TaskSheetContent({ task, onClose }: { task: Task; onClose: () =>
       priority,
       assigneeId,
       due,
+      paperId: paperId || null,
     });
     toast.success("Task updated successfully");
     setIsEditing(false);
@@ -191,6 +193,7 @@ export function TaskSheetContent({ task, onClose }: { task: Task; onClose: () =>
               setPriority(task.priority);
               setAssigneeId(task.assigneeId);
               setDue(task.due);
+              setPaperId(task.paperId || "");
               setIsEditing(true);
             }} className="cursor-pointer">Edit</Button>
           )}
@@ -252,6 +255,19 @@ export function TaskSheetContent({ task, onClose }: { task: Task; onClose: () =>
           <div>
             <Label className="mb-1 block text-xs font-semibold text-muted-foreground">Due Date</Label>
             <Input type="date" value={due} onChange={(e) => setDue(e.target.value)} />
+          </div>
+          <div>
+            <Label className="mb-1 block text-xs font-semibold text-muted-foreground">Link to Research Paper</Label>
+            <select 
+              value={paperId} 
+              onChange={(e) => setPaperId(e.target.value)}
+              className="w-full h-10 px-3 border border-border rounded-xl bg-card text-sm cursor-pointer"
+            >
+              <option value="">None (General Task)</option>
+              {ws.papers.map((p) => (
+                <option key={p.id} value={p.id}>{p.title}</option>
+              ))}
+            </select>
           </div>
           <div className="flex gap-2 pt-2">
             <Button variant="outline" className="flex-1 cursor-pointer" onClick={() => setIsEditing(false)}>Cancel</Button>
@@ -364,6 +380,7 @@ function AddTaskDialog() {
     status: "todo" as TaskStatus,
     due: "2026-08-30",
     label: "Research",
+    paperId: "",
   });
 
   return (
@@ -424,7 +441,7 @@ function AddTaskDialog() {
               <Label className="mb-1.5 block text-xs text-muted-foreground">Due date</Label>
               <Input type="date" value={f.due} onChange={(e) => setF({ ...f, due: e.target.value })} />
             </div>
-            <div className="col-span-2">
+            <div>
               <Label className="mb-1.5 block text-xs text-muted-foreground">Label</Label>
               <Select value={f.label} onValueChange={(v) => setF({ ...f, label: v })}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
@@ -434,6 +451,21 @@ function AddTaskDialog() {
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+            <div>
+              <Label className="mb-1.5 block text-xs text-muted-foreground">Link to Research Paper (Optional)</Label>
+              <select
+                value={f.paperId}
+                onChange={(e) => setF({ ...f, paperId: e.target.value })}
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <option value="">None (General Task)</option>
+                {ws.papers.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.title}
+                  </option>
+                ))}
+              </select>
             </div>
           </div>
         </div>
@@ -453,9 +485,20 @@ function AddTaskDialog() {
                 status: f.status,
                 due: f.due,
                 labels: [f.label],
+                paperId: f.paperId || undefined,
               });
               toast.success("Task created");
               setOpen(false);
+              setF({
+                title: "",
+                description: "",
+                assigneeId: "m1",
+                priority: "MEDIUM",
+                status: "todo",
+                due: "2026-08-30",
+                label: "Research",
+                paperId: "",
+              });
             }}
           >
             Create task
