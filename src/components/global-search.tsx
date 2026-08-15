@@ -27,7 +27,11 @@ export function GlobalSearch({
 
   return (
     <CommandDialog open={open} onOpenChange={onOpenChange}>
-      <CommandInput placeholder="Search papers, tasks, notes, files, people…" />
+      <CommandInput 
+        placeholder="Search papers, tasks, notes, files, people…" 
+        value={ws.searchQuery}
+        onValueChange={ws.setSearchQuery}
+      />
       <CommandList>
         <CommandEmpty>No results across the workspace.</CommandEmpty>
 

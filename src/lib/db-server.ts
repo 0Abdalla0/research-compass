@@ -52,6 +52,7 @@ export const getWorkspaceDataServer = createServerFn({ method: "GET" })
     if (!hasSupabaseKeys) {
       console.info("Offline mode: Reading static workspace seed data.");
       return {
+        project: seed.project,
         members: seed.members,
         papers: seed.papers,
         tasks: seed.tasks,
@@ -74,6 +75,7 @@ export const getWorkspaceDataServer = createServerFn({ method: "GET" })
 
     try {
       const [
+        projectRes,
         membersRes,
         papersRes,
         tasksRes,
@@ -92,6 +94,7 @@ export const getWorkspaceDataServer = createServerFn({ method: "GET" })
         messagesRes,
         notificationsRes,
       ] = await Promise.all([
+        supabase.from("project").select("*"),
         supabase.from("members").select("*"),
         supabase.from("papers").select("*").order("created_at", { ascending: false }),
         supabase.from("tasks").select("*").order("created_at", { ascending: false }),
@@ -112,6 +115,7 @@ export const getWorkspaceDataServer = createServerFn({ method: "GET" })
       ]);
 
       if (
+        projectRes.error ||
         membersRes.error ||
         papersRes.error ||
         tasksRes.error ||
@@ -269,6 +273,7 @@ export const getWorkspaceDataServer = createServerFn({ method: "GET" })
           paperId: f.paperId ?? undefined,
           url: f.url || (f.storage_path ? supabase.storage.from("documents").getPublicUrl(f.storage_path).data.publicUrl : undefined),
         })) as ResearchFile[],
+        project: projectRes.data?.[0] || seed.project,
         links: formattedLinks,
         meetings: formattedMeetings,
         events: formattedEvents,
@@ -911,6 +916,18 @@ export const clearNotificationsServer = createServerFn({ method: "POST" })
       if (error) throw error;
     } catch (e) {
       console.error("Supabase clearNotifications error:", e);
+    }
+  });
+
+export const updateProjectServer = createServerFn({ method: "POST" })
+  .validator((data: any) => data)
+  .handler(async ({ data }) => {
+    if (!hasSupabaseKeys) return;
+    try {
+      const { error } = await supabase.from("project").upsert({ id: "default", ...data });
+      if (error) throw error;
+    } catch (e) {
+      console.error("Supabase updateProject error:", e);
     }
   });
 

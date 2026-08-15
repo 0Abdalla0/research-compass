@@ -74,6 +74,7 @@ import {
   addNotificationServer,
   markNotificationReadServer,
   clearNotificationsServer,
+  updateProjectServer,
 } from "@/lib/db-server";
 
 export type NotificationItem = {
@@ -191,6 +192,10 @@ type Ctx = {
   updateMessage: (id: string, content: string) => Promise<void>;
   removeMessage: (id: string) => Promise<void>;
   addNotification: (userId: string, type: string, title: string, description: string, link?: string) => Promise<void>;
+  searchQuery: string;
+  setSearchQuery: (q: string) => void;
+  searchOpen: boolean;
+  setSearchOpen: (open: boolean) => void;
   onlineMembers: Record<string, { online_at: string; name: string }>;
   typingStates: Record<string, Record<string, boolean>>;
   broadcastTyping: (conversationId: string, isTyping: boolean) => void;
@@ -217,6 +222,8 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [onlineMembers, setOnlineMembers] = useState<Record<string, { online_at: string; name: string }>>({});
   const [typingStates, setTypingStates] = useState<Record<string, Record<string, boolean>>>({});
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchOpen, setSearchOpen] = useState(false);
   const [theme, setTheme] = useState<"light" | "dark">((() => {
     if (typeof window !== "undefined") {
       const saved = localStorage.getItem("research_hub_theme");
@@ -336,6 +343,10 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
         setMeetings(data.meetings);
         setEvents(data.events);
         setActivity(data.activity);
+        if ((data as any).project) {
+          setProject((data as any).project);
+          localStorage.setItem("research_hub_project", JSON.stringify((data as any).project));
+        }
         if (data.phases && data.phases.length > 0) {
           setPhases(data.phases);
         }
@@ -979,6 +990,9 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
         setProject(updated);
         localStorage.setItem("research_hub_project", JSON.stringify(updated));
         log("updated project settings", name, "task");
+        updateProjectServer({ data: updated }).catch((err) =>
+          console.error("Error saving project details to Supabase DB:", err)
+        );
       },
       removePaper: (id) => {
         const p = papers.find((x) => x.id === id);
@@ -1308,6 +1322,10 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
         }
       },
       addNotification,
+      searchQuery,
+      setSearchQuery,
+      searchOpen,
+      setSearchOpen,
     }),
     [
       members,
@@ -1335,6 +1353,8 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       typingStates,
       log,
       addNotification,
+      searchQuery,
+      searchOpen,
     ],
   );
 

@@ -1,10 +1,8 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState } from "react";
 import { useWorkspace } from "@/lib/workspace-store";
 import { Initials, PageHeader, Panel, Tag } from "@/components/ui-bits";
 import { FileText, KanbanSquare, Mail, Phone, BookOpen } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { EditProfileDialog } from "@/components/edit-profile-dialog";
 
 export const Route = createFileRoute("/team")({
   head: () => ({
@@ -20,7 +18,6 @@ export const Route = createFileRoute("/team")({
 
 function TeamPage() {
   const ws = useWorkspace();
-  const [profileOpen, setProfileOpen] = useState(false);
   return (
     <div className="space-y-6">
       <PageHeader
@@ -62,10 +59,10 @@ function TeamPage() {
                   <Button 
                     size="sm" 
                     variant="ghost" 
-                    onClick={() => setProfileOpen(true)}
+                    asChild
                     className="cursor-pointer font-semibold text-brand hover:bg-brand/10 shrink-0"
                   >
-                    Manage
+                    <Link to="/settings">Manage</Link>
                   </Button>
                 )}
               </div>
@@ -183,9 +180,6 @@ function TeamPage() {
         <Panel className="p-12 text-center">
           <p className="text-sm text-muted-foreground">No team members yet — register to get started.</p>
         </Panel>
-      )}
-      {ws.currentUser && (
-        <EditProfileDialog open={profileOpen} onOpenChange={setProfileOpen} member={ws.currentUser} />
       )}
     </div>
   );

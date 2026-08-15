@@ -64,11 +64,9 @@ const mobileNav = nav.slice(0, 5);
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const ws = useWorkspace();
-  const { theme, toggleTheme, currentUser, notifications, clearNotifications, markNotificationRead } = ws;
+  const { theme, toggleTheme, currentUser, notifications, clearNotifications, markNotificationRead, searchOpen, setSearchOpen } = ws;
   const navigate = useNavigate();
   const [openNav, setOpenNav] = useState(false);
-  const [searchOpen, setSearchOpen] = useState(false);
-  const [profileOpen, setProfileOpen] = useState(false);
 
   useEffect(() => setOpenNav(false), [pathname]);
 
@@ -159,15 +157,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         <header className="sticky top-0 z-30 border-b border-border bg-background/85 backdrop-blur-xl">
           <div className="flex h-16 items-center justify-between gap-4 px-4 sm:px-6">
             <div className="flex items-center gap-3">
-              <button
-                className="rounded-lg p-2 text-muted-foreground hover:bg-secondary md:hidden"
-                onClick={() => setOpenNav(true)}
-                aria-label="Open navigation"
-              >
-                <Menu className="h-5 w-5" />
-              </button>
-
-              {/* Profile dropdown trigger on the top-left */}
+              {/* Profile dropdown trigger on the leftmost */}
               <DropdownMenu>
                 <DropdownMenuTrigger className="rounded-full focus:outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring">
                   <Initials member={currentUser || undefined} size={32} />
@@ -178,8 +168,8 @@ export function AppShell({ children }: { children: ReactNode }) {
                     <span className="text-xs font-normal text-muted-foreground">{currentUser?.email}</span>
                   </DropdownMenuLabel>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => setProfileOpen(true)} className="cursor-pointer">
-                    Edit Profile
+                  <DropdownMenuItem asChild>
+                    <Link to="/settings">Edit Profile</Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
                     <Link to="/team">Team & profile</Link>
@@ -199,6 +189,14 @@ export function AppShell({ children }: { children: ReactNode }) {
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
+
+              <button
+                className="rounded-lg p-2 text-muted-foreground hover:bg-secondary md:hidden"
+                onClick={() => setOpenNav(true)}
+                aria-label="Open navigation"
+              >
+                <Menu className="h-5 w-5" />
+              </button>
             </div>
 
             {/* Centered Search Bar */}
@@ -306,9 +304,6 @@ export function AppShell({ children }: { children: ReactNode }) {
       </nav>
 
       <GlobalSearch open={searchOpen} onOpenChange={setSearchOpen} />
-      {currentUser && (
-        <EditProfileDialog open={profileOpen} onOpenChange={setProfileOpen} member={currentUser} />
-      )}
     </div>
   );
 }
