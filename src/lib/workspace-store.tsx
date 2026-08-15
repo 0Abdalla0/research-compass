@@ -137,6 +137,7 @@ type Ctx = {
     cv_size_bytes?: number
   ) => void;
   deleteMember: (memberId: string) => Promise<void>;
+  updateProfile: (id: string, patch: Partial<Member>) => Promise<void>;
   addPaper: (p: Omit<Paper, "id" | "analysis" | "progress">) => void;
   updatePaper: (id: string, patch: Partial<Paper>) => void;
   setAnalysis: (paperId: string, section: string, value: string) => void;
@@ -216,7 +217,13 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [onlineMembers, setOnlineMembers] = useState<Record<string, { online_at: string; name: string }>>({});
   const [typingStates, setTypingStates] = useState<Record<string, Record<string, boolean>>>({});
-  const [theme, setTheme] = useState<"light" | "dark">("light");
+  const [theme, setTheme] = useState<"light" | "dark">((() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("research_hub_theme");
+      if (saved === "light" || saved === "dark") return saved;
+    }
+    return "light";
+  }) as any);
   const [currentUser, setCurrentUser] = useState<(typeof seed.members)[number] | null>(null);
   const [project, setProject] = useState<typeof seed.project>(seed.project);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
@@ -648,6 +655,25 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
           }
         }
       },
+      updateProfile: async (id, patch) => {
+        setMembers((prev) =>
+          prev.map((m) => (m.id === id ? { ...m, ...patch } : m))
+        );
+        if (currentUser && currentUser.id === id) {
+          const updatedUser = { ...currentUser, ...patch };
+          setCurrentUser(updatedUser);
+          localStorage.setItem("research_hub_user", JSON.stringify(updatedUser));
+        }
+        log("updated profile details", patch.name || currentUser?.name || "Member", "comment");
+        if (hasSupabaseKeys) {
+          try {
+            const { error } = await supabase.from("members").update(patch).eq("id", id);
+            if (error) throw error;
+          } catch (err) {
+            console.error("Error updating member profile in live Supabase DB:", err);
+          }
+        }
+      },
       addPaper: (p) => {
         const id = uid();
         const newPaper = { ...p, id, progress: 0, analysis: {} };
@@ -1027,7 +1053,11 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
         );
       },
       theme,
-      toggleTheme: () => setTheme((t) => (t === "light" ? "dark" : "light")),
+      toggleTheme: () => setTheme((t) => {
+        const nextTheme = t === "light" ? "dark" : "light";
+        localStorage.setItem("research_hub_theme", nextTheme);
+        return nextTheme;
+      }),
       comments,
       conversations,
       conversationMembers,

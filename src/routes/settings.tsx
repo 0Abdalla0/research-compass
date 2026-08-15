@@ -28,12 +28,31 @@ function SettingsPage() {
   const [topic, setTopic] = useState("");
   const [institution, setInstitution] = useState("");
 
+  const [profileName, setProfileName] = useState("");
+  const [profilePhone, setProfilePhone] = useState("");
+  const [profileUniId, setProfileUniId] = useState("");
+  const [profileUniEmail, setProfileUniEmail] = useState("");
+  const [profilePrivateEmail, setProfilePrivateEmail] = useState("");
+  const [profileResponsibilities, setProfileResponsibilities] = useState("");
+
   // Sync inputs with workspace context values
   useEffect(() => {
     setName(ws.project.name);
     setTopic(ws.project.topic);
     setInstitution(ws.project.institution);
   }, [ws.project]);
+
+  // Sync inputs with user context values
+  useEffect(() => {
+    if (ws.currentUser) {
+      setProfileName(ws.currentUser.name || "");
+      setProfilePhone(ws.currentUser.phone || "");
+      setProfileUniId(ws.currentUser.uniId || "");
+      setProfileUniEmail(ws.currentUser.uniEmail || "");
+      setProfilePrivateEmail(ws.currentUser.privateEmail || "");
+      setProfileResponsibilities(ws.currentUser.responsibilities || "");
+    }
+  }, [ws.currentUser]);
 
   const handleSave = () => {
     if (!name.trim()) {
@@ -44,11 +63,92 @@ function SettingsPage() {
     toast.success("Project settings saved successfully!");
   };
 
+  const handleSaveProfile = async () => {
+    if (!ws.currentUser) return;
+    if (!profileName.trim()) {
+      toast.error("Profile name cannot be empty.");
+      return;
+    }
+    await ws.updateProfile(ws.currentUser.id, {
+      name: profileName.trim(),
+      phone: profilePhone.trim() || undefined,
+      uniId: profileUniId.trim() || undefined,
+      uniEmail: profileUniEmail.trim() || undefined,
+      privateEmail: profilePrivateEmail.trim() || undefined,
+      responsibilities: profileResponsibilities.trim(),
+    });
+    toast.success("Profile saved successfully!");
+  };
+
   return (
     <div className="space-y-6">
       <PageHeader title="Project Settings" subtitle="Admin controls for the research workspace" />
 
       <div className="grid gap-4 lg:grid-cols-2">
+        {/* User Profile panel */}
+        {ws.currentUser && (
+          <Panel className="p-5">
+            <h2 className="font-display text-sm font-semibold">My Profile</h2>
+            <p className="text-xs text-muted-foreground mt-0.5">Edit your personal registration details</p>
+            <div className="mt-4 grid gap-3">
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div>
+                  <Label className="mb-1.5 block text-xs text-muted-foreground">Full Name</Label>
+                  <Input value={profileName} onChange={(e) => setProfileName(e.target.value)} />
+                </div>
+                <div>
+                  <Label className="mb-1.5 block text-xs text-muted-foreground">Phone Number</Label>
+                  <Input value={profilePhone} onChange={(e) => setProfilePhone(e.target.value)} placeholder="e.g. +20 123 456 7890" />
+                </div>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div>
+                  <Label className="mb-1.5 block text-xs text-muted-foreground">University ID</Label>
+                  <Input value={profileUniId} onChange={(e) => setProfileUniId(e.target.value)} placeholder="e.g. 2026-102948" />
+                </div>
+                <div>
+                  <Label className="mb-1.5 block text-xs text-muted-foreground">University Email</Label>
+                  <Input value={profileUniEmail} onChange={(e) => setProfileUniEmail(e.target.value)} placeholder="e.g. name@uni.edu" />
+                </div>
+              </div>
+              <div>
+                <Label className="mb-1.5 block text-xs text-muted-foreground">Private Email</Label>
+                <Input value={profilePrivateEmail} onChange={(e) => setProfilePrivateEmail(e.target.value)} placeholder="e.g. personal@gmail.com" />
+              </div>
+              <div>
+                <Label className="mb-1.5 block text-xs text-muted-foreground">Research Responsibilities</Label>
+                <textarea
+                  rows={3}
+                  className="w-full px-3 py-2 rounded-xl border border-border bg-background text-sm text-foreground placeholder-muted-foreground focus:outline-none focus:border-brand"
+                  value={profileResponsibilities}
+                  onChange={(e) => setProfileResponsibilities(e.target.value)}
+                  placeholder="Describe your role and focus areas..."
+                />
+              </div>
+              <Button className="w-fit" onClick={handleSaveProfile}>Save profile</Button>
+            </div>
+          </Panel>
+        )}
+
+        {/* Theme Settings panel */}
+        <Panel className="p-5">
+          <h2 className="font-display text-sm font-semibold">Theme Preferences</h2>
+          <p className="text-xs text-muted-foreground mt-0.5">Customize your interface theme</p>
+          <div className="mt-4 flex items-center justify-between rounded-xl border border-border p-3">
+            <div className="space-y-0.5">
+              <span className="text-sm font-medium">Dark Mode</span>
+              <p className="text-[11px] text-muted-foreground">Switch between light and dark themes</p>
+            </div>
+            <Switch 
+              checked={ws.theme === "dark"} 
+              onCheckedChange={() => {
+                ws.toggleTheme();
+                toast.success(`Switched to ${ws.theme === "light" ? "dark" : "light"} mode`);
+              }} 
+            />
+          </div>
+        </Panel>
+
         {/* Project Profile panel */}
         <Panel className="p-5">
           <h2 className="font-display text-sm font-semibold">Project Details</h2>
