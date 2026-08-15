@@ -1,7 +1,10 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useState } from "react";
 import { useWorkspace } from "@/lib/workspace-store";
 import { Initials, PageHeader, Panel, Tag } from "@/components/ui-bits";
 import { FileText, KanbanSquare, Mail, Phone, BookOpen } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { EditProfileDialog } from "@/components/edit-profile-dialog";
 
 export const Route = createFileRoute("/team")({
   head: () => ({
@@ -17,6 +20,7 @@ export const Route = createFileRoute("/team")({
 
 function TeamPage() {
   const ws = useWorkspace();
+  const [profileOpen, setProfileOpen] = useState(false);
   return (
     <div className="space-y-6">
       <PageHeader
@@ -38,20 +42,32 @@ function TeamPage() {
           return (
             <Panel key={m.id} className="p-5 flex flex-col gap-4">
               {/* Header */}
-              <div className="flex items-center gap-3">
-                <Initials member={m} size={48} />
-                <div className="min-w-0 flex-1">
-                  <p className="truncate font-display text-base font-semibold">{m.name}</p>
-                  <span className={`inline-block mt-0.5 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${
-                    m.role === "Team Leader"
-                      ? "bg-brand/10 text-brand"
-                      : m.role === "Supervisor"
-                      ? "bg-warning/15 text-warning-foreground"
-                      : "bg-secondary text-muted-foreground"
-                  }`}>
-                    {m.role}
-                  </span>
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex items-center gap-3 min-w-0">
+                  <Initials member={m} size={48} />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate font-display text-base font-semibold">{m.name}</p>
+                    <span className={`inline-block mt-0.5 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${
+                      m.role === "Team Leader"
+                        ? "bg-brand/10 text-brand"
+                        : m.role === "Supervisor"
+                        ? "bg-warning/15 text-warning-foreground"
+                        : "bg-secondary text-muted-foreground"
+                    }`}>
+                      {m.role}
+                    </span>
+                  </div>
                 </div>
+                {m.id === ws.currentUser?.id && (
+                  <Button 
+                    size="sm" 
+                    variant="ghost" 
+                    onClick={() => setProfileOpen(true)}
+                    className="cursor-pointer font-semibold text-brand hover:bg-brand/10 shrink-0"
+                  >
+                    Manage
+                  </Button>
+                )}
               </div>
 
               {/* Responsibilities */}
@@ -167,6 +183,9 @@ function TeamPage() {
         <Panel className="p-12 text-center">
           <p className="text-sm text-muted-foreground">No team members yet — register to get started.</p>
         </Panel>
+      )}
+      {ws.currentUser && (
+        <EditProfileDialog open={profileOpen} onOpenChange={setProfileOpen} member={ws.currentUser} />
       )}
     </div>
   );

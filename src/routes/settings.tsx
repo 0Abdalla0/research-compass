@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
+import { EditProfileDialog } from "@/components/edit-profile-dialog";
 
 export const Route = createFileRoute("/settings")({
   head: () => ({
@@ -23,6 +24,7 @@ export const Route = createFileRoute("/settings")({
 
 function SettingsPage() {
   const ws = useWorkspace();
+  const [profileOpen, setProfileOpen] = useState(false);
   
   const [name, setName] = useState("");
   const [topic, setTopic] = useState("");
@@ -179,7 +181,18 @@ function SettingsPage() {
                   <Initials member={m} size={28} />
                   <span className="min-w-0 flex-1 truncate text-sm font-medium">{m.name}</span>
                   <Tag>{m.role}</Tag>
-                  <Button size="sm" variant="ghost" onClick={() => toast.info("Role management opens here")}>Manage</Button>
+                  {m.id === ws.currentUser?.id ? (
+                    <Button 
+                      size="sm" 
+                      variant="ghost" 
+                      onClick={() => setProfileOpen(true)}
+                      className="cursor-pointer font-semibold text-brand hover:bg-brand/10"
+                    >
+                      Manage
+                    </Button>
+                  ) : (
+                    <Button size="sm" variant="ghost" onClick={() => toast.info("Only the logged-in user can manage their own profile.")}>Manage</Button>
+                  )}
                   {m.id !== ws.currentUser?.id && (
                     <Button 
                       size="sm" 
@@ -245,6 +258,9 @@ function SettingsPage() {
           </div>
         </Panel>
       </div>
+      {ws.currentUser && (
+        <EditProfileDialog open={profileOpen} onOpenChange={setProfileOpen} member={ws.currentUser} />
+      )}
     </div>
   );
 }
