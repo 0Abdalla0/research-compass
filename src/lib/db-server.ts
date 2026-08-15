@@ -244,8 +244,9 @@ export const getWorkspaceDataServer = createServerFn({ method: "GET" })
         notes: formattedNotes,
         shots: formattedShots,
         voiceNotes: formattedVoiceNotes,
-        files: files.map((f: any) => ({
+        files: files.map((f: any) => cleanOptional({
           ...f,
+          paperId: f.paperId ?? undefined,
           url: f.url || (f.storage_path ? supabase.storage.from("documents").getPublicUrl(f.storage_path).data.publicUrl : undefined),
         })) as ResearchFile[],
         links: formattedLinks,

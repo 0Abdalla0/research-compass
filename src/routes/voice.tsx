@@ -7,6 +7,7 @@ import { uploadFile } from "@/lib/uploads";
 import { Initials, PageHeader, Panel } from "@/components/ui-bits";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 export const Route = createFileRoute("/voice")({
   head: () => ({
@@ -27,6 +28,8 @@ function VoicePage() {
   const [recording, setRecording] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [paperId, setPaperId] = useState("");
   const [playingId, setPlayingId] = useState<string | null>(null);
   
   // Real-time recording stats
@@ -148,11 +151,12 @@ function VoicePage() {
             title: voiceTitle,
             seconds: elapsedSeconds || 1,
             authorId: ws.currentUser ? ws.currentUser.id : "m1",
-            description: `Recorded in the browser (${mimeType.split(";")[0]}).`,
+            description: description.trim() || `Recorded in the browser (${mimeType.split(";")[0]}).`,
             url: uploadRes.url,
             storage_path: uploadRes.storage_path,
             mime_type: uploadRes.mime_type,
             size_bytes: uploadRes.size_bytes,
+            paperId: paperId || undefined,
           });
 
           toast.success("Voice note saved successfully!", { id: toastId });
@@ -162,6 +166,8 @@ function VoicePage() {
         }
 
         setTitle("");
+        setDescription("");
+        setPaperId("");
         setElapsedSeconds(0);
         setMicVolume(0);
 
@@ -281,19 +287,50 @@ function VoicePage() {
 
       {/* Real Recorder Panel */}
       <Panel className="p-4 sm:p-5 border border-border bg-card">
-        <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
-          <Input 
-            value={title} 
-            onChange={(e) => setTitle(e.target.value)} 
-            placeholder="Name your voice note..." 
-            maxLength={140} 
-            disabled={recording}
-          />
-          <div className="flex flex-wrap items-center gap-2">
+        <div className="space-y-4">
+          <div className="grid gap-4 md:grid-cols-2">
+            <div>
+              <Label className="mb-1.5 block text-xs font-semibold text-muted-foreground">Title</Label>
+              <Input 
+                value={title} 
+                onChange={(e) => setTitle(e.target.value)} 
+                placeholder="Name your voice note..." 
+                maxLength={140} 
+                disabled={recording}
+              />
+            </div>
+            <div>
+              <Label className="mb-1.5 block text-xs font-semibold text-muted-foreground">Link to Research Paper (Optional)</Label>
+              <select
+                value={paperId}
+                onChange={(e) => setPaperId(e.target.value)}
+                disabled={recording}
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <option value="">None (General Note)</option>
+                {ws.papers.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.title}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+          <div>
+            <Label className="mb-1.5 block text-xs font-semibold text-muted-foreground">Description (Optional)</Label>
+            <Input
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Provide a brief summary of this recording..."
+              disabled={recording}
+            />
+          </div>
+          
+          <div className="flex flex-wrap items-center justify-between gap-2 border-t pt-3">
             {!recording ? (
               <Button 
                 onClick={startRecording} 
-                className="inline-flex items-center gap-2 cursor-pointer w-full sm:w-auto"
+                className="inline-flex items-center gap-2 cursor-pointer w-full sm:w-auto text-xs md:text-sm font-semibold"
               >
                 <Mic className="h-4 w-4 text-brand-foreground" /> 
                 Record Note
@@ -313,7 +350,7 @@ function VoicePage() {
                     variant="destructive"
                     onClick={stopRecording}
                     title="Stop and Save"
-                    className="inline-flex items-center gap-1.5 cursor-pointer bg-destructive text-destructive-foreground"
+                    className="inline-flex items-center gap-1.5 cursor-pointer bg-destructive text-destructive-foreground text-xs md:text-sm font-semibold"
                   >
                     <Square className="h-4 w-4 fill-current" />
                     Save Note

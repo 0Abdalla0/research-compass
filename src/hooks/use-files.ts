@@ -43,8 +43,9 @@ export function useFileUploadMutation() {
       file: File;
       folder: string;
       userId: string;
+      paperId?: string;
     }) => {
-      const { file, folder, userId } = params;
+      const { file, folder, userId, paperId } = params;
 
       // Step 1: Upload to Supabase Storage
       const uploadRes = await uploadFile(file, file.name, "files");
@@ -70,6 +71,7 @@ export function useFileUploadMutation() {
         storage_path: uploadRes.storage_path,
         mime_type: uploadRes.mime_type,
         size_bytes: uploadRes.size_bytes,
+        paperId: paperId || undefined,
       };
 
       // Step 2: Insert into database

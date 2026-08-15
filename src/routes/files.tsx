@@ -6,6 +6,8 @@ import { useWorkspace } from "@/lib/workspace-store";
 import { Initials, PageHeader, Panel } from "@/components/ui-bits";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useFilesQuery, useFileUploadMutation, useDeleteFileMutation } from "@/hooks/use-files";
 
 const FOLDERS = ["All", "Research Papers", "Datasets", "Screenshots", "Presentations", "Documentation", "Meeting Files", "Experiments"];
@@ -30,39 +32,27 @@ function FilesPage() {
   const uploadMutation = useFileUploadMutation();
   const deleteMutation = useDeleteFileMutation();
 
-  const files = filesQuery.data ?? [];
+  const mappedShots: FileType[] = ws.shots.map((s) => ({
+    id: s.id,
+    name: s.title || "Screenshot",
+    ext: "png",
+    folder: "Screenshots",
+    size: s.size_bytes ? `${Math.round(s.size_bytes / 1024)} KB` : "Unknown",
+    uploadedBy: s.uploadedBy,
+    date: s.date,
+    url: s.url,
+    storage_path: s.storage_path,
+    mime_type: s.mime_type || "image/png",
+    size_bytes: s.size_bytes,
+  }));
+
+  const files = [...(filesQuery.data ?? []), ...mappedShots];
 
   const [folder, setFolder] = useState("All");
   const [q, setQ] = useState("");
   const [previewFile, setPreviewFile] = useState<FileType | null>(null);
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const list = files.filter((f) => (folder === "All" || f.folder === folder) && f.name.toLowerCase().includes(q.toLowerCase()));
-
-  const handleUploadClick = () => {
-    fileInputRef.current?.click();
-  };
-
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    const toastId = toast.loading(`Uploading "${file.name}"...`);
-
-    try {
-      await uploadMutation.mutateAsync({
-        file,
-        folder,
-        userId: ws.currentUser ? ws.currentUser.id : "m1",
-      });
-
-      toast.success(`"${file.name}" uploaded successfully!`, { id: toastId });
-    } catch (err) {
-      console.error(err);
-      toast.error(`Failed to upload "${file.name}"`, { id: toastId });
-    }
-    e.target.value = "";
-  };
 
   const isImage = (ext: string) => {
     return ["png", "jpg", "jpeg", "svg", "gif", "webp", "bmp"].includes(ext.toLowerCase());
@@ -77,20 +67,7 @@ function FilesPage() {
       <PageHeader
         title="Files"
         subtitle={`${files.length} files`}
-        actions={
-          <>
-            <input
-              type="file"
-              ref={fileInputRef}
-              onChange={handleFileChange}
-              className="hidden"
-            />
-            <Button onClick={handleUploadClick} className="inline-flex items-center gap-2 cursor-pointer text-xs md:text-sm">
-              <UploadCloud className="h-4 w-4" />
-              Upload file
-            </Button>
-          </>
-        }
+        actions={<UploadFileDialog />}
       />
 
       {/* Mobile Folders Horizontally Scrollable Bar */}
@@ -197,13 +174,22 @@ function FilesPage() {
                             variant="ghost"
                             onClick={() => {
                               if (confirm(`Are you sure you want to delete "${f.name}"?`)) {
-                                deleteMutation.mutate(
-                                  { id: f.id, storage_path: f.storage_path },
-                                  {
-                                    onSuccess: () => toast.success("File deleted"),
-                                    onError: () => toast.error("Failed to delete file"),
-                                  },
-                                );
+                                if (f.folder === "Screenshots") {
+                                  try {
+                                    ws.removeShot(f.id);
+                                    toast.success("Screenshot deleted");
+                                  } catch (err) {
+                                    toast.error("Failed to delete screenshot");
+                                  }
+                                } else {
+                                  deleteMutation.mutate(
+                                    { id: f.id, storage_path: f.storage_path },
+                                    {
+                                      onSuccess: () => toast.success("File deleted"),
+                                      onError: () => toast.error("Failed to delete file"),
+                                    },
+                                  );
+                                }
                               }
                             }}
                             title="Delete File"
@@ -266,13 +252,22 @@ function FilesPage() {
                     variant="ghost"
                     onClick={() => {
                       if (confirm(`Delete "${f.name}"?`)) {
-                        deleteMutation.mutate(
-                          { id: f.id, storage_path: f.storage_path },
-                          {
-                            onSuccess: () => toast.success("File deleted"),
-                            onError: () => toast.error("Failed to delete file"),
-                          },
-                        );
+                        if (f.folder === "Screenshots") {
+                          try {
+                            ws.removeShot(f.id);
+                            toast.success("Screenshot deleted");
+                          } catch (err) {
+                            toast.error("Failed to delete screenshot");
+                          }
+                        } else {
+                          deleteMutation.mutate(
+                            { id: f.id, storage_path: f.storage_path },
+                            {
+                              onSuccess: () => toast.success("File deleted"),
+                              onError: () => toast.error("Failed to delete file"),
+                            },
+                          );
+                        }
                       }
                     }}
                     className="h-8 px-2 text-xs font-semibold text-destructive hover:bg-destructive/10 cursor-pointer"
@@ -359,5 +354,130 @@ function FilesPage() {
         </div>
       )}
     </div>
+  );
+}
+
+function UploadFileDialog() {
+  const ws = useWorkspace();
+  const uploadMutation = useFileUploadMutation();
+  const [open, setOpen] = useState(false);
+  const [file, setFile] = useState<File | null>(null);
+  const [targetFolder, setTargetFolder] = useState("Documentation");
+  const [paperId, setPaperId] = useState("");
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0];
+    if (f) {
+      setFile(f);
+    }
+  };
+
+  const handleUpload = async () => {
+    if (!file) {
+      toast.error("Please select a file first");
+      return;
+    }
+
+    const toastId = toast.loading(`Uploading "${file.name}"...`);
+
+    try {
+      await uploadMutation.mutateAsync({
+        file,
+        folder: targetFolder,
+        userId: ws.currentUser ? ws.currentUser.id : "m1",
+        paperId: paperId || undefined,
+      });
+
+      toast.success(`"${file.name}" uploaded successfully!`, { id: toastId });
+      setFile(null);
+      setPaperId("");
+      setOpen(false);
+    } catch (err) {
+      console.error(err);
+      toast.error(`Failed to upload "${file.name}"`, { id: toastId });
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button className="inline-flex items-center gap-2 cursor-pointer text-xs md:text-sm">
+          <UploadCloud className="h-4 w-4" />
+          Upload file
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-md border border-border">
+        <DialogHeader>
+          <DialogTitle>Upload Research File</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4 py-3">
+          {/* File Picker */}
+          <div>
+            <Label className="mb-1.5 block text-xs text-muted-foreground">Select File</Label>
+            <input
+              type="file"
+              ref={fileInputRef}
+              onChange={handleFileChange}
+              className="hidden"
+            />
+            <div 
+              onClick={() => fileInputRef.current?.click()}
+              className="rounded-xl border border-dashed border-border p-5 text-center text-xs text-muted-foreground hover:bg-secondary/40 cursor-pointer transition-colors"
+            >
+              {file ? (
+                <div className="space-y-1">
+                  <p className="font-semibold text-foreground break-all">{file.name}</p>
+                  <p className="text-[10px] text-muted-foreground">{(file.size / 1024).toFixed(1)} KB</p>
+                  <p className="text-brand font-semibold mt-1">Change selected file</p>
+                </div>
+              ) : (
+                <div className="space-y-1.5 py-2">
+                  <UploadCloud className="h-6 w-6 mx-auto text-muted-foreground" />
+                  <p className="font-medium text-foreground">Click to browse and choose a file</p>
+                  <p className="text-[10px] text-muted-foreground">Any format supported up to 50MB</p>
+                </div>
+              )}
+            </div>
+          </div>
+
+          <div className="grid gap-4 md:grid-cols-2">
+            <div>
+              <Label className="mb-1.5 block text-xs text-muted-foreground">Target Folder</Label>
+              <select
+                value={targetFolder}
+                onChange={(e) => setTargetFolder(e.target.value)}
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {FOLDERS.filter(f => f !== "All").map((f) => (
+                  <option key={f} value={f}>
+                    {f}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <Label className="mb-1.5 block text-xs text-muted-foreground">Link to Research Paper (Optional)</Label>
+              <select
+                value={paperId}
+                onChange={(e) => setPaperId(e.target.value)}
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                <option value="">None (General File)</option>
+                {ws.papers.map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.title}
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+        </div>
+        <DialogFooter className="mt-2">
+          <Button variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
+          <Button onClick={handleUpload}>Upload</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

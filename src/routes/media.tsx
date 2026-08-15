@@ -145,6 +145,7 @@ function UploadDialog() {
   const ws = useWorkspace();
   const [open, setOpen] = useState(false);
   const [f, setF] = useState({ title: "", description: "", tags: "", source: "Own work" });
+  const [paperId, setPaperId] = useState("");
   const [imageFile, setImageFile] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -182,6 +183,7 @@ function UploadDialog() {
         storage_path: uploadRes.storage_path,
         mime_type: uploadRes.mime_type,
         size_bytes: uploadRes.size_bytes,
+        paperId: paperId || undefined,
       };
 
       await ws.addShot(payload);
@@ -189,6 +191,7 @@ function UploadDialog() {
 
       // Reset Form
       setF({ title: "", description: "", tags: "", source: "Own work" });
+      setPaperId("");
       setImageFile(null);
       setImagePreview(null);
       setOpen(false);
@@ -226,6 +229,21 @@ function UploadDialog() {
           <div>
             <Label className="mb-1.5 block text-xs text-muted-foreground">Tags</Label>
             <Input value={f.tags} onChange={(e) => setF({ ...f, tags: e.target.value })} placeholder="figure, results, model" />
+          </div>
+          <div>
+            <Label className="mb-1.5 block text-xs text-muted-foreground">Link to Research Paper (Optional)</Label>
+            <select
+              value={paperId}
+              onChange={(e) => setPaperId(e.target.value)}
+              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <option value="">None (General Screenshot)</option>
+              {ws.papers.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.title}
+                </option>
+              ))}
+            </select>
           </div>
           
           {/* File Picker */}

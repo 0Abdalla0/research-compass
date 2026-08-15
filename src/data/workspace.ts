@@ -119,6 +119,7 @@ export type ResearchFile = {
   storage_path?: string | undefined;
   mime_type?: string | undefined;
   size_bytes?: number | undefined;
+  paperId?: string | undefined;
 };
 
 export type ResourceLink = {
