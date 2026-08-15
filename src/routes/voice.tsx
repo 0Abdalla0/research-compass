@@ -145,7 +145,7 @@ function VoicePage() {
         const audioBlob = new Blob(audioChunksRef.current, { type: mimeType });
         const mimeFirst = mimeType.split(";")[0] || "";
         const ext = mimeFirst.split("/")[1] || "webm";
-        const voiceTitle = title.trim() || `Voice Note ${new Date().toLocaleTimeString()}`;
+        const voiceTitle = title.trim() || "Voice Note";
 
         try {
           const uploadRes = await uploadFile(audioBlob, `${voiceTitle}.${ext}`, "voice");
