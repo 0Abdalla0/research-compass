@@ -634,6 +634,10 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
         }
       },
       deleteMember: async (memberId: string) => {
+        const member = members.find((m) => m.id === memberId);
+        if (member) {
+          log("removed teammate", member.name, "comment");
+        }
         setMembers((prev) => prev.filter((m) => m.id !== memberId));
         if (hasSupabaseKeys) {
           try {
@@ -668,6 +672,10 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
         );
       },
       setAnalysis: (paperId, section, val) => {
+        const paper = papers.find((p) => p.id === paperId);
+        if (paper) {
+          log(`updated '${section}' analysis on`, paper.title, "paper");
+        }
         setPapers((prev) =>
           prev.map((p) =>
             p.id === paperId ? { ...p, analysis: { ...p.analysis, [section]: val } } : p,
@@ -709,6 +717,12 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
         );
       },
       toggleCheck: (taskId, index) => {
+        const task = tasks.find((t) => t.id === taskId);
+        const item = task?.checklist[index];
+        if (task && item) {
+          const actionWord = !item.done ? "completed checklist item" : "uncompleted checklist item";
+          log(`${actionWord} '${item.text}' in`, task.title, "task");
+        }
         setTasks((prev) =>
           prev.map((t) =>
             t.id === taskId
@@ -731,6 +745,10 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
         log("created a note", n.title, "note");
       },
       updateNote: (id, patch) => {
+        const note = notes.find((n) => n.id === id);
+        if (note) {
+          log("updated the note", note.title, "note");
+        }
         const updatedDate = today();
         setNotes((prev) => prev.map((n) => (n.id === id ? { ...n, ...patch, updated: updatedDate } : n)));
         updateNoteServer({ data: { id, patch: { ...patch, updated: updatedDate } } }).catch((err) =>
@@ -754,6 +772,10 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
         }
       },
       commentShot: (id, text) => {
+        const shot = shots.find((s) => s.id === id);
+        if (shot) {
+          log("commented on screenshot", shot.title, "comment");
+        }
         const author = currentUser ? currentUser.name : "Member";
         const comment = { author, text };
         setShots((prev) =>
@@ -783,6 +805,9 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       },
       removeVoiceNote: (id) => {
         const v = voiceNotes.find((x) => x.id === id);
+        if (v) {
+          log("deleted voice note", v.title, "voice");
+        }
         setVoiceNotes((prev) => prev.filter((x) => x.id !== id));
         removeVoiceNoteServer({ data: id }).catch((err) =>
           console.error("Error deleting voice note in DB:", err),
@@ -792,6 +817,10 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
         }
       },
       renameVoiceNote: (id, title) => {
+        const v = voiceNotes.find((x) => x.id === id);
+        if (v) {
+          log(`renamed voice note '${v.title}' to`, title, "voice");
+        }
         setVoiceNotes((prev) => prev.map((v) => (v.id === id ? { ...v, title } : v)));
         renameVoiceNoteServer({ data: { id, title } }).catch((err) =>
           console.error("Error renaming voice note in DB:", err),
@@ -815,6 +844,9 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       },
       removeFile: (id) => {
         const f = files.find((x) => x.id === id);
+        if (f) {
+          log("deleted file", f.name, "file");
+        }
         setFiles((prev) => prev.filter((x) => x.id !== id));
         removeFileServer({ data: id }).catch((err) => console.error("Error deleting file in DB:", err));
         if (f && f.storage_path) {
@@ -831,6 +863,10 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
         log("added a link", l.title, "file");
       },
       updateLink: (id, patch) => {
+        const link = links.find((l) => l.id === id);
+        if (link) {
+          log("updated link", link.title, "file");
+        }
         setLinks((prev) => prev.map((l) => (l.id === id ? { ...l, ...patch } : l)));
         updateLinkServer({ data: { id, patch } }).catch((err) =>
           console.error("Error updating resource link in DB:", err),
@@ -846,12 +882,20 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
         log("scheduled", e.title, "task");
       },
       updateEvent: (id, patch) => {
+        const ev = events.find((e) => e.id === id);
+        if (ev) {
+          log("updated calendar event", ev.title, "task");
+        }
         setEvents((prev) => prev.map((e) => (e.id === id ? { ...e, ...patch } : e)));
         updateEventServer({ data: { id, patch } }).catch((err) =>
           console.error("Error updating calendar event in DB:", err),
         );
       },
       removeEvent: (id) => {
+        const ev = events.find((e) => e.id === id);
+        if (ev) {
+          log("cancelled calendar event", ev.title, "task");
+        }
         setEvents((prev) => prev.filter((e) => e.id !== id));
         removeEventServer({ data: id }).catch((err) =>
           console.error("Error deleting calendar event in DB:", err),
@@ -867,6 +911,10 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
         log("scheduled a meeting", m.title, "task");
       },
       updateMeeting: (id, patch) => {
+        const mt = meetings.find((m) => m.id === id);
+        if (mt) {
+          log("updated details of meeting", mt.title, "task");
+        }
         setMeetings((prev) => prev.map((m) => (m.id === id ? { ...m, ...patch } : m)));
         updateMeetingServer({ data: { id, patch } }).catch((err) =>
           console.error("Error updating meeting in DB:", err),
@@ -882,6 +930,10 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
         log("added phase", p.name, "task");
       },
       updatePhase: (id, patch) => {
+        const ph = phases.find((p) => p.id === id);
+        if (ph) {
+          log("updated phase details for", ph.name, "task");
+        }
         setPhases((prev) => prev.map((p) => (p.id === id ? { ...p, ...patch } : p)).sort((a, b) => a.index - b.index));
         updatePhaseServer({ data: { id, patch } }).catch((err) =>
           console.error("Error updating phase in DB:", err),
@@ -1046,6 +1098,16 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
         }
       },
       updateComment: async (id, content) => {
+        const c = comments.find((x) => x.id === id);
+        if (c) {
+          if (c.paper_id) {
+            const paper = papers.find((p) => p.id === c.paper_id);
+            if (paper) log("updated comment on paper", paper.title, "comment");
+          } else if (c.task_id) {
+            const task = tasks.find((t) => t.id === c.task_id);
+            if (task) log("updated comment on task", task.title, "comment");
+          }
+        }
         setComments((prev) =>
           prev.map((c) => (c.id === id ? { ...c, content, updated_at: new Date().toISOString() } : c))
         );
@@ -1057,6 +1119,15 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       },
       removeComment: async (id) => {
         const c = comments.find((x) => x.id === id);
+        if (c) {
+          if (c.paper_id) {
+            const paper = papers.find((p) => p.id === c.paper_id);
+            if (paper) log("deleted comment from paper", paper.title, "comment");
+          } else if (c.task_id) {
+            const task = tasks.find((t) => t.id === c.task_id);
+            if (task) log("deleted comment from task", task.title, "comment");
+          }
+        }
         setComments((prev) => prev.filter((x) => x.id !== id));
         try {
           await removeCommentServer({ data: id });
@@ -1095,6 +1166,9 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
         try {
           await addConversationServer({ data: newConv });
           await addConversationMembersServer({ data: membersToAdd });
+          if (is_group) {
+            log("created a chat group", name || "New Group", "comment");
+          }
           return id;
         } catch (err) {
           console.error("Failed to create conversation:", err);
