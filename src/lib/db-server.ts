@@ -224,10 +224,17 @@ export const getWorkspaceDataServer = createServerFn({ method: "GET" })
       }));
 
       const formattedActivity: Activity[] = activity
-        .map((a: any) => ({
-          ...a,
-          kind: a.kind as Activity["kind"],
-        }))
+        .map((a: any) => {
+          let timeVal = a.time;
+          if (timeVal && !timeVal.includes("T") && !timeVal.includes("-") && a.created_at) {
+            timeVal = a.created_at;
+          }
+          return {
+            ...a,
+            time: timeVal,
+            kind: a.kind as Activity["kind"],
+          };
+        })
         .sort((a: any, b: any) => {
           const dateA = new Date(a.time).getTime();
           const dateB = new Date(b.time).getTime();
