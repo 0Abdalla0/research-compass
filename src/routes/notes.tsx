@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState } from "react";
-import { Plus, Trash2, FileText, KanbanSquare } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Plus, Trash2, FileText, KanbanSquare, Edit3 } from "lucide-react";
 import { toast } from "sonner";
 import { useWorkspace } from "@/lib/workspace-store";
 import { Initials, PageHeader, Panel, Tag } from "@/components/ui-bits";
@@ -10,6 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Note } from "@/data/workspace";
 
 const TYPES = ["Research", "Meeting", "Idea", "Literature Review", "Experiment", "Brainstorm"] as const;
 
@@ -88,20 +89,23 @@ function NotesPage() {
                   <Tag>{note.type}</Tag>
                   {note.tags.map((t) => (<Tag key={t}>#{t}</Tag>))}
                 </div>
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => {
-                    if (confirm(`Are you sure you want to delete note "${note.title}"?`)) {
-                      ws.removeNote(note.id);
-                      setActive("");
-                      toast.success("Note deleted successfully");
-                    }
-                  }}
-                  className="text-destructive hover:bg-destructive/10 shrink-0 cursor-pointer"
-                >
-                  <Trash2 className="h-4 w-4 mr-1.5" />Delete
-                </Button>
+                <div className="flex items-center gap-1 shrink-0">
+                  <EditNoteDialog note={note} />
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => {
+                      if (confirm(`Are you sure you want to delete note "${note.title}"?`)) {
+                        ws.removeNote(note.id);
+                        setActive("");
+                        toast.success("Note deleted successfully");
+                      }
+                    }}
+                    className="text-destructive hover:bg-destructive/10 shrink-0 cursor-pointer"
+                  >
+                    <Trash2 className="h-4 w-4 mr-1.5" />Delete
+                  </Button>
+                </div>
               </div>
 
               <h2 className="font-display mt-4 text-xl font-bold">{note.title}</h2>
@@ -234,6 +238,112 @@ function AddNoteDialog({ onCreated }: { onCreated: (id: string) => void }) {
             onCreated("");
             setOpen(false);
           }}>Create note</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function EditNoteDialog({ note }: { note: Note }) {
+  const ws = useWorkspace();
+  const [open, setOpen] = useState(false);
+  const [f, setF] = useState({
+    title: note.title,
+    type: note.type,
+    body: note.body,
+    tags: note.tags.join(", "),
+    paperId: note.paperId || "",
+    taskId: note.taskId || "",
+  });
+
+  useEffect(() => {
+    setF({
+      title: note.title,
+      type: note.type,
+      body: note.body,
+      tags: note.tags.join(", "),
+      paperId: note.paperId || "",
+      taskId: note.taskId || "",
+    });
+  }, [note, open]);
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button size="sm" variant="ghost" className="text-muted-foreground hover:bg-secondary shrink-0 cursor-pointer">
+          <Edit3 className="h-4 w-4 mr-1.5" />Edit
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogHeader><DialogTitle>Edit note</DialogTitle></DialogHeader>
+        <div className="grid gap-3">
+          <div>
+            <Label className="mb-1.5 block text-xs text-muted-foreground">Title</Label>
+            <Input value={f.title} onChange={(e) => setF({ ...f, title: e.target.value })} maxLength={160} />
+          </div>
+          <div>
+            <Label className="mb-1.5 block text-xs text-muted-foreground">Type</Label>
+            <Select value={f.type} onValueChange={(v) => setF({ ...f, type: v as (typeof TYPES)[number] })}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>{TYPES.map((t) => (<SelectItem key={t} value={t}>{t}</SelectItem>))}</SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label className="mb-1.5 block text-xs text-muted-foreground">Tags (comma separated)</Label>
+            <Input value={f.tags} onChange={(e) => setF({ ...f, tags: e.target.value })} placeholder="e.g. sepsis, bert, nlp" />
+          </div>
+
+          {/* Relationship Links */}
+          <div className="border-t border-border/60 pt-3">
+            <p className="mb-2 text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
+              <FileText className="h-3.5 w-3.5" /> Link to Paper (optional)
+            </p>
+            <Select value={f.paperId} onValueChange={(v) => setF({ ...f, paperId: v === "none" ? "" : v })}>
+              <SelectTrigger><SelectValue placeholder="Select a paper…" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">— None —</SelectItem>
+                {ws.papers.map((p) => (
+                  <SelectItem key={p.id} value={p.id}>{p.title.slice(0, 55)}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div>
+            <p className="mb-2 text-xs font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-1.5">
+              <KanbanSquare className="h-3.5 w-3.5" /> Link to Task (optional)
+            </p>
+            <Select value={f.taskId} onValueChange={(v) => setF({ ...f, taskId: v === "none" ? "" : v })}>
+              <SelectTrigger><SelectValue placeholder="Select a task…" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">— None —</SelectItem>
+                {ws.tasks.map((t) => (
+                  <SelectItem key={t.id} value={t.id}>{t.title.slice(0, 55)}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div>
+            <Label className="mb-1.5 block text-xs text-muted-foreground">Content (markdown supported)</Label>
+            <Textarea rows={8} value={f.body} onChange={(e) => setF({ ...f, body: e.target.value })} maxLength={8000} />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="ghost" onClick={() => setOpen(false)}>Cancel</Button>
+          <Button onClick={() => {
+            if (f.title.trim().length < 3) { toast.error("Add a note title"); return; }
+            ws.updateNote(note.id, {
+              title: f.title.trim(),
+              type: f.type,
+              tags: f.tags.split(",").map((t) => t.trim()).filter(Boolean),
+              body: f.body,
+              paperId: f.paperId || undefined,
+              taskId: f.taskId || undefined,
+            });
+            toast.success("Note updated");
+            setOpen(false);
+          }}>Save changes</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
