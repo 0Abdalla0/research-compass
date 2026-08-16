@@ -17,6 +17,7 @@ export type Member = {
   uniEmail?: string | undefined;
   cv?: string | undefined;
   privateEmail?: string | undefined;
+  githubUsername?: string | undefined;
   cv_storage_path?: string | undefined;
   cv_mime_type?: string | undefined;
   cv_size_bytes?: number | undefined;
@@ -57,8 +58,8 @@ export type Task = {
   due: string;
   labels: string[];
   checklist: { text: string; done: boolean }[];
-  paperId?: string;
-  phaseId?: string;
+  paperId?: string | undefined;
+  phaseId?: string | undefined;
   comments: number;
   attachments: number;
 };
@@ -131,7 +132,7 @@ export type ResourceLink = {
   category: string;
   tags: string[];
   addedBy: string;
-  paperId?: string;
+  paperId?: string | undefined;
 };
 
 export type Meeting = {
@@ -181,6 +182,7 @@ export type Conversation = {
   name?: string | undefined;
   is_group: boolean;
   paper_id?: string | undefined;
+  task_id?: string | undefined;
   phase_id?: string | undefined;
   created_at: string;
 };

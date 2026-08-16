@@ -43,7 +43,7 @@ export function useFileUploadMutation() {
       file: File;
       folder: string;
       userId: string;
-      paperId?: string;
+      paperId?: string | undefined;
     }) => {
       const { file, folder, userId, paperId } = params;
 

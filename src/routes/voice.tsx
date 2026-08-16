@@ -4,7 +4,7 @@ import { Download, Mic, Pause, Play, Square, Trash2, Volume2, AlertCircle } from
 import { toast } from "sonner";
 import { useWorkspace } from "@/lib/workspace-store";
 import { uploadFile } from "@/lib/uploads";
-import { Initials, PageHeader, Panel } from "@/components/ui-bits";
+import { Initials, PageHeader, Panel, Tag } from "@/components/ui-bits";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -461,15 +461,15 @@ function VoicePage() {
                       <div className="mt-2 flex flex-wrap gap-1">
                         {v.paperId && (() => {
                           const p = ws.papers.find((x) => x.id === v.paperId);
-                          return p ? <Tag variant="secondary" className="text-[10px] py-0.5">Paper: {p.title.slice(0, 30)}...</Tag> : null;
+                          return p ? <Tag>Paper: {p.title.slice(0, 30)}...</Tag> : null;
                         })()}
                         {v.taskId && (() => {
                           const t = ws.tasks.find((x) => x.id === v.taskId);
-                          return t ? <Tag variant="secondary" className="text-[10px] py-0.5">Task: {t.title.slice(0, 30)}...</Tag> : null;
+                          return t ? <Tag>Task: {t.title.slice(0, 30)}...</Tag> : null;
                         })()}
                         {v.meetingId && (() => {
                           const m = ws.meetings.find((x) => x.id === v.meetingId);
-                          return m ? <Tag variant="secondary" className="text-[10px] py-0.5">Meeting: {m.title.slice(0, 30)}...</Tag> : null;
+                          return m ? <Tag>Meeting: {m.title.slice(0, 30)}...</Tag> : null;
                         })()}
                       </div>
                     )}

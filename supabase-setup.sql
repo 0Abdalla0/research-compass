@@ -46,6 +46,7 @@ CREATE TABLE "members" (
   "cv"             TEXT,
   "privateEmail"   TEXT,
   "email_verified" BOOLEAN     NOT NULL DEFAULT false,
+  "githubUsername" TEXT,
   "created_at"     TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 

@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useWorkspace } from "@/lib/workspace-store";
 import { Initials, PageHeader, Panel, Tag } from "@/components/ui-bits";
-import { FileText, KanbanSquare, Mail, Phone, BookOpen } from "lucide-react";
+import { FileText, KanbanSquare, Mail, Phone, BookOpen, Github } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 export const Route = createFileRoute("/team")({
@@ -81,7 +81,7 @@ function TeamPage() {
               </div>
 
               {/* Contact info */}
-              {(m.email || m.phone) && (
+              {(m.email || m.phone || m.githubUsername) && (
                 <div className="flex flex-col gap-1 border-t border-border/50 pt-3">
                   {m.email && (
                     <a href={`mailto:${m.email}`} className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-brand transition-colors">
@@ -91,6 +91,16 @@ function TeamPage() {
                   {m.phone && (
                     <a href={`tel:${m.phone}`} className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-brand transition-colors">
                       <Phone className="h-3.5 w-3.5 shrink-0" />{m.phone}
+                    </a>
+                  )}
+                  {m.githubUsername && (
+                    <a 
+                      href={`https://github.com/${m.githubUsername}`} 
+                      target="_blank" 
+                      rel="noreferrer" 
+                      className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-brand transition-colors"
+                    >
+                      <Github className="h-3.5 w-3.5 shrink-0" />@{m.githubUsername}
                     </a>
                   )}
                 </div>

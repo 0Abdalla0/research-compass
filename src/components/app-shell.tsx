@@ -30,7 +30,6 @@ import { cn } from "@/lib/utils";
 import { useWorkspace } from "@/lib/workspace-store";
 import { Initials } from "@/components/ui-bits";
 import { GlobalSearch } from "@/components/global-search";
-import { EditProfileDialog } from "@/components/edit-profile-dialog";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -156,42 +155,9 @@ export function AppShell({ children }: { children: ReactNode }) {
       <div className="md:pl-64">
         <header className="sticky top-0 z-30 border-b border-border bg-background/85 backdrop-blur-xl">
           <div className="flex h-16 items-center justify-between gap-4 px-4 sm:px-6">
-            <div className="flex items-center gap-3">
-              {/* Profile dropdown trigger on the leftmost */}
-              <DropdownMenu>
-                <DropdownMenuTrigger className="rounded-full focus:outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring">
-                  <Initials member={currentUser || undefined} size={32} />
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="start" className="w-56 mt-1">
-                  <DropdownMenuLabel className="flex flex-col">
-                    <span className="font-semibold text-foreground">{currentUser?.name}</span>
-                    <span className="text-xs font-normal text-muted-foreground">{currentUser?.email}</span>
-                  </DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem asChild>
-                    <Link to="/settings">Edit Profile</Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link to="/team">Team & profile</Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link to="/settings">Project settings</Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem
-                    onClick={() => {
-                      ws.logoutUser();
-                      toast.success("Logged out successfully");
-                    }}
-                    className="text-destructive focus:bg-destructive/10 cursor-pointer"
-                  >
-                    Log out
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-
+            <div className="flex items-center gap-3 md:hidden">
               <button
-                className="rounded-lg p-2 text-muted-foreground hover:bg-secondary md:hidden"
+                className="rounded-lg p-2 text-muted-foreground hover:bg-secondary"
                 onClick={() => setOpenNav(true)}
                 aria-label="Open navigation"
               >
@@ -214,7 +180,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               </button>
             </div>
 
-            {/* Right-aligned actions (Theme switch & notifications) */}
+            {/* Right-aligned actions (Theme switch, notifications & profile icon) */}
             <div className="flex items-center gap-1.5">
               <button
                 onClick={toggleTheme}
@@ -276,6 +242,39 @@ export function AppShell({ children }: { children: ReactNode }) {
                       </div>
                     )}
                   </div>
+                </DropdownMenuContent>
+              </DropdownMenu>
+
+              {/* Profile dropdown trigger on the rightmost */}
+              <DropdownMenu>
+                <DropdownMenuTrigger className="rounded-full focus:outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring ml-1">
+                  <Initials member={currentUser || undefined} size={32} />
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56 mt-1">
+                  <DropdownMenuLabel className="flex flex-col">
+                    <span className="font-semibold text-foreground">{currentUser?.name}</span>
+                    <span className="text-xs font-normal text-muted-foreground">{currentUser?.email}</span>
+                  </DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem asChild>
+                    <Link to="/settings">Edit Profile</Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link to="/team">Team & profile</Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link to="/settings">Project settings</Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onClick={() => {
+                      ws.logoutUser();
+                      toast.success("Logged out successfully");
+                    }}
+                    className="text-destructive focus:bg-destructive/10 cursor-pointer"
+                  >
+                    Log out
+                  </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>

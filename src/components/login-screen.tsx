@@ -40,6 +40,7 @@ export function LoginScreen() {
   const [cvStoragePath, setCvStoragePath] = useState("");
   const [cvMimeType, setCvMimeType] = useState("");
   const [cvSizeBytes, setCvSizeBytes] = useState<number | undefined>(undefined);
+  const [githubUsername, setGithubUsername] = useState("");
 
   const handleCvChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -111,10 +112,25 @@ export function LoginScreen() {
         privateEmail,
         cvStoragePath || undefined,
         cvMimeType || undefined,
-        cvSizeBytes
+        cvSizeBytes,
+        githubUsername
       );
     } else {
-      ws.registerUser(regName, regEmail, regRole, regPassword);
+      ws.registerUser(
+        regName,
+        regEmail,
+        regRole,
+        regPassword,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        undefined,
+        githubUsername
+      );
     }
 
     // Reset fields
@@ -132,6 +148,7 @@ export function LoginScreen() {
     setCvStoragePath("");
     setCvMimeType("");
     setCvSizeBytes(undefined);
+    setGithubUsername("");
 
     toast.success(`Account created! Welcome to SehatMasr, ${regName}!`);
   };
@@ -364,6 +381,20 @@ export function LoginScreen() {
                       </button>
                     </div>
                   </div>
+                </div>
+
+                <div className="space-y-1">
+                  <label htmlFor="reg-github" className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                    GitHub Username
+                  </label>
+                  <input
+                    id="reg-github"
+                    type="text"
+                    placeholder="e.g. octocat (Optional)"
+                    value={githubUsername}
+                    onChange={(e) => setGithubUsername(e.target.value)}
+                    className="w-full px-4 py-2.5 bg-background border border-border rounded-xl text-sm focus:outline-none focus:border-brand transition-colors text-foreground"
+                  />
                 </div>
 
                 {/* Conditional Fields for Member role */}

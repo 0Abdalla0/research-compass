@@ -12,7 +12,7 @@ if (fs.existsSync(envPath)) {
   for (const line of lines) {
     if (!line.trim() || line.trim().startsWith("#")) continue;
     const parts = line.split("=");
-    const k = parts[0].trim();
+    const k = parts[0]?.trim();
     const v = parts.slice(1).join("=").trim().replace(/^['"]|['"]$/g, "");
     if (k === "VITE_SUPABASE_URL") supabaseUrl = v;
     if (k === "VITE_SUPABASE_ANON_KEY") supabaseAnonKey = v;

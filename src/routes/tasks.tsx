@@ -171,7 +171,7 @@ export function TaskSheetContent({ task, onClose }: { task: Task; onClose: () =>
       priority,
       assigneeId,
       due,
-      paperId: paperId || null,
+      paperId: paperId || undefined,
     });
     toast.success("Task updated successfully");
     setIsEditing(false);

@@ -467,7 +467,7 @@ export default function ChatPage() {
                 <UniversalComposer
                   placeholder="Type a message to the team..."
                   onSend={handleSendMessage}
-                  onTyping={(isTyping) => ws.broadcastTyping(activeConvId, isTyping)}
+                  onTyping={(isTyping) => activeConvId && ws.broadcastTyping(activeConvId, isTyping)}
                 />
               </>
             )}

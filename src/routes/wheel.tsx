@@ -263,6 +263,19 @@ function SpinWheelPage() {
                 <span className="font-display mt-1 text-2xl font-black text-foreground">
                   {winner}
                 </span>
+                <button
+                  onClick={() => {
+                    const winnerIdx = names.indexOf(winner);
+                    if (winnerIdx !== -1) {
+                      handleRemoveName(winnerIdx);
+                      setWinner(null);
+                    }
+                  }}
+                  className="mt-3 inline-flex items-center gap-1.5 rounded-xl border border-destructive/30 bg-destructive/5 px-3 py-1.5 text-xs font-bold text-destructive hover:bg-destructive/10 transition-colors cursor-pointer"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                  Remove from Wheel
+                </button>
               </div>
             )}
           </div>

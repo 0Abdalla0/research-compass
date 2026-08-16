@@ -164,6 +164,7 @@ export const getWorkspaceDataServer = createServerFn({ method: "GET" })
         uniEmail: m.uniEmail ?? undefined,
         cv: m.cv ?? undefined,
         privateEmail: m.privateEmail ?? undefined,
+        githubUsername: m.githubUsername ?? undefined,
       }));
 
       const formattedPapers: Paper[] = papers.map((p: any) => ({

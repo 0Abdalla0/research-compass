@@ -19,6 +19,7 @@ import type {
   ResourceLink,
   Shot,
   Task,
+  Member,
   TaskStatus,
   VoiceNote,
   Phase,
@@ -135,7 +136,8 @@ type Ctx = {
     privateEmail?: string,
     cv_storage_path?: string,
     cv_mime_type?: string,
-    cv_size_bytes?: number
+    cv_size_bytes?: number,
+    githubUsername?: string
   ) => void;
   deleteMember: (memberId: string) => Promise<void>;
   updateProfile: (id: string, patch: Partial<Member>) => Promise<void>;
@@ -369,14 +371,19 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     if (currentUser) {
       const filtered = rawNotifications
         .filter((n) => n.user_id === currentUser.id && !n.is_read)
-        .map((n) => ({
-          id: n.id,
-          title: n.title,
-          body: n.description,
-          time: formatTimeAgo(n.created_at),
-          unread: true,
-          link: n.link,
-        }));
+        .map((n) => {
+          const item: any = {
+            id: n.id,
+            title: n.title,
+            body: n.description,
+            time: formatTimeAgo(n.created_at),
+            unread: true,
+          };
+          if (n.link) {
+            item.link = n.link;
+          }
+          return item;
+        });
       setNotifications(filtered);
     } else {
       setNotifications([]);
@@ -606,7 +613,8 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
         privateEmail,
         cv_storage_path,
         cv_mime_type,
-        cv_size_bytes
+        cv_size_bytes,
+        githubUsername
       ) => {
         const initials = name
           .split(" ")
@@ -630,6 +638,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
           uniEmail: uniEmail || undefined,
           cv: cv || undefined,
           privateEmail: privateEmail || undefined,
+          githubUsername: githubUsername || undefined,
           cv_storage_path: cv_storage_path || undefined,
           cv_mime_type: cv_mime_type || undefined,
           cv_size_bytes: cv_size_bytes || undefined,

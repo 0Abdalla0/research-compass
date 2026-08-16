@@ -8,9 +8,12 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Upload, FileText, Loader2 } from "lucide-react";
+import { Upload, FileText, Loader2, Github, Mail, Phone, Shield, Eye, ExternalLink } from "lucide-react";
 import { uploadFile } from "@/lib/uploads";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { supabase } from "@/lib/supabase";
+import type { Member } from "@/data/workspace";
 
 export const Route = createFileRoute("/settings")({
   head: () => ({
@@ -37,10 +40,14 @@ function SettingsPage() {
   const [profileUniId, setProfileUniId] = useState("");
   const [profileUniEmail, setProfileUniEmail] = useState("");
   const [profilePrivateEmail, setProfilePrivateEmail] = useState("");
+  const [profileGithubUsername, setProfileGithubUsername] = useState("");
   const [profileResponsibilities, setProfileResponsibilities] = useState("");
   const [profileCv, setProfileCv] = useState("");
   const [profileCvStoragePath, setProfileCvStoragePath] = useState("");
+  const [profileCvMimeType, setProfileCvMimeType] = useState("");
+  const [profileCvSizeBytes, setProfileCvSizeBytes] = useState<number | undefined>(undefined);
   const [uploadingCv, setUploadingCv] = useState(false);
+  const [viewMember, setViewMember] = useState<Member | null>(null);
 
   // Sync inputs with workspace context values
   useEffect(() => {
@@ -57,9 +64,12 @@ function SettingsPage() {
       setProfileUniId(ws.currentUser.uniId || "");
       setProfileUniEmail(ws.currentUser.uniEmail || "");
       setProfilePrivateEmail(ws.currentUser.privateEmail || "");
+      setProfileGithubUsername(ws.currentUser.githubUsername || "");
       setProfileResponsibilities(ws.currentUser.responsibilities || "");
       setProfileCv(ws.currentUser.cv || "");
       setProfileCvStoragePath(ws.currentUser.cv_storage_path || "");
+      setProfileCvMimeType(ws.currentUser.cv_mime_type || "");
+      setProfileCvSizeBytes(ws.currentUser.cv_size_bytes);
     }
   }, [ws.currentUser]);
 
@@ -79,8 +89,10 @@ function SettingsPage() {
     const toastId = toast.loading(`Uploading CV "${file.name}"...`);
     try {
       const uploadRes = await uploadFile(file, file.name, "cvs");
-      setProfileCv(file.name);
+      setProfileCv(uploadRes.url);
       setProfileCvStoragePath(uploadRes.storage_path);
+      setProfileCvMimeType(uploadRes.mime_type);
+      setProfileCvSizeBytes(uploadRes.size_bytes);
       toast.success("CV uploaded successfully!", { id: toastId });
     } catch (err) {
       console.error(err);
@@ -102,9 +114,12 @@ function SettingsPage() {
       uniId: profileUniId.trim() || undefined,
       uniEmail: profileUniEmail.trim() || undefined,
       privateEmail: profilePrivateEmail.trim() || undefined,
+      githubUsername: profileGithubUsername.trim() || undefined,
       responsibilities: profileResponsibilities.trim(),
       cv: profileCv || undefined,
       cv_storage_path: profileCvStoragePath || undefined,
+      cv_mime_type: profileCvMimeType || undefined,
+      cv_size_bytes: profileCvSizeBytes || undefined,
     });
     toast.success("Profile saved successfully!");
   };
@@ -159,9 +174,15 @@ function SettingsPage() {
                       <Input value={profileUniEmail} onChange={(e) => setProfileUniEmail(e.target.value)} placeholder="e.g. name@uni.edu" />
                     </div>
                   </div>
-                  <div>
-                    <Label className="mb-1.5 block text-xs text-muted-foreground">Private Email</Label>
-                    <Input value={profilePrivateEmail} onChange={(e) => setProfilePrivateEmail(e.target.value)} placeholder="e.g. personal@gmail.com" />
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div>
+                      <Label className="mb-1.5 block text-xs text-muted-foreground">Private Email</Label>
+                      <Input value={profilePrivateEmail} onChange={(e) => setProfilePrivateEmail(e.target.value)} placeholder="e.g. personal@gmail.com" />
+                    </div>
+                    <div>
+                      <Label className="mb-1.5 block text-xs text-muted-foreground">GitHub Username</Label>
+                      <Input value={profileGithubUsername} onChange={(e) => setProfileGithubUsername(e.target.value)} placeholder="e.g. octocat" />
+                    </div>
                   </div>
                   <div>
                     <Label className="mb-1.5 block text-xs text-muted-foreground">Research Responsibilities</Label>
@@ -187,7 +208,9 @@ function SettingsPage() {
                             <Upload className="h-4 w-4 text-muted-foreground" />
                           )}
                           <span className="truncate max-w-[250px] text-muted-foreground">
-                            {profileCv ? profileCv : "Select CV File (PDF, DOCX...)"}
+                            {profileCv ? (
+                              profileCv.startsWith("http") ? "CV Document uploaded" : profileCv
+                            ) : "Select CV File (PDF, DOCX...)"}
                           </span>
                           <input
                             type="file"
@@ -200,7 +223,7 @@ function SettingsPage() {
                         {profileCvStoragePath && (
                           <a
                             href={
-                              ws.supabase.storage
+                              supabase.storage
                                 .from("documents")
                                 .getPublicUrl(profileCvStoragePath).data.publicUrl
                             }
@@ -222,19 +245,58 @@ function SettingsPage() {
             {/* Theme Settings panel */}
             <Panel className="p-5">
               <h2 className="font-display text-sm font-semibold">Theme Preferences</h2>
-              <p className="text-xs text-muted-foreground mt-0.5">Customize your interface theme</p>
-              <div className="mt-4 flex items-center justify-between rounded-xl border border-border p-3">
-                <div className="space-y-0.5">
-                  <span className="text-sm font-medium">Dark Mode</span>
-                  <p className="text-[11px] text-muted-foreground">Switch between light and dark themes</p>
+              <p className="text-xs text-muted-foreground mt-0.5">Customize your interface theme and layout density</p>
+              <div className="mt-4 space-y-4">
+                <div className="flex items-center justify-between rounded-xl border border-border p-3">
+                  <div className="space-y-0.5">
+                    <span className="text-sm font-medium">Dark Mode</span>
+                    <p className="text-[11px] text-muted-foreground">Switch between light and dark themes</p>
+                  </div>
+                  <Switch 
+                    checked={ws.theme === "dark"} 
+                    onCheckedChange={() => {
+                      ws.toggleTheme();
+                      toast.success(`Switched to ${ws.theme === "light" ? "dark" : "light"} mode`);
+                    }} 
+                  />
                 </div>
-                <Switch 
-                  checked={ws.theme === "dark"} 
-                  onCheckedChange={() => {
-                    ws.toggleTheme();
-                    toast.success(`Switched to ${ws.theme === "light" ? "dark" : "light"} mode`);
-                  }} 
-                />
+
+                <div>
+                  <Label className="mb-1.5 block text-xs text-muted-foreground">Dark Scheme Accent</Label>
+                  <select 
+                    className="w-full h-10 px-3 border border-border rounded-xl bg-card text-sm cursor-pointer"
+                    defaultValue="slate"
+                    onChange={(e) => toast.success(`Dark scheme set to ${e.target.value}`)}
+                  >
+                    <option value="slate">Slate Blue (Modern Slate)</option>
+                    <option value="black">Jet Black (OLED Friendly)</option>
+                    <option value="emerald">Emerald Green (Matrix vibe)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <Label className="mb-1.5 block text-xs text-muted-foreground">Sidebar Layout Density</Label>
+                  <select 
+                    className="w-full h-10 px-3 border border-border rounded-xl bg-card text-sm cursor-pointer"
+                    defaultValue="relaxed"
+                    onChange={(e) => toast.success(`Sidebar density set to ${e.target.value}`)}
+                  >
+                    <option value="relaxed">Relaxed / Default spacing</option>
+                    <option value="compact">Compact / List view</option>
+                  </select>
+                </div>
+
+                <div>
+                  <Label className="mb-1.5 block text-xs text-muted-foreground">Aesthetic Panels Effect</Label>
+                  <select 
+                    className="w-full h-10 px-3 border border-border rounded-xl bg-card text-sm cursor-pointer"
+                    defaultValue="glass"
+                    onChange={(e) => toast.success(`Aesthetic effect set to ${e.target.value}`)}
+                  >
+                    <option value="glass">Glassmorphism / Frosted Panels</option>
+                    <option value="solid">Minimalist / Solid Flat Colors</option>
+                  </select>
+                </div>
               </div>
             </Panel>
           </div>
@@ -298,7 +360,14 @@ function SettingsPage() {
                           </Button>
                         </>
                       ) : (
-                        <Button size="sm" variant="ghost" onClick={() => toast.info("Only the logged-in user can manage their own profile.")}>Manage</Button>
+                        <Button 
+                          size="sm" 
+                          variant="ghost" 
+                          onClick={() => setViewMember(m)}
+                          className="cursor-pointer font-semibold text-brand hover:bg-brand/10"
+                        >
+                          View Profile
+                        </Button>
                       )}
                     </li>
                   ))
@@ -346,14 +415,127 @@ function SettingsPage() {
                     toast.success("Preference updated");
                   }}
                 />
-                <div className="flex flex-wrap gap-2 pt-2">
-                  <Button variant="outline" onClick={() => toast.success("Export prepared (JSON)")}>Export project data</Button>
-                </div>
               </div>
             </Panel>
           </div>
         </TabsContent>
       </Tabs>
+
+      {/* View teammate profile dialog */}
+      <Dialog open={Boolean(viewMember)} onOpenChange={(open) => !open && setViewMember(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Teammate Profile Workspace</DialogTitle>
+          </DialogHeader>
+          {viewMember && (
+            <div className="space-y-4 pt-2">
+              <div className="flex items-center gap-3.5 pb-4 border-b border-border/50">
+                <div className="h-14 w-14 rounded-full flex items-center justify-center font-bold text-xl uppercase border shadow-md"
+                     style={{
+                       backgroundColor: `${viewMember.color}15`,
+                       color: viewMember.color,
+                       borderColor: `${viewMember.color}35`,
+                     }}
+                >
+                  {viewMember.initials}
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-foreground leading-tight">{viewMember.name}</h3>
+                  <div className="flex items-center gap-1.5 mt-0.5">
+                    <span className="inline-flex items-center gap-1 rounded-full bg-brand/10 px-2.5 py-0.5 text-xs font-semibold text-brand">
+                      <Shield className="h-3 w-3" />
+                      {viewMember.role}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-3 text-xs">
+                {viewMember.responsibilities && (
+                  <div>
+                    <span className="font-bold text-muted-foreground block mb-1">Responsibilities</span>
+                    <p className="text-foreground/90 bg-muted/40 p-2.5 rounded-xl border border-border/40 leading-relaxed">
+                      {viewMember.responsibilities}
+                    </p>
+                  </div>
+                )}
+
+                <div className="grid grid-cols-2 gap-3 pt-1">
+                  {viewMember.uniId && (
+                    <div>
+                      <span className="font-bold text-muted-foreground block mb-0.5">University ID</span>
+                      <span className="font-semibold text-foreground">{viewMember.uniId}</span>
+                    </div>
+                  )}
+                  {viewMember.phone && (
+                    <div>
+                      <span className="font-bold text-muted-foreground block mb-0.5">Phone Number</span>
+                      <a href={`tel:${viewMember.phone}`} className="font-semibold text-brand hover:underline flex items-center gap-1">
+                        <Phone className="h-3.5 w-3.5 shrink-0" /> {viewMember.phone}
+                      </a>
+                    </div>
+                  )}
+                </div>
+
+                <div className="space-y-2 pt-1 border-t border-border/40">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-muted-foreground">Primary Login Email</span>
+                    <a href={`mailto:${viewMember.email}`} className="font-semibold text-brand hover:underline flex items-center gap-1">
+                      <Mail className="h-3.5 w-3.5" /> {viewMember.email}
+                    </a>
+                  </div>
+                  {viewMember.uniEmail && (
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-muted-foreground">University Email</span>
+                      <a href={`mailto:${viewMember.uniEmail}`} className="font-semibold text-brand hover:underline flex items-center gap-1">
+                        <Mail className="h-3.5 w-3.5" /> {viewMember.uniEmail}
+                      </a>
+                    </div>
+                  )}
+                  {viewMember.privateEmail && (
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-muted-foreground">Private Email</span>
+                      <a href={`mailto:${viewMember.privateEmail}`} className="font-semibold text-brand hover:underline flex items-center gap-1">
+                        <Mail className="h-3.5 w-3.5" /> {viewMember.privateEmail}
+                      </a>
+                    </div>
+                  )}
+                  {viewMember.githubUsername && (
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-muted-foreground">GitHub Profile</span>
+                      <a 
+                        href={`https://github.com/${viewMember.githubUsername}`} 
+                        target="_blank" 
+                        rel="noreferrer" 
+                        className="font-semibold text-brand hover:underline flex items-center gap-1"
+                      >
+                        <Github className="h-3.5 w-3.5" /> @{viewMember.githubUsername}
+                        <ExternalLink className="h-3 w-3 shrink-0" />
+                      </a>
+                    </div>
+                  )}
+                </div>
+
+                {viewMember.cv && (
+                  <div className="pt-3 border-t border-border/40">
+                    <span className="font-bold text-muted-foreground block mb-2">CV / Resume Document</span>
+                    <a 
+                      href={viewMember.cv}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-2 rounded-xl border border-brand/30 bg-brand/5 px-3 py-2 text-xs font-bold text-brand hover:bg-brand/10 transition-colors w-full justify-center"
+                    >
+                      <FileText className="h-4 w-4" />
+                      Download Teammate CV
+                      <ExternalLink className="h-3 w-3 shrink-0" />
+                    </a>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
