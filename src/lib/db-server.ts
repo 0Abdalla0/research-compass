@@ -138,7 +138,7 @@ export const getWorkspaceDataServer = createServerFn({ method: "GET" })
         throw new Error("Supabase response error");
       }
 
-      const members = membersRes.data || [];
+      let members = membersRes.data || [];
       const papers = papersRes.data || [];
       const tasks = tasksRes.data || [];
       const notes = notesRes.data || [];
@@ -149,12 +149,78 @@ export const getWorkspaceDataServer = createServerFn({ method: "GET" })
       const meetings = meetingsRes.data || [];
       const events = eventsRes.data || [];
       const activity = activityRes.data || [];
-      const phases = phasesRes.data || [];
+      let phases = phasesRes.data || [];
       const comments = commentsRes.data || [];
       const conversations = conversationsRes.data || [];
       const conversationMembers = conversationMembersRes.data || [];
       const messages = messagesRes.data || [];
       const notifications = notificationsRes.data || [];
+
+      // Auto-seed members if empty
+      if (hasSupabaseKeys && members.length === 0) {
+        try {
+          const membersToInsert = seed.members.map((m) => ({
+            id: m.id,
+            name: m.name,
+            initials: m.initials,
+            role: m.role,
+            email: m.email,
+            responsibilities: m.responsibilities,
+            color: m.color,
+            password: m.password || "123456"
+          }));
+          const { data: inserted, error: insertErr } = await supabase
+            .from("members")
+            .insert(membersToInsert)
+            .select();
+          if (!insertErr && inserted) {
+            members = inserted;
+          }
+        } catch (err) {
+          console.error("Failed to auto-seed members:", err);
+        }
+      }
+
+      // Auto-seed phases if empty
+      if (hasSupabaseKeys && phases.length === 0) {
+        try {
+          const phasesToInsert = seed.phases.map((p) => ({
+            id: p.id,
+            index: p.index,
+            name: p.name,
+            start: p.start,
+            end: p.end,
+            progress: p.progress,
+            deliverables: JSON.stringify(p.deliverables),
+            members: JSON.stringify(p.members),
+          }));
+          const { data: inserted, error: insertErr } = await supabase
+            .from("phases")
+            .insert(phasesToInsert)
+            .select();
+          if (!insertErr && inserted) {
+            phases = inserted;
+          }
+        } catch (err) {
+          console.error("Failed to auto-seed phases:", err);
+        }
+      }
+
+      // Auto-seed project if empty
+      let projectData = projectRes.data?.[0];
+      if (hasSupabaseKeys && !projectData) {
+        try {
+          const { data: inserted, error: insertErr } = await supabase
+            .from("project")
+            .insert([{ id: "default", ...seed.project }])
+            .select();
+          if (!insertErr && inserted) {
+            projectData = inserted[0];
+          }
+        } catch (err) {
+          console.error("Failed to auto-seed project:", err);
+        }
+      }
 
       const formattedMembers: Member[] = members.map((m: any) => cleanOptional({
         ...m,
@@ -274,7 +340,7 @@ export const getWorkspaceDataServer = createServerFn({ method: "GET" })
           paperId: f.paperId ?? undefined,
           url: f.url || (f.storage_path ? supabase.storage.from("documents").getPublicUrl(f.storage_path).data.publicUrl : undefined),
         })) as ResearchFile[],
-        project: projectRes.data?.[0] || seed.project,
+        project: projectData || seed.project,
         links: formattedLinks,
         meetings: formattedMeetings,
         events: formattedEvents,
@@ -929,6 +995,67 @@ export const updateProjectServer = createServerFn({ method: "POST" })
       if (error) throw error;
     } catch (e) {
       console.error("Supabase updateProject error:", e);
+    }
+  });
+
+export const clearAllWorkspaceDataServer = createServerFn({ method: "POST" })
+  .handler(async () => {
+    if (!hasSupabaseKeys) return { success: true };
+    try {
+      // Delete in cascade order of dependencies
+      await supabase.from("notifications").delete().neq("id", "");
+      await supabase.from("recent_activity").delete().neq("id", "");
+      await supabase.from("messages").delete().neq("id", "");
+      await supabase.from("comments").delete().neq("id", "");
+      await supabase.from("conversationMembers").delete().neq("conversation_id", "");
+      await supabase.from("conversations").delete().neq("id", "");
+      await supabase.from("tasks").delete().neq("id", "");
+      await supabase.from("papers").delete().neq("id", "");
+      await supabase.from("notes").delete().neq("id", "");
+      await supabase.from("shots").delete().neq("id", "");
+      await supabase.from("voiceNotes").delete().neq("id", "");
+      await supabase.from("files").delete().neq("id", "");
+      await supabase.from("links").delete().neq("id", "");
+      await supabase.from("meetings").delete().neq("id", "");
+      await supabase.from("events").delete().neq("id", "");
+      await supabase.from("phase_members").delete().neq("phase_id", "");
+      await supabase.from("phases").delete().neq("id", "");
+      await supabase.from("members").delete().neq("id", "");
+      await supabase.from("project").delete().neq("id", "");
+
+      // Re-seed default project
+      await supabase.from("project").insert([{ id: "default", ...seed.project }]);
+
+      // Re-seed default members
+      const membersToInsert = seed.members.map((m) => ({
+        id: m.id,
+        name: m.name,
+        initials: m.initials,
+        role: m.role,
+        email: m.email,
+        responsibilities: m.responsibilities,
+        color: m.color,
+        password: m.password || "123456"
+      }));
+      await supabase.from("members").insert(membersToInsert);
+
+      // Re-seed default phases
+      const phasesToInsert = seed.phases.map((p) => ({
+        id: p.id,
+        index: p.index,
+        name: p.name,
+        start: p.start,
+        end: p.end,
+        progress: p.progress,
+        deliverables: JSON.stringify(p.deliverables),
+        members: JSON.stringify(p.members),
+      }));
+      await supabase.from("phases").insert(phasesToInsert);
+
+      return { success: true };
+    } catch (e) {
+      console.error("Supabase clearAllWorkspaceData error:", e);
+      throw e;
     }
   });
 

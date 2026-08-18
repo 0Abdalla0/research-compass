@@ -322,6 +322,31 @@ function SettingsPage() {
                 </div>
                 <Button className="w-fit" onClick={handleSave}>Save changes</Button>
               </div>
+
+              <div className="mt-8 pt-6 border-t border-destructive/20 space-y-3">
+                <h3 className="text-xs font-bold text-destructive uppercase tracking-wider">Danger Zone</h3>
+                <p className="text-[11px] text-muted-foreground leading-relaxed">
+                  Permanently delete all papers, tasks, chat messages, meetings, voice notes, and screenshots, and reset the project to start fresh. This action is irreversible.
+                </p>
+                <Button 
+                  variant="destructive" 
+                  size="sm"
+                  onClick={async () => {
+                    if (confirm("WARNING: Are you absolutely sure you want to permanently clear all data and start fresh? All papers, tasks, comments, and chat messages will be deleted forever.")) {
+                      try {
+                        const toastId = toast.loading("Clearing all workspace data...");
+                        await ws.clearAllData();
+                        toast.success("Workspace reset to clean state!", { id: toastId });
+                      } catch (err) {
+                        toast.error("Failed to clear data.");
+                      }
+                    }
+                  }}
+                  className="cursor-pointer font-bold text-xs"
+                >
+                  Clear All Data
+                </Button>
+              </div>
             </Panel>
 
             {/* Roster & Members Panel */}

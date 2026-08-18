@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState, useRef, useEffect } from "react";
-import { Search, MessageSquare, Plus, Hash, User, Paperclip, Play, Pause, Download, Send, SearchCode, X, BookOpen, AlertCircle } from "lucide-react";
+import { Search, MessageSquare, Plus, Hash, User, Paperclip, Play, Pause, Download, Send, SearchCode, X, BookOpen, AlertCircle, ArrowLeft } from "lucide-react";
 import { useWorkspace } from "@/lib/workspace-store";
 import { PageHeader, Panel, Initials } from "@/components/ui-bits";
 import { UniversalComposer } from "@/components/universal-composer";
@@ -170,7 +170,7 @@ export default function ChatPage() {
 
       <div className="grid grid-cols-1 md:grid-cols-[280px_1fr] gap-6 mt-6 flex-1 min-h-0">
         {/* Left Sidebar */}
-        <Panel className="p-4 flex flex-col min-h-0 bg-card/65 backdrop-blur-md border-border/80">
+        <Panel className={`p-4 flex flex-col min-h-0 bg-card/65 backdrop-blur-md border-border/80 ${ (activeConvId || activePaperId) ? 'hidden md:flex' : 'flex' }`}>
           <div className="relative mb-4">
             <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground/60" />
             <Input
@@ -277,7 +277,7 @@ export default function ChatPage() {
 
         {/* Right Active Chat View */}
         {!activeConvId && !activePaperId ? (
-          <Panel className="flex-1 flex flex-col items-center justify-center text-center p-8 bg-card/65 backdrop-blur-md border-border/80 min-h-0">
+          <Panel className={`flex-1 flex flex-col items-center justify-center text-center p-8 bg-card/65 backdrop-blur-md border-border/80 min-h-0 ${ (activeConvId || activePaperId) ? 'flex' : 'hidden md:flex' }`}>
             <MessageSquare className="h-16 w-16 text-brand mb-4 opacity-75 animate-bounce" />
             <h2 className="text-xl font-bold font-display">SehatMasr Communication Center</h2>
             <p className="text-sm text-muted-foreground max-w-md mt-2 leading-relaxed">
@@ -285,26 +285,39 @@ export default function ChatPage() {
             </p>
           </Panel>
         ) : (
-          <Panel className="p-4 flex flex-col min-h-0 bg-card/65 backdrop-blur-md border-border/80 relative">
+          <Panel className={`p-4 flex flex-col min-h-0 bg-card/65 backdrop-blur-md border-border/80 relative flex-1 ${ (activeConvId || activePaperId) ? 'flex' : 'hidden md:flex' }`}>
             {/* Header & In-conversation Search Bar */}
-            <div className="flex items-center justify-between border-b border-border/40 pb-3 mb-4">
-              <div>
-                <h2 className="font-display font-semibold text-base leading-none">
-                  {activePaper
-                    ? `Discussion on: ${activePaper.title}`
-                    : activeConv?.name || (() => {
-                        const cm = ws.conversationMembers.filter((x) => x.conversation_id === activeConvId);
-                        const otherId = cm.find((x) => x.member_id !== ws.currentUser?.id)?.member_id;
-                        const other = ws.members.find((m) => m.id === otherId);
-                        return other ? `Direct Message with ${other.name}` : "Chat Workspace";
-                      })()
-                  }
-                </h2>
-                {(activeConv?.paper_id || activePaperId) && (
-                  <p className="text-[10px] text-muted-foreground mt-1">
-                    Discussion tied directly to Research Paper
-                  </p>
-                )}
+            <div className="flex items-center justify-between border-b border-border/40 pb-3 mb-4 gap-2">
+              <div className="flex items-center gap-2 min-w-0">
+                {/* Back button on mobile */}
+                <button
+                  onClick={() => {
+                    setActiveConvId(null);
+                    setActivePaperId(null);
+                  }}
+                  className="md:hidden p-1.5 hover:bg-secondary rounded-xl text-muted-foreground hover:text-foreground shrink-0"
+                  aria-label="Back to chat list"
+                >
+                  <ArrowLeft className="h-4.5 w-4.5" />
+                </button>
+                <div className="min-w-0">
+                  <h2 className="font-display font-semibold text-sm sm:text-base leading-none truncate">
+                    {activePaper
+                      ? `Discussion: ${activePaper.title}`
+                      : activeConv?.name || (() => {
+                          const cm = ws.conversationMembers.filter((x) => x.conversation_id === activeConvId);
+                          const otherId = cm.find((x) => x.member_id !== ws.currentUser?.id)?.member_id;
+                          const other = ws.members.find((m) => m.id === otherId);
+                          return other ? `${other.name}` : "Chat Workspace";
+                        })()
+                    }
+                  </h2>
+                  {(activeConv?.paper_id || activePaperId) && (
+                    <p className="text-[10px] text-muted-foreground mt-1 truncate">
+                      Discussion tied to Research Paper
+                    </p>
+                  )}
+                </div>
               </div>
 
               {/* Msg search block */}
@@ -422,7 +435,7 @@ export default function ChatPage() {
                           >
                             {sender.initials}
                           </div>
-                          <div className={`flex flex-col max-w-[70%] ${isOwn ? "items-end" : ""}`}>
+                          <div className={`flex flex-col max-w-[85%] md:max-w-[70%] ${isOwn ? "items-end" : ""}`}>
                             <div className="flex items-center gap-1.5 mb-1 text-xs text-muted-foreground">
                               <span className="font-semibold text-foreground">{sender.name}</span>
                               <span>•</span>

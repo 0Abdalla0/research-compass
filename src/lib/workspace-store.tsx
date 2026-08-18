@@ -7,6 +7,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { toast } from "sonner";
 import * as seed from "@/data/workspace";
 import { removeStorageObject } from "@/lib/uploads";
 import type {
@@ -76,6 +77,7 @@ import {
   markNotificationReadServer,
   clearNotificationsServer,
   updateProjectServer,
+  clearAllWorkspaceDataServer,
 } from "@/lib/db-server";
 
 export type NotificationItem = {
@@ -201,6 +203,7 @@ type Ctx = {
   onlineMembers: Record<string, { online_at: string; name: string }>;
   typingStates: Record<string, Record<string, boolean>>;
   broadcastTyping: (conversationId: string, isTyping: boolean) => void;
+  clearAllData: () => Promise<void>;
 };
 
 const WorkspaceContext = createContext<Ctx | null>(null);
@@ -1335,6 +1338,41 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       setSearchQuery,
       searchOpen,
       setSearchOpen,
+      clearAllData: async () => {
+        try {
+          await clearAllWorkspaceDataServer();
+          // Reset client-side states to initial seed data
+          setPapers([]);
+          setTasks([]);
+          setNotes([]);
+          setShots([]);
+          setVoiceNotes([]);
+          setFiles([]);
+          setLinks([]);
+          setMeetings([]);
+          setEvents([]);
+          setActivity([]);
+          setComments([]);
+          setConversations([]);
+          setConversationMembers([]);
+          setMessages([]);
+          setRawNotifications([]);
+          setNotifications([]);
+          
+          setProject(seed.project);
+          localStorage.setItem("research_hub_project", JSON.stringify(seed.project));
+          
+          setMembers(seed.members);
+          setPhases(seed.phases);
+          
+          log("cleared all workspace data to start fresh", "Workspace", "task");
+          toast.success("Workspace reset to fresh seed template successfully!");
+        } catch (err) {
+          console.error("Error clearing workspace data:", err);
+          toast.error("Failed to clear workspace data.");
+          throw err;
+        }
+      },
     }),
     [
       members,
