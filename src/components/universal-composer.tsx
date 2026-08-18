@@ -43,6 +43,27 @@ export function UniversalComposer({ placeholder = "Write something...", onSend, 
   const [mentionQuery, setMentionQuery] = useState("");
   const [mentionIndex, setMentionIndex] = useState(0);
 
+  // Sticker Picker State
+  const [showStickers, setShowStickers] = useState(false);
+  const stickerPickerRef = useRef<HTMLDivElement>(null);
+  const STICKERS = [
+    "🧬", "🧠", "🔬", "🩺", "🧪", "📊", "💻", "🚀",
+    "🎉", "💡", "🏥", "🩹", "🍕", "☕", "👍", "✍️",
+    "📚", "🔍", "❤️", "🤔", "👀", "🥳", "👏", "🔥"
+  ];
+
+  useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (stickerPickerRef.current && !stickerPickerRef.current.contains(event.target as Node)) {
+        setShowStickers(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const recordingTimerRef = useRef<any>(null);
@@ -282,6 +303,41 @@ export function UniversalComposer({ placeholder = "Write something...", onSend, 
         </div>
       )}
 
+      {/* Sticker Picker popover */}
+      {showStickers && (
+        <div ref={stickerPickerRef} className="absolute bottom-full left-0 mb-1 p-2 bg-popover text-popover-foreground border border-border rounded-xl shadow-2xl z-50 w-60">
+          <div className="flex items-center justify-between border-b border-border/40 pb-1 mb-2">
+            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Select Sticker</span>
+            <button onClick={() => setShowStickers(false)} className="p-0.5 rounded hover:bg-secondary text-muted-foreground hover:text-foreground">
+              <X className="h-3 w-3" />
+            </button>
+          </div>
+          <div className="grid grid-cols-6 gap-1">
+            {STICKERS.map((emoji) => (
+              <button
+                key={emoji}
+                onClick={async () => {
+                  setShowStickers(false);
+                  const toastId = toast.loading("Sending sticker...");
+                  try {
+                    await onSend({
+                      content: `[sticker:${emoji}]`,
+                      type: "text"
+                    });
+                    toast.success("Sticker sent!", { id: toastId });
+                  } catch (err) {
+                    toast.error("Failed to send sticker", { id: toastId });
+                  }
+                }}
+                className="text-2xl p-1.5 rounded-lg hover:bg-secondary hover:scale-110 active:scale-95 transition-all text-center select-none cursor-pointer"
+              >
+                {emoji}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Voice Recorder Overlay bar */}
       {isRecording && (
         <div className="flex items-center justify-between bg-warning/10 border border-warning/20 rounded-lg px-3 py-2 text-warning animate-pulse">
@@ -374,9 +430,20 @@ export function UniversalComposer({ placeholder = "Write something...", onSend, 
           <Button
             size="icon"
             variant="ghost"
+            className={`h-8 w-8 ${showStickers ? "text-brand bg-brand/10" : "hover:text-foreground"}`}
+            onClick={() => setShowStickers(!showStickers)}
+            disabled={uploadingAttachment || isRecording || !!audioUrl}
+            title="Stickers"
+          >
+            <Smile className="h-4 w-4" />
+          </Button>
+          <Button
+            size="icon"
+            variant="ghost"
             className={`h-8 w-8 ${isRecording ? "text-destructive" : "hover:text-foreground"}`}
             onClick={isRecording ? stopRecording : startRecording}
             disabled={uploadingAttachment || !!audioUrl || !!attachedFile}
+            title="Record Voice"
           >
             <Mic className="h-4 w-4" />
           </Button>

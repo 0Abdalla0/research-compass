@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState, useRef, useEffect } from "react";
-import { Search, MessageSquare, Plus, Hash, User, Paperclip, Play, Pause, Download, Send, SearchCode, X, BookOpen, AlertCircle, ArrowLeft } from "lucide-react";
+import { Search, MessageSquare, Plus, Hash, User, Paperclip, Play, Pause, Download, Send, SearchCode, X, BookOpen, AlertCircle, ArrowLeft, Edit3, Trash2 } from "lucide-react";
 import { useWorkspace } from "@/lib/workspace-store";
 import { PageHeader, Panel, Initials } from "@/components/ui-bits";
 import { UniversalComposer } from "@/components/universal-composer";
@@ -37,6 +37,12 @@ export default function ChatPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [sidebarSearch, setSidebarSearch] = useState("");
   const [showSearchResults, setShowSearchResults] = useState(false);
+
+  // Edit Channel/Message State
+  const [isEditingChannel, setIsEditingChannel] = useState(false);
+  const [editChannelName, setEditChannelName] = useState("");
+  const [editingMsgId, setEditingMsgId] = useState<string | null>(null);
+  const [editingMsgText, setEditingMsgText] = useState("");
 
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -300,24 +306,99 @@ export default function ChatPage() {
                 >
                   <ArrowLeft className="h-4.5 w-4.5" />
                 </button>
-                <div className="min-w-0">
-                  <h2 className="font-display font-semibold text-sm sm:text-base leading-none truncate">
-                    {activePaper
-                      ? `Discussion: ${activePaper.title}`
-                      : activeConv?.name || (() => {
-                          const cm = ws.conversationMembers.filter((x) => x.conversation_id === activeConvId);
-                          const otherId = cm.find((x) => x.member_id !== ws.currentUser?.id)?.member_id;
-                          const other = ws.members.find((m) => m.id === otherId);
-                          return other ? `${other.name}` : "Chat Workspace";
-                        })()
-                    }
-                  </h2>
-                  {(activeConv?.paper_id || activePaperId) && (
-                    <p className="text-[10px] text-muted-foreground mt-1 truncate">
-                      Discussion tied to Research Paper
-                    </p>
-                  )}
-                </div>
+                {isEditingChannel ? (
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <Input
+                      value={editChannelName}
+                      onChange={(e) => setEditChannelName(e.target.value)}
+                      className="h-8 max-w-[180px] sm:max-w-[240px] text-xs sm:text-sm"
+                      placeholder="Channel name..."
+                    />
+                    <Button
+                      size="sm"
+                      className="h-8 px-2 cursor-pointer text-xs"
+                      onClick={async () => {
+                        if (!editChannelName.trim()) {
+                          toast.error("Channel name is required");
+                          return;
+                        }
+                        const isDuplicate = ws.conversations.some(
+                          (c) => c.id !== activeConvId && c.is_group && c.name?.toLowerCase().trim() === editChannelName.toLowerCase().trim()
+                        );
+                        if (isDuplicate) {
+                          toast.error("A channel with that name already exists");
+                          return;
+                        }
+                        if (activeConvId) {
+                          await ws.updateConversation(activeConvId, { name: editChannelName.trim() });
+                          toast.success("Channel name updated");
+                        }
+                        setIsEditingChannel(false);
+                      }}
+                    >
+                      Save
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-8 px-2 cursor-pointer text-xs"
+                      onClick={() => setIsEditingChannel(false)}
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2 min-w-0">
+                    <div className="min-w-0">
+                      <h2 className="font-display font-semibold text-sm sm:text-base leading-none truncate">
+                        {activePaper
+                          ? `Discussion: ${activePaper.title}`
+                          : activeConv?.name || (() => {
+                              const cm = ws.conversationMembers.filter((x) => x.conversation_id === activeConvId);
+                              const otherId = cm.find((x) => x.member_id !== ws.currentUser?.id)?.member_id;
+                              const other = ws.members.find((m) => m.id === otherId);
+                              return other ? `${other.name}` : "Chat Workspace";
+                            })()
+                        }
+                      </h2>
+                      {(activeConv?.paper_id || activePaperId) && (
+                        <p className="text-[10px] text-muted-foreground mt-1 truncate">
+                          Discussion tied to Research Paper
+                        </p>
+                      )}
+                    </div>
+
+                    {activeConv?.is_group && (
+                      <div className="flex items-center gap-1 shrink-0 ml-2">
+                        <button
+                          onClick={() => {
+                            setEditChannelName(activeConv.name || "");
+                            setIsEditingChannel(true);
+                          }}
+                          className="p-1 text-muted-foreground hover:text-foreground rounded-lg hover:bg-secondary transition-colors cursor-pointer"
+                          title="Edit Channel Name"
+                        >
+                          <Edit3 className="h-3.5 w-3.5" />
+                        </button>
+                        <button
+                          onClick={async () => {
+                            if (confirm("Are you sure you want to permanently delete this channel and all of its messages?")) {
+                              if (activeConvId) {
+                                await ws.removeConversation(activeConvId);
+                                setActiveConvId(null);
+                                toast.success("Channel deleted successfully");
+                              }
+                            }
+                          }}
+                          className="p-1 text-destructive hover:bg-destructive/10 rounded-lg transition-colors cursor-pointer"
+                          title="Delete Channel"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
               {/* Msg search block */}
@@ -421,7 +502,7 @@ export default function ChatPage() {
                         <div
                           key={msg.id}
                           id={`msg-${msg.id}`}
-                          className={`flex items-start gap-2.5 ${isOwn ? "flex-row-reverse" : ""} transition-all duration-500 ${
+                          className={`flex items-start gap-2.5 ${isOwn ? "flex-row-reverse" : ""} transition-all duration-500 group ${
                             isHighlighted ? "bg-amber-500/15 dark:bg-amber-500/25 border-l-4 border-amber-500 p-2 rounded-xl" : ""
                           }`}
                         >
@@ -441,27 +522,99 @@ export default function ChatPage() {
                               <span>•</span>
                               <span>{new Date(msg.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
                             </div>
-                            <div className={`p-3 rounded-2xl text-sm ${
-                              isOwn ? "bg-brand text-brand-foreground rounded-tr-none" : "bg-secondary text-foreground rounded-tl-none"
-                            }`}>
-                              {msg.content && <p className="whitespace-pre-wrap">{msg.content}</p>}
-                              {msg.url && (
-                                <div className="mt-2 pt-2 border-t border-current/20">
-                                  {msg.message_type === "image" ? (
-                                    <img src={msg.url} alt="Shared Image" className="rounded-lg max-h-48 object-cover" />
-                                  ) : msg.message_type === "voice" ? (
-                                    <div className="flex items-center gap-2">
-                                      <PlayAudioButton url={msg.url} />
-                                      <span className="text-xs opacity-80">Voice Note</span>
+                            {editingMsgId === msg.id ? (
+                              <div className="flex flex-col gap-1.5 min-w-[200px] bg-secondary/35 border border-border/80 rounded-xl p-3">
+                                <textarea
+                                  value={editingMsgText}
+                                  onChange={(e) => setEditingMsgText(e.target.value)}
+                                  className="w-full bg-background border border-input rounded-lg p-2 text-xs focus:outline-none focus:ring-1 focus:ring-brand min-h-[60px]"
+                                />
+                                <div className="flex justify-end gap-1.5 mt-1">
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-7 px-2 text-[10px] font-bold cursor-pointer"
+                                    onClick={() => setEditingMsgId(null)}
+                                  >
+                                    Cancel
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    className="h-7 px-2 text-[10px] font-bold cursor-pointer"
+                                    onClick={async () => {
+                                      if (!editingMsgText.trim()) {
+                                        toast.error("Message content cannot be empty");
+                                        return;
+                                      }
+                                      await ws.updateMessage(msg.id, editingMsgText.trim());
+                                      setEditingMsgId(null);
+                                      toast.success("Message updated");
+                                    }}
+                                  >
+                                    Save
+                                  </Button>
+                                </div>
+                              </div>
+                            ) : (
+                              <>
+                                {(() => {
+                                  const isSticker = msg.content && msg.content.startsWith("[sticker:") && msg.content.endsWith("]");
+                                  const stickerVal = isSticker ? msg.content.slice(9, -1) : "";
+                                  return isSticker ? (
+                                    <div className="text-5xl py-1 select-none hover:scale-110 active:scale-95 transition-all cursor-default duration-200" title="Sticker">
+                                      {stickerVal}
                                     </div>
                                   ) : (
-                                    <a href={msg.url} download target="_blank" rel="noreferrer" className="flex items-center gap-1.5 underline text-xs font-semibold">
-                                      <Download className="h-3.5 w-3.5" /> Download attachment
-                                    </a>
-                                  )}
-                                </div>
-                              )}
-                            </div>
+                                    <div className={`p-3 rounded-2xl text-sm ${
+                                      isOwn ? "bg-brand text-brand-foreground rounded-tr-none" : "bg-secondary text-foreground rounded-tl-none"
+                                    }`}>
+                                      {msg.content && <p className="whitespace-pre-wrap">{msg.content}</p>}
+                                      {msg.url && (
+                                        <div className="mt-2 pt-2 border-t border-current/20">
+                                          {msg.message_type === "image" ? (
+                                            <img src={msg.url} alt="Shared Image" className="rounded-lg max-h-48 object-cover" />
+                                          ) : msg.message_type === "voice" ? (
+                                            <div className="flex items-center gap-2">
+                                              <PlayAudioButton url={msg.url} />
+                                              <span className="text-xs opacity-80">Voice Note</span>
+                                            </div>
+                                          ) : (
+                                            <a href={msg.url} download target="_blank" rel="noreferrer" className="flex items-center gap-1.5 underline text-xs font-semibold">
+                                              <Download className="h-3.5 w-3.5" /> Download attachment
+                                            </a>
+                                          )}
+                                        </div>
+                                      )}
+                                    </div>
+                                  );
+                                })()}
+                                {isOwn && (
+                                  <div className="flex items-center gap-2 mt-1 text-[9px] text-muted-foreground opacity-60 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
+                                    <button
+                                      onClick={() => {
+                                        setEditingMsgId(msg.id);
+                                        setEditingMsgText(msg.content);
+                                      }}
+                                      className="hover:underline hover:text-foreground cursor-pointer"
+                                    >
+                                      Edit
+                                    </button>
+                                    <span>•</span>
+                                    <button
+                                      onClick={async () => {
+                                        if (confirm("Are you sure you want to delete this message?")) {
+                                          await ws.removeMessage(msg.id);
+                                          toast.success("Message deleted");
+                                        }
+                                      }}
+                                      className="hover:underline hover:text-destructive cursor-pointer"
+                                    >
+                                      Delete
+                                    </button>
+                                  </div>
+                                )}
+                              </>
+                            )}
                           </div>
                         </div>
                       );
@@ -528,6 +681,14 @@ function CreateChannelDialog() {
       return;
     }
     if (!ws.currentUser) return;
+
+    const exists = ws.conversations.some(
+      (c) => c.is_group && c.name?.toLowerCase().trim() === name.toLowerCase().trim()
+    );
+    if (exists) {
+      toast.error(`A channel named #${name} already exists`);
+      return;
+    }
 
     try {
       const allMembers = Array.from(new Set([ws.currentUser.id, ...selectedMembers]));

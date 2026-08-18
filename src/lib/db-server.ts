@@ -890,6 +890,30 @@ export const addConversationMembersServer = createServerFn({ method: "POST" })
     }
   });
 
+export const updateConversationServer = createServerFn({ method: "POST" })
+  .validator((d: { id: string; patch: any }) => d)
+  .handler(async ({ data }) => {
+    if (!hasSupabaseKeys) return;
+    try {
+      const { error } = await supabase.from("conversations").update(data.patch).eq("id", data.id);
+      if (error) throw error;
+    } catch (e) {
+      console.error("Supabase updateConversation error:", e);
+    }
+  });
+
+export const removeConversationServer = createServerFn({ method: "POST" })
+  .validator((id: string) => id)
+  .handler(async ({ data: id }) => {
+    if (!hasSupabaseKeys) return;
+    try {
+      const { error } = await supabase.from("conversations").delete().eq("id", id);
+      if (error) throw error;
+    } catch (e) {
+      console.error("Supabase removeConversation error:", e);
+    }
+  });
+
 export const addMessageServer = createServerFn({ method: "POST" })
   .validator((m: any) => m)
   .handler(async ({ data }) => {

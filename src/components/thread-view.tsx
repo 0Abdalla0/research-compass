@@ -229,6 +229,14 @@ function CommentCard({
 
   // Highlights @mentions in HTML
   const formatContent = (text: string) => {
+    if (text.startsWith("[sticker:") && text.endsWith("]")) {
+      const emoji = text.slice(9, -1);
+      return (
+        <span className="text-4xl block py-1 select-none hover:scale-110 transition-transform cursor-default" title="Sticker">
+          {emoji}
+        </span>
+      );
+    }
     const parts = text.split(/(@\w+)/g);
     return parts.map((part, idx) => {
       if (part.startsWith("@")) {

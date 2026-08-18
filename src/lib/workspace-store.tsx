@@ -70,6 +70,8 @@ import {
   removeCommentServer,
   addConversationServer,
   addConversationMembersServer,
+  updateConversationServer,
+  removeConversationServer,
   addMessageServer,
   updateMessageServer,
   removeMessageServer,
@@ -191,6 +193,8 @@ type Ctx = {
   conversations: Conversation[];
   conversationMembers: ConversationMember[];
   addConversation: (name: string | undefined, is_group: boolean, memberIds: string[], paperId?: string, phaseId?: string) => Promise<string>;
+  updateConversation: (id: string, patch: any) => Promise<void>;
+  removeConversation: (id: string) => Promise<void>;
   messages: Message[];
   addMessage: (m: Omit<Message, "id" | "created_at" | "updated_at" | "deleted_at">) => Promise<void>;
   updateMessage: (id: string, content: string) => Promise<void>;
@@ -437,6 +441,10 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
               if (prev.some((x) => x.id === payload.new.id)) return prev;
               return [payload.new as Conversation, ...prev];
             });
+          } else if (payload.eventType === "UPDATE") {
+            setConversations((prev) => prev.map((c) => (c.id === payload.new.id ? { ...c, ...payload.new } : c)));
+          } else if (payload.eventType === "DELETE") {
+            setConversations((prev) => prev.filter((c) => c.id !== payload.old.id));
           }
         }
       )
@@ -449,6 +457,10 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
               if (prev.some((x) => x.conversation_id === payload.new.conversation_id && x.member_id === payload.new.member_id)) return prev;
               return [...prev, payload.new as ConversationMember];
             });
+          } else if (payload.eventType === "DELETE") {
+            setConversationMembers((prev) =>
+              prev.filter((x) => !(x.conversation_id === payload.old.conversation_id && x.member_id === payload.old.member_id))
+            );
           }
         }
       )
@@ -1231,6 +1243,24 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
           setConversations((prev) => prev.filter((c) => c.id !== id));
           setConversationMembers((prev) => prev.filter((cm) => cm.conversation_id !== id));
           throw err;
+        }
+      },
+      updateConversation: async (id, patch) => {
+        setConversations((prev) => prev.map((c) => (c.id === id ? { ...c, ...patch } : c)));
+        try {
+          await updateConversationServer({ data: { id, patch } });
+        } catch (err) {
+          console.error("Failed to update conversation:", err);
+        }
+      },
+      removeConversation: async (id) => {
+        setConversations((prev) => prev.filter((c) => c.id !== id));
+        setConversationMembers((prev) => prev.filter((cm) => cm.conversation_id !== id));
+        setMessages((prev) => prev.filter((m) => m.conversation_id !== id));
+        try {
+          await removeConversationServer({ data: id });
+        } catch (err) {
+          console.error("Failed to delete conversation:", err);
         }
       },
       addMessage: async (m) => {
