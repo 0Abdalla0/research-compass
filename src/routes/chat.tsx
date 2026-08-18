@@ -96,7 +96,7 @@ export default function ChatPage() {
   // Create general channel if it doesn't exist yet
   const hasGeneralChannel = ws.conversations.some((c) => c.name === "General Research Team");
   useEffect(() => {
-    if (ws.currentUser && ws.members.length > 0 && !hasGeneralChannel) {
+    if (ws.isLoaded && ws.currentUser && ws.members.length > 0 && !hasGeneralChannel) {
       // Auto-create General Research Team conversation
       ws.addConversation(
         "General Research Team",
@@ -104,7 +104,7 @@ export default function ChatPage() {
         ws.members.map((m) => m.id)
       ).catch((err) => console.error(err));
     }
-  }, [ws.currentUser, ws.members, hasGeneralChannel]);
+  }, [ws.isLoaded, ws.currentUser, ws.members, hasGeneralChannel]);
 
   // Start new DM conversation
   const handleStartDM = async (memberId: string) => {

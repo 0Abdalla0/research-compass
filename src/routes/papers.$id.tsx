@@ -62,7 +62,7 @@ function PaperDetail() {
   const paperChat = ws.conversations.find((c) => c.paper_id === paper.id);
 
   useEffect(() => {
-    if (!paperChat && paper.id && ws.currentUser && ws.members.length > 0) {
+    if (ws.isLoaded && !paperChat && paper.id && ws.currentUser && ws.members.length > 0) {
       ws.addConversation(
         `${paper.title.slice(0, 24)}... Chat`,
         true,
@@ -70,7 +70,7 @@ function PaperDetail() {
         paper.id
       ).catch((err) => console.error("Error auto-creating paper chat room:", err));
     }
-  }, [paperChat, paper.id, ws.currentUser, ws.members]);
+  }, [ws.isLoaded, paperChat, paper.id, ws.currentUser, ws.members]);
 
   return (
     <div className="space-y-6">

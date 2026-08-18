@@ -208,6 +208,7 @@ type Ctx = {
   typingStates: Record<string, Record<string, boolean>>;
   broadcastTyping: (conversationId: string, isTyping: boolean) => void;
   clearAllData: () => Promise<void>;
+  isLoaded: boolean;
 };
 
 const WorkspaceContext = createContext<Ctx | null>(null);
@@ -231,6 +232,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
   const [messages, setMessages] = useState<Message[]>([]);
   const [onlineMembers, setOnlineMembers] = useState<Record<string, { online_at: string; name: string }>>({});
   const [typingStates, setTypingStates] = useState<Record<string, Record<string, boolean>>>({});
+  const [isLoaded, setIsLoaded] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchOpen, setSearchOpen] = useState(false);
   const [theme, setTheme] = useState<"light" | "dark">((() => {
@@ -365,8 +367,12 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
         setMessages(data.messages || []);
         
         setRawNotifications(data.notifications || []);
+        setIsLoaded(true);
       })
-      .catch((err) => console.error("Error loading initial DB workspace data:", err));
+      .catch((err) => {
+        console.error("Error loading initial DB workspace data:", err);
+        setIsLoaded(true);
+      });
   }, []);
 
   useEffect(() => {
@@ -1364,6 +1370,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
         }
       },
       addNotification,
+      isLoaded,
       searchQuery,
       setSearchQuery,
       searchOpen,
@@ -1432,6 +1439,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       addNotification,
       searchQuery,
       searchOpen,
+      isLoaded,
     ],
   );
 
