@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState, type ReactNode } from "react";
 import { toast } from "sonner";
-import { Edit3, ExternalLink, Plus, Trash2 } from "lucide-react";
+import { Edit3, ExternalLink, Plus, Trash2, Folder } from "lucide-react";
 import { useWorkspace } from "@/lib/workspace-store";
 import { Initials, PageHeader, Panel, Tag } from "@/components/ui-bits";
 import { Button } from "@/components/ui/button";
@@ -24,6 +24,15 @@ export const Route = createFileRoute("/links")({
 
 function LinksPage() {
   const ws = useWorkspace();
+
+  // Group links by category
+  const groupedLinks = ws.links.reduce((acc, link) => {
+    const cat = link.category?.trim() || "General Resources";
+    if (!acc[cat]) acc[cat] = [];
+    acc[cat].push(link);
+    return acc;
+  }, {} as Record<string, typeof ws.links>);
+
   return (
     <div className="space-y-6">
       <PageHeader 
@@ -39,47 +48,77 @@ function LinksPage() {
           />
         }
       />
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-        {ws.links.map((l) => (
-          <Panel key={l.id} className="p-5 transition-transform hover:-translate-y-0.5">
-            <div className="flex items-center justify-between gap-2">
-              <Tag>{l.category}</Tag>
-              <div className="flex items-center gap-1">
-                <a href={l.url} target="_blank" rel="noreferrer" className="p-1 rounded-lg text-muted-foreground hover:text-brand hover:bg-secondary transition-colors" title="Open Link">
-                  <ExternalLink className="h-4 w-4" />
-                </a>
-                <EditLinkDialog
-                  link={l}
-                  trigger={
-                    <button className="p-1 rounded-lg text-muted-foreground hover:bg-secondary transition-colors cursor-pointer" title="Edit Resource">
-                      <Edit3 className="h-4 w-4" />
-                    </button>
-                  }
-                />
-                <button
-                  onClick={() => {
-                    if (confirm(`Are you sure you want to delete the resource "${l.title}"?`)) {
-                      ws.removeLink(l.id);
-                      toast.success("Resource deleted successfully");
-                    }
-                  }}
-                  className="p-1 rounded-lg text-destructive hover:bg-destructive/10 transition-colors cursor-pointer"
-                  title="Delete Resource"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </button>
+
+      {ws.links.length === 0 ? (
+        <Panel className="p-8 text-center text-muted-foreground">
+          No resources added yet. Click "Add Resource" to start creating resource subsections.
+        </Panel>
+      ) : (
+        <div className="space-y-10">
+          {Object.entries(groupedLinks).map(([categoryName, links]) => (
+            <div key={categoryName} className="space-y-4">
+              <div className="flex items-center gap-2 border-b border-border/60 pb-2">
+                <Folder className="h-4.5 w-4.5 text-brand shrink-0" />
+                <h2 className="font-display text-sm font-bold uppercase tracking-wider text-foreground/90">
+                  {categoryName}
+                </h2>
+                <span className="text-xs text-muted-foreground font-semibold px-2 py-0.5 rounded-full bg-secondary/80">
+                  {links.length}
+                </span>
+              </div>
+              <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+                {links.map((l) => (
+                  <Panel key={l.id} className="p-5 transition-transform hover:-translate-y-0.5 flex flex-col justify-between min-h-[180px]">
+                    <div>
+                      <div className="flex items-start justify-between gap-2">
+                        <h3 className="font-display text-[15px] font-semibold leading-snug">{l.title}</h3>
+                        <div className="flex items-center gap-1 shrink-0">
+                          <a href={l.url} target="_blank" rel="noreferrer" className="p-1 rounded-lg text-muted-foreground hover:text-brand hover:bg-secondary transition-colors" title="Open Link">
+                            <ExternalLink className="h-4 w-4" />
+                          </a>
+                          <EditLinkDialog
+                            link={l}
+                            trigger={
+                              <button className="p-1 rounded-lg text-muted-foreground hover:bg-secondary transition-colors cursor-pointer" title="Edit Resource">
+                                <Edit3 className="h-4 w-4" />
+                              </button>
+                            }
+                          />
+                          <button
+                            onClick={() => {
+                              if (confirm(`Are you sure you want to delete the resource "${l.title}"?`)) {
+                                ws.removeLink(l.id);
+                                toast.success("Resource deleted successfully");
+                              }
+                            }}
+                            className="p-1 rounded-lg text-destructive hover:bg-destructive/10 transition-colors cursor-pointer"
+                            title="Delete Resource"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </div>
+                      <p className="mt-1 text-xs text-muted-foreground line-clamp-3">{l.description}</p>
+                      <p className="mt-2 truncate text-[11px] text-brand">{l.url}</p>
+                    </div>
+                    <div className="mt-4 pt-3 border-t border-border/40 space-y-2">
+                      {l.tags.length > 0 && (
+                        <div className="flex flex-wrap items-center gap-1">
+                          {l.tags.map((t) => (<Tag key={t}>#{t}</Tag>))}
+                        </div>
+                      )}
+                      <div className="flex items-center gap-2 text-[10px] text-muted-foreground">
+                        <Initials member={ws.member(l.addedBy)} size={18} /> 
+                        <span>added by {ws.member(l.addedBy)?.name || "Teammate"}</span>
+                      </div>
+                    </div>
+                  </Panel>
+                ))}
               </div>
             </div>
-            <h2 className="font-display mt-3 text-[15px] font-semibold leading-snug">{l.title}</h2>
-            <p className="mt-1 text-sm text-muted-foreground">{l.description}</p>
-            <p className="mt-2 truncate text-xs text-brand">{l.url}</p>
-            <div className="mt-3 flex flex-wrap items-center gap-1.5">{l.tags.map((t) => (<Tag key={t}>#{t}</Tag>))}</div>
-            <div className="mt-3 flex items-center gap-2 text-[11px] text-muted-foreground">
-              <Initials member={ws.member(l.addedBy)} size={20} /> added by {ws.member(l.addedBy)?.name}
-            </div>
-          </Panel>
-        ))}
-      </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -139,8 +178,9 @@ function AddLinkDialog({ trigger }: { trigger: ReactNode }) {
             <Input placeholder="Short description of this resource..." value={description} onChange={(e) => setDescription(e.target.value)} />
           </div>
           <div>
-            <Label className="mb-1.5 block text-xs font-semibold text-muted-foreground">Category</Label>
+            <Label className="mb-1.5 block text-xs font-semibold text-muted-foreground">Category (Subsection)</Label>
             <Input placeholder="e.g. Datasets, Code, Documentation" value={category} onChange={(e) => setCategory(e.target.value)} />
+            <p className="text-[10px] text-muted-foreground mt-1">Creating a resource with a new category name will automatically start a new subsection on the resources page.</p>
           </div>
           <div>
             <Label className="mb-1.5 block text-xs font-semibold text-muted-foreground">Tags (comma separated)</Label>
@@ -220,8 +260,9 @@ function EditLinkDialog({ link, trigger }: { link: ResourceLink; trigger: ReactN
             <Input value={description} onChange={(e) => setDescription(e.target.value)} />
           </div>
           <div>
-            <Label className="mb-1.5 block text-xs font-semibold text-muted-foreground">Category</Label>
+            <Label className="mb-1.5 block text-xs font-semibold text-muted-foreground">Category (Subsection)</Label>
             <Input value={category} onChange={(e) => setCategory(e.target.value)} />
+            <p className="text-[10px] text-muted-foreground mt-1">Creating a resource with a new category name will automatically start a new subsection on the resources page.</p>
           </div>
           <div>
             <Label className="mb-1.5 block text-xs font-semibold text-muted-foreground">Tags (comma separated)</Label>
