@@ -1,26 +1,175 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState, type ReactNode } from "react";
+import { useState, useEffect, type ReactNode, type DragEvent } from "react";
 import { toast } from "sonner";
-import { Edit3, Plus, Trash2, CheckSquare, CheckCircle, PlusCircle, GripVertical, Check } from "lucide-react";
+import { Edit3, Plus, Trash2, CheckCircle, GripVertical } from "lucide-react";
 import { useWorkspace } from "@/lib/workspace-store";
-import { Meter, PageHeader, Panel, Stack, Tag } from "@/components/ui-bits";
+import { Meter, PageHeader, Panel, Stack } from "@/components/ui-bits";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Phase } from "@/data/workspace";
+import { Phase, DeliverableItem } from "@/data/workspace";
 
-export const Route = createFileRoute("/roadmap")({
-  head: () => ({
-    meta: [
-      { title: "Research Roadmap — ResearchHub" },
-      { name: "description", content: "Eight-phase research roadmap from literature review to final presentation, with progress, owners and deliverables." },
-      { property: "og:title", content: "Research Roadmap — ResearchHub" },
-      { property: "og:description", content: "Phase-by-phase timeline for the research project." },
-    ],
-  }),
-  component: RoadmapPage,
-});
+// Define helper components first to prevent temporal dead zone (TDZ) or forward reference compiler errors.
+
+function PhaseDialog({ phase, targetIndex, trigger }: { phase?: Phase; targetIndex?: number; trigger: ReactNode }) {
+  const ws = useWorkspace();
+  const [open, setOpen] = useState(false);
+  const [index, setIndex] = useState(phase ? phase.index : (targetIndex !== undefined ? targetIndex : (ws.phases || []).length + 1));
+  const [name, setName] = useState(phase ? phase.name : "");
+  const [start, setStart] = useState(phase ? phase.start : "");
+  const [end, setEnd] = useState(phase ? phase.end : "");
+  const [progress, setProgress] = useState(phase ? phase.progress : 0);
+  const [deliverables, setDeliverables] = useState("");
+  const [selectedMembers, setSelectedMembers] = useState<string[]>(phase ? phase.members : []);
+  const [details, setDetails] = useState(phase ? phase.details || "" : "");
+
+  // Update states on open/change
+  useEffect(() => {
+    if (open) {
+      setIndex(phase ? phase.index : (targetIndex !== undefined ? targetIndex : (ws.phases || []).length + 1));
+      setName(phase ? phase.name : "");
+      setStart(phase ? phase.start : "");
+      setEnd(phase ? phase.end : "");
+      setProgress(phase ? phase.progress : 0);
+      
+      if (phase) {
+        const deliverableTexts = (phase.deliverables || []).map((d) => (d && typeof d === "object" && "text" in d) ? d.text : String(d || ""));
+        setDeliverables(deliverableTexts.join(", "));
+        setDetails(phase.details || "");
+      } else {
+        setDeliverables("");
+        setDetails("");
+      }
+      setSelectedMembers(phase ? phase.members : []);
+    }
+  }, [open, phase, targetIndex, ws.phases]);
+
+  const handleSave = () => {
+    if (!name.trim()) {
+      toast.error("Phase name is required");
+      return;
+    }
+
+    const deliverablesList = deliverables
+      .split(",")
+      .map((d) => d.trim())
+      .filter(Boolean)
+      .map((text) => {
+        // Find existing to preserve 'done' status if user is just editing deliverables
+        const existing = (phase?.deliverables || []).find((d) => ((d && typeof d === "object" && "text" in d) ? d.text : String(d || "")) === text);
+        const done = existing ? (typeof existing === "string" ? false : (existing.done ?? false)) : false;
+        return { text, done };
+      });
+
+    const payload = {
+      index: Number(index),
+      name: name.trim(),
+      start: start.trim() || "TBA",
+      end: end.trim() || "TBA",
+      progress: Math.min(Math.max(Number(progress) || 0, 0), 100),
+      deliverables: deliverablesList,
+      members: selectedMembers,
+      details: details.trim() || undefined,
+    };
+
+    if (phase) {
+      ws.updatePhase(phase.id, payload);
+      toast.success("Phase updated successfully");
+    } else {
+      ws.addPhase(payload);
+      toast.success("Phase added successfully");
+    }
+    setOpen(false);
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>{trigger}</DialogTrigger>
+      <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>{phase ? "Edit Research Phase" : "Add Research Phase"}</DialogTitle>
+        </DialogHeader>
+
+        <div className="space-y-4 py-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label className="mb-1.5 block text-xs font-semibold text-muted-foreground">Phase Number</Label>
+              <Input type="number" value={index} onChange={(e) => setIndex(Number(e.target.value))} />
+            </div>
+            <div>
+              <Label className="mb-1.5 block text-xs font-semibold text-muted-foreground">Progress (%)</Label>
+              <Input type="number" min={0} max={100} value={progress} onChange={(e) => setProgress(Number(e.target.value))} />
+            </div>
+          </div>
+
+          <div>
+            <Label className="mb-1.5 block text-xs font-semibold text-muted-foreground">Phase Name</Label>
+            <Input placeholder="e.g. Literature Review" value={name} onChange={(e) => setName(e.target.value)} />
+          </div>
+
+          <div>
+            <Label className="mb-1.5 block text-xs font-semibold text-muted-foreground">Details / Explanation (Optional)</Label>
+            <textarea
+              placeholder="Conduct comprehensive survey of clinical Named Entity Recognition models..."
+              value={details}
+              onChange={(e) => setDetails(e.target.value)}
+              className="w-full bg-background border border-input rounded-xl p-2.5 text-xs focus:outline-none focus:ring-1 focus:ring-brand min-h-[80px]"
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <Label className="mb-1.5 block text-xs font-semibold text-muted-foreground">Start Date</Label>
+              <Input placeholder="e.g. Aug 1" value={start} onChange={(e) => setStart(e.target.value)} />
+            </div>
+            <div>
+              <Label className="mb-1.5 block text-xs font-semibold text-muted-foreground">End Date</Label>
+              <Input placeholder="e.g. Sep 15" value={end} onChange={(e) => setEnd(e.target.value)} />
+            </div>
+          </div>
+
+          <div>
+            <Label className="mb-1.5 block text-xs font-semibold text-muted-foreground">Deliverables (comma separated)</Label>
+            <Input placeholder="e.g. Draft Report, Latex Source, Presentation" value={deliverables} onChange={(e) => setDeliverables(e.target.value)} />
+          </div>
+
+          <div>
+            <Label className="mb-1.5 block text-xs font-semibold text-muted-foreground">Assign Owners</Label>
+            <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto p-2 border border-border rounded-xl">
+              {ws.members.map((m) => {
+                const active = selectedMembers.includes(m.id);
+                return (
+                  <button
+                    key={m.id}
+                    type="button"
+                    onClick={() => {
+                      setSelectedMembers((prev) =>
+                        active ? prev.filter((id) => id !== m.id) : [...prev, m.id]
+                      );
+                    }}
+                    className={`px-2.5 py-1 text-xs font-medium rounded-lg border transition-all cursor-pointer ${
+                      active
+                        ? "bg-brand/10 border-brand text-brand font-bold"
+                        : "bg-secondary/40 border-border/60 text-muted-foreground"
+                    }`}
+                  >
+                    {m.name}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+
+        <DialogFooter className="flex flex-row justify-end gap-2">
+          <Button variant="outline" onClick={() => setOpen(false)} className="cursor-pointer">Cancel</Button>
+          <Button onClick={handleSave} className="cursor-pointer">Save Phase</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
 
 function TimelineSeparator({ targetIndex }: { targetIndex: number }) {
   return (
@@ -44,16 +193,16 @@ function RoadmapPage() {
   const ws = useWorkspace();
   const [draggingId, setDraggingId] = useState<string | null>(null);
 
-  const handleDragStart = (e: React.DragEvent, id: string) => {
+  const handleDragStart = (e: DragEvent<HTMLDivElement>, id: string) => {
     setDraggingId(id);
     e.dataTransfer.effectAllowed = "move";
   };
 
-  const handleDragOver = (e: React.DragEvent) => {
+  const handleDragOver = (e: DragEvent<HTMLDivElement>) => {
     e.preventDefault();
   };
 
-  const handleDrop = (e: React.DragEvent, targetId: string) => {
+  const handleDrop = (e: DragEvent<HTMLDivElement>, targetId: string) => {
     e.preventDefault();
     if (!draggingId || draggingId === targetId) return;
 
@@ -232,161 +381,14 @@ function RoadmapPage() {
   );
 }
 
-function PhaseDialog({ phase, targetIndex, trigger }: { phase?: Phase; targetIndex?: number; trigger: ReactNode }) {
-  const ws = useWorkspace();
-  const [open, setOpen] = useState(false);
-  const [index, setIndex] = useState(phase ? phase.index : (targetIndex !== undefined ? targetIndex : (ws.phases || []).length + 1));
-  const [name, setName] = useState(phase ? phase.name : "");
-  const [start, setStart] = useState(phase ? phase.start : "");
-  const [end, setEnd] = useState(phase ? phase.end : "");
-  const [progress, setProgress] = useState(phase ? phase.progress : 0);
-  const [deliverables, setDeliverables] = useState("");
-  const [selectedMembers, setSelectedMembers] = useState<string[]>(phase ? phase.members : []);
-  const [details, setDetails] = useState(phase ? phase.details || "" : "");
-
-  // Update states on open/change
-  useEffect(() => {
-    if (open) {
-      setIndex(phase ? phase.index : (targetIndex !== undefined ? targetIndex : (ws.phases || []).length + 1));
-      setName(phase ? phase.name : "");
-      setStart(phase ? phase.start : "");
-      setEnd(phase ? phase.end : "");
-      setProgress(phase ? phase.progress : 0);
-      
-      if (phase) {
-        const deliverableTexts = (phase.deliverables || []).map((d) => (d && typeof d === "object" && "text" in d) ? d.text : String(d || ""));
-        setDeliverables(deliverableTexts.join(", "));
-        setDetails(phase.details || "");
-      } else {
-        setDeliverables("");
-        setDetails("");
-      }
-      setSelectedMembers(phase ? phase.members : []);
-    }
-  }, [open, phase, targetIndex, ws.phases]);
-
-  const handleSave = () => {
-    if (!name.trim()) {
-      toast.error("Phase name is required");
-      return;
-    }
-
-    const deliverablesList = deliverables
-      .split(",")
-      .map((d) => d.trim())
-      .filter(Boolean)
-      .map((text) => {
-        // Find existing to preserve 'done' status if user is just editing deliverables
-        const existing = (phase?.deliverables || []).find((d) => ((d && typeof d === "object" && "text" in d) ? d.text : String(d || "")) === text);
-        const done = existing ? (typeof existing === "string" ? false : (existing.done ?? false)) : false;
-        return { text, done };
-      });
-
-    const payload = {
-      index: Number(index),
-      name: name.trim(),
-      start: start.trim() || "TBA",
-      end: end.trim() || "TBA",
-      progress: Math.min(Math.max(Number(progress) || 0, 0), 100),
-      deliverables: deliverablesList,
-      members: selectedMembers,
-      details: details.trim() || undefined,
-    };
-
-    if (phase) {
-      ws.updatePhase(phase.id, payload);
-      toast.success("Phase updated successfully");
-    } else {
-      ws.addPhase(payload);
-      toast.success("Phase added successfully");
-    }
-    setOpen(false);
-  };
-
-  return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>{trigger}</DialogTrigger>
-      <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle>{phase ? "Edit Research Phase" : "Add Research Phase"}</DialogTitle>
-        </DialogHeader>
-
-        <div className="space-y-4 py-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label className="mb-1.5 block text-xs font-semibold text-muted-foreground">Phase Number</Label>
-              <Input type="number" value={index} onChange={(e) => setIndex(Number(e.target.value))} />
-            </div>
-            <div>
-              <Label className="mb-1.5 block text-xs font-semibold text-muted-foreground">Progress (%)</Label>
-              <Input type="number" min={0} max={100} value={progress} onChange={(e) => setProgress(Number(e.target.value))} />
-            </div>
-          </div>
-
-          <div>
-            <Label className="mb-1.5 block text-xs font-semibold text-muted-foreground">Phase Name</Label>
-            <Input placeholder="e.g. Literature Review" value={name} onChange={(e) => setName(e.target.value)} />
-          </div>
-
-          <div>
-            <Label className="mb-1.5 block text-xs font-semibold text-muted-foreground">Details / Explanation (Optional)</Label>
-            <textarea
-              placeholder="Conduct comprehensive survey of clinical Named Entity Recognition models..."
-              value={details}
-              onChange={(e) => setDetails(e.target.value)}
-              className="w-full bg-background border border-input rounded-xl p-2.5 text-xs focus:outline-none focus:ring-1 focus:ring-brand min-h-[80px]"
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label className="mb-1.5 block text-xs font-semibold text-muted-foreground">Start Date</Label>
-              <Input placeholder="e.g. Aug 1" value={start} onChange={(e) => setStart(e.target.value)} />
-            </div>
-            <div>
-              <Label className="mb-1.5 block text-xs font-semibold text-muted-foreground">End Date</Label>
-              <Input placeholder="e.g. Sep 15" value={end} onChange={(e) => setEnd(e.target.value)} />
-            </div>
-          </div>
-
-          <div>
-            <Label className="mb-1.5 block text-xs font-semibold text-muted-foreground">Deliverables (comma separated)</Label>
-            <Input placeholder="e.g. Draft Report, Latex Source, Presentation" value={deliverables} onChange={(e) => setDeliverables(e.target.value)} />
-          </div>
-
-          <div>
-            <Label className="mb-1.5 block text-xs font-semibold text-muted-foreground">Assign Owners</Label>
-            <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto p-2 border border-border rounded-xl">
-              {ws.members.map((m) => {
-                const active = selectedMembers.includes(m.id);
-                return (
-                  <button
-                    key={m.id}
-                    type="button"
-                    onClick={() => {
-                      setSelectedMembers((prev) =>
-                        active ? prev.filter((id) => id !== m.id) : [...prev, m.id]
-                      );
-                    }}
-                    className={`px-2.5 py-1 text-xs font-medium rounded-lg border transition-all cursor-pointer ${
-                      active
-                        ? "bg-brand/10 border-brand text-brand font-bold"
-                        : "bg-secondary/40 border-border/60 text-muted-foreground"
-                    }`}
-                  >
-                    {m.name}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-
-        <DialogFooter className="flex flex-row justify-end gap-2">
-          <Button variant="outline" onClick={() => setOpen(false)} className="cursor-pointer">Cancel</Button>
-          <Button onClick={handleSave} className="cursor-pointer">Save Phase</Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
+export const Route = createFileRoute("/roadmap")({
+  head: () => ({
+    meta: [
+      { title: "Research Roadmap — ResearchHub" },
+      { name: "description", content: "Eight-phase research roadmap from literature review to final presentation, with progress, owners and deliverables." },
+      { property: "og:title", content: "Research Roadmap — ResearchHub" },
+      { property: "og:description", content: "Phase-by-phase timeline for the research project." },
+    ],
+  }),
+  component: RoadmapPage,
+});
