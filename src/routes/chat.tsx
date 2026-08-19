@@ -320,15 +320,12 @@ export default function ChatPage() {
                   <div className="flex items-center gap-2 min-w-0">
                     <div className="min-w-0">
                       <h2 className="font-display font-semibold text-sm sm:text-base leading-none truncate">
-                        {activePaper
-                          ? `Discussion: ${activePaper.title}`
-                          : activeConv?.name || (() => {
-                              const cm = ws.conversationMembers.filter((x) => x.conversation_id === activeConvId);
-                              const otherId = cm.find((x) => x.member_id !== ws.currentUser?.id)?.member_id;
-                              const other = ws.members.find((m) => m.id === otherId);
-                              return other ? `${other.name}` : "Chat Workspace";
-                            })()
-                        }
+                        {activeConv?.name || (() => {
+                          const cm = ws.conversationMembers.filter((x) => x.conversation_id === activeConvId);
+                          const otherId = cm.find((x) => x.member_id !== ws.currentUser?.id)?.member_id;
+                          const other = ws.members.find((m) => m.id === otherId);
+                          return other ? `${other.name}` : "Chat Workspace";
+                        })()}
                       </h2>
                       {activeConv?.paper_id && (
                         <p className="text-[10px] text-muted-foreground mt-1 truncate">
