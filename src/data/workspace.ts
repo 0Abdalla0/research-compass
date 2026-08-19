@@ -146,6 +146,7 @@ export type Meeting = {
   decisions: string[];
   actionItems: { text: string; ownerId: string }[];
   notes: string;
+  link?: string;
 };
 
 export type EventKind = "meeting" | "deadline" | "milestone" | "personal";

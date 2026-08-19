@@ -738,6 +738,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
         setCurrentUser(newUser);
         localStorage.setItem("research_hub_user", JSON.stringify(newUser));
         log("joined the research team", name, "comment");
+        log("logged in", name, "comment");
 
         // Insert to live DB if enabled
         if (hasSupabaseKeys) {
@@ -1435,6 +1436,10 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
         }
       },
       updateMessage: async (id, content) => {
+        const msg = messages.find((m) => m.id === id);
+        if (msg) {
+          log("edited message in chat", msg.content.slice(0, 30), "comment");
+        }
         setMessages((prev) =>
           prev.map((m) => (m.id === id ? { ...m, content, updated_at: new Date().toISOString() } : m))
         );
@@ -1445,6 +1450,10 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
         }
       },
       removeMessage: async (id) => {
+        const msg = messages.find((m) => m.id === id);
+        if (msg) {
+          log("deleted message from chat", msg.content.slice(0, 30), "comment");
+        }
         setMessages((prev) =>
           prev.map((x) => (x.id === id ? { ...x, deleted_at: new Date().toISOString() } : x))
         );

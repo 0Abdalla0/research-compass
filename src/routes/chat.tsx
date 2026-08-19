@@ -28,10 +28,7 @@ export default function ChatPage() {
   const ws = useWorkspace();
   const searchParams = Route.useSearch() as { conv?: string; msg?: string };
   const [activeConvId, setActiveConvId] = useState<string | null>(null);
-  const [activePaperId, setActivePaperId] = useState<string | null>(null);
   const [highlightedMsgId, setHighlightedMsgId] = useState<string | null>(null);
-  
-  const activePaper = ws.papers.find((p) => p.id === activePaperId);
   
   // Search state
   const [searchQuery, setSearchQuery] = useState("");
@@ -50,8 +47,7 @@ export default function ChatPage() {
   useEffect(() => {
     if (searchParams.conv) {
       setActiveConvId(searchParams.conv);
-      setActivePaperId(null);
-    } else if (ws.conversations.length > 0 && !activeConvId && !activePaperId) {
+    } else if (ws.conversations.length > 0 && !activeConvId) {
       setActiveConvId(ws.conversations[0]?.id || null);
     }
   }, [searchParams.conv, ws.conversations]);
@@ -155,9 +151,6 @@ export default function ChatPage() {
   const channels = ws.conversations.filter(
     (c) => c.is_group && !c.paper_id && !c.phase_id && c.name?.toLowerCase().includes(sidebarSearch.toLowerCase())
   );
-  const paperChats = ws.papers.filter(
-    (p) => p.title.toLowerCase().includes(sidebarSearch.toLowerCase())
-  );
   const directMessages = ws.conversations.filter((c) => {
     if (c.is_group) return false;
     // Get DM participant details
@@ -176,7 +169,7 @@ export default function ChatPage() {
 
       <div className="grid grid-cols-1 md:grid-cols-[280px_1fr] gap-6 mt-6 flex-1 min-h-0">
         {/* Left Sidebar */}
-        <Panel className={`p-4 flex flex-col min-h-0 bg-card/65 backdrop-blur-md border-border/80 ${ (activeConvId || activePaperId) ? 'hidden md:flex' : 'flex' }`}>
+        <Panel className={`p-4 flex flex-col min-h-0 bg-card/65 backdrop-blur-md border-border/80 ${ activeConvId ? 'hidden md:flex' : 'flex' }`}>
           <div className="relative mb-4">
             <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground/60" />
             <Input
@@ -210,7 +203,6 @@ export default function ChatPage() {
                         key={member.id}
                         onClick={() => {
                           handleStartDM(member.id);
-                          setActivePaperId(null);
                         }}
                         className={`w-full text-left px-2 py-1.5 rounded-xl text-xs flex items-center justify-between transition-colors ${
                           isActive ? "bg-brand text-brand-foreground font-semibold" : "hover:bg-secondary"
@@ -244,7 +236,6 @@ export default function ChatPage() {
                     key={c.id}
                     onClick={() => {
                       setActiveConvId(c.id);
-                      setActivePaperId(null);
                     }}
                     className={`w-full text-left px-3 py-2 rounded-xl text-xs flex items-center gap-2 transition-colors ${
                       c.id === activeConvId ? "bg-brand text-brand-foreground font-semibold" : "hover:bg-secondary"
@@ -256,42 +247,20 @@ export default function ChatPage() {
                 ))}
               </div>
             </div>
-
-            {/* Paper Chats Section */}
-            <div>
-              <p className="px-2 mb-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground/80">Paper Chats</p>
-              <div className="space-y-0.5">
-                {paperChats.map((p) => (
-                  <button
-                    key={p.id}
-                    onClick={() => {
-                      setActivePaperId(p.id);
-                      setActiveConvId(null);
-                    }}
-                    className={`w-full text-left px-3 py-2 rounded-xl text-xs flex items-center gap-2 transition-colors ${
-                      p.id === activePaperId ? "bg-brand text-brand-foreground font-semibold" : "hover:bg-secondary"
-                    }`}
-                  >
-                    <BookOpen className="h-4 w-4 shrink-0" />
-                    <span className="truncate">{p.title}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
           </div>
         </Panel>
 
         {/* Right Active Chat View */}
-        {!activeConvId && !activePaperId ? (
-          <Panel className={`flex-1 flex flex-col items-center justify-center text-center p-8 bg-card/65 backdrop-blur-md border-border/80 min-h-0 ${ (activeConvId || activePaperId) ? 'flex' : 'hidden md:flex' }`}>
+        {!activeConvId ? (
+          <Panel className={`flex-1 flex flex-col items-center justify-center text-center p-8 bg-card/65 backdrop-blur-md border-border/80 min-h-0 ${ activeConvId ? 'flex' : 'hidden md:flex' }`}>
             <MessageSquare className="h-16 w-16 text-brand mb-4 opacity-75 animate-bounce" />
             <h2 className="text-xl font-bold font-display">SehatMasr Communication Center</h2>
             <p className="text-sm text-muted-foreground max-w-md mt-2 leading-relaxed">
-              Select any direct message, channel, or research paper chat from the sidebar to start discussing ontology-driven clinical NLP in real-time.
+              Select any direct message or channel from the sidebar to start discussing ontology-driven clinical NLP in real-time.
             </p>
           </Panel>
         ) : (
-          <Panel className={`p-4 flex flex-col min-h-0 bg-card/65 backdrop-blur-md border-border/80 relative flex-1 ${ (activeConvId || activePaperId) ? 'flex' : 'hidden md:flex' }`}>
+          <Panel className={`p-4 flex flex-col min-h-0 bg-card/65 backdrop-blur-md border-border/80 relative flex-1 ${ activeConvId ? 'flex' : 'hidden md:flex' }`}>
             {/* Header & In-conversation Search Bar */}
             <div className="flex items-center justify-between border-b border-border/40 pb-3 mb-4 gap-2">
               <div className="flex items-center gap-2 min-w-0">
@@ -361,7 +330,7 @@ export default function ChatPage() {
                             })()
                         }
                       </h2>
-                      {(activeConv?.paper_id || activePaperId) && (
+                      {activeConv?.paper_id && (
                         <p className="text-[10px] text-muted-foreground mt-1 truncate">
                           Discussion tied to Research Paper
                         </p>
@@ -402,33 +371,31 @@ export default function ChatPage() {
               </div>
 
               {/* Msg search block */}
-              {!activePaperId && (
-                <div className="flex items-center gap-1.5">
-                  <div className="relative">
-                    <Search className="absolute left-2.5 top-2 h-3.5 w-3.5 text-muted-foreground/60" />
-                    <Input
-                      value={searchQuery}
-                      onChange={(e) => {
-                        setSearchQuery(e.target.value);
-                        setShowSearchResults(e.target.value.length > 0);
+              <div className="flex items-center gap-1.5">
+                <div className="relative">
+                  <Search className="absolute left-2.5 top-2 h-3.5 w-3.5 text-muted-foreground/60" />
+                  <Input
+                    value={searchQuery}
+                    onChange={(e) => {
+                      setSearchQuery(e.target.value);
+                      setShowSearchResults(e.target.value.length > 0);
+                    }}
+                    placeholder="Search in messages..."
+                    className="h-8 pl-8 text-xs w-48"
+                  />
+                  {searchQuery && (
+                    <button
+                      onClick={() => {
+                        setSearchQuery("");
+                        setShowSearchResults(false);
                       }}
-                      placeholder="Search in messages..."
-                      className="h-8 pl-8 text-xs w-48"
-                    />
-                    {searchQuery && (
-                      <button
-                        onClick={() => {
-                          setSearchQuery("");
-                          setShowSearchResults(false);
-                        }}
-                        className="absolute right-2 top-2 text-muted-foreground hover:text-foreground"
-                      >
-                        <X className="h-3 w-3" />
-                      </button>
-                    )}
-                  </div>
+                      className="absolute right-2 top-2 text-muted-foreground hover:text-foreground"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  )}
                 </div>
-              )}
+              </div>
             </div>
 
             {/* Search Results overlay pane */}
@@ -474,169 +441,163 @@ export default function ChatPage() {
               </div>
             ) : null}
 
-            {activePaperId ? (
-              <div className="flex-1 overflow-y-auto min-h-0 bg-secondary/5 border border-border/40 rounded-2xl p-4">
-                <ThreadView entityType="paper" entityId={activePaperId} />
-              </div>
-            ) : (
-              <>
-                {/* Chat Messages Log */}
-                <div ref={scrollRef} className="flex-1 overflow-y-auto space-y-4 mb-4 pr-1">
-                  {activeMessages.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center h-full text-center p-8 text-muted-foreground/60">
-                      <MessageSquare className="h-10 w-10 mb-2 opacity-50 text-brand" />
-                      <p className="text-sm font-semibold">No messages in this chat yet</p>
-                      <p className="text-xs">Send a text, file, or voice message below to start collaborating!</p>
-                    </div>
-                  ) : (
-                    activeMessages.map((msg) => {
-                      const sender = ws.members.find((m) => m.id === msg.sender_id) || {
-                        name: "Researcher",
-                        initials: "R",
-                        color: "#6b7280",
-                        role: "Member",
-                      };
-                      const isOwn = ws.currentUser && ws.currentUser.id === msg.sender_id;
-                      const isHighlighted = msg.id === highlightedMsgId;
-                      return (
+            <>
+              {/* Chat Messages Log */}
+              <div ref={scrollRef} className="flex-1 overflow-y-auto space-y-4 mb-4 pr-1">
+                {activeMessages.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center h-full text-center p-8 text-muted-foreground/60">
+                    <MessageSquare className="h-10 w-10 mb-2 opacity-50 text-brand" />
+                    <p className="text-sm font-semibold">No messages in this chat yet</p>
+                    <p className="text-xs">Send a text, file, or voice message below to start collaborating!</p>
+                  </div>
+                ) : (
+                  activeMessages.map((msg) => {
+                    const sender = ws.members.find((m) => m.id === msg.sender_id) || {
+                      name: "Researcher",
+                      initials: "R",
+                      color: "#6b7280",
+                      role: "Member",
+                    };
+                    const isOwn = ws.currentUser && ws.currentUser.id === msg.sender_id;
+                    const isHighlighted = msg.id === highlightedMsgId;
+                    return (
+                      <div
+                        key={msg.id}
+                        id={`msg-${msg.id}`}
+                        className={`flex items-start gap-2.5 ${isOwn ? "flex-row-reverse" : ""} transition-all duration-500 group ${
+                          isHighlighted ? "bg-amber-500/15 dark:bg-amber-500/25 border-l-4 border-amber-500 p-2 rounded-xl" : ""
+                        }`}
+                      >
                         <div
-                          key={msg.id}
-                          id={`msg-${msg.id}`}
-                          className={`flex items-start gap-2.5 ${isOwn ? "flex-row-reverse" : ""} transition-all duration-500 group ${
-                            isHighlighted ? "bg-amber-500/15 dark:bg-amber-500/25 border-l-4 border-amber-500 p-2 rounded-xl" : ""
-                          }`}
+                          className="h-8 w-8 rounded-full flex items-center justify-center font-bold text-xs uppercase border shrink-0 shadow-sm"
+                          style={{
+                            backgroundColor: `${sender.color}15`,
+                            color: sender.color,
+                            borderColor: `${sender.color}35`,
+                          }}
                         >
-                          <div
-                            className="h-8 w-8 rounded-full flex items-center justify-center font-bold text-xs uppercase border shrink-0 shadow-sm"
-                            style={{
-                              backgroundColor: `${sender.color}15`,
-                              color: sender.color,
-                              borderColor: `${sender.color}35`,
-                            }}
-                          >
-                            {sender.initials}
-                          </div>
-                          <div className={`flex flex-col max-w-[85%] md:max-w-[70%] ${isOwn ? "items-end" : ""}`}>
-                            <div className="flex items-center gap-1.5 mb-1 text-xs text-muted-foreground">
-                              <span className="font-semibold text-foreground">{sender.name}</span>
-                              <span>•</span>
-                              <span>{new Date(msg.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
-                            </div>
-                            {editingMsgId === msg.id ? (
-                              <div className="flex flex-col gap-1.5 min-w-[200px] bg-secondary/35 border border-border/80 rounded-xl p-3">
-                                <textarea
-                                  value={editingMsgText}
-                                  onChange={(e) => setEditingMsgText(e.target.value)}
-                                  className="w-full bg-background border border-input rounded-lg p-2 text-xs focus:outline-none focus:ring-1 focus:ring-brand min-h-[60px]"
-                                />
-                                <div className="flex justify-end gap-1.5 mt-1">
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className="h-7 px-2 text-[10px] font-bold cursor-pointer"
-                                    onClick={() => setEditingMsgId(null)}
-                                  >
-                                    Cancel
-                                  </Button>
-                                  <Button
-                                    size="sm"
-                                    className="h-7 px-2 text-[10px] font-bold cursor-pointer"
-                                    onClick={async () => {
-                                      if (!editingMsgText.trim()) {
-                                        toast.error("Message content cannot be empty");
-                                        return;
-                                      }
-                                      await ws.updateMessage(msg.id, editingMsgText.trim());
-                                      setEditingMsgId(null);
-                                      toast.success("Message updated");
-                                    }}
-                                  >
-                                    Save
-                                  </Button>
-                                </div>
-                              </div>
-                            ) : (
-                              <>
-                                {(() => {
-                                  const isSticker = msg.content && msg.content.startsWith("[sticker:") && msg.content.endsWith("]");
-                                  const stickerVal = isSticker ? msg.content.slice(9, -1) : "";
-                                  return isSticker ? (
-                                    <div className="text-5xl py-1 select-none hover:scale-110 active:scale-95 transition-all cursor-default duration-200" title="Sticker">
-                                      {stickerVal}
-                                    </div>
-                                  ) : (
-                                    <div className={`p-3 rounded-2xl text-sm ${
-                                      isOwn ? "bg-brand text-brand-foreground rounded-tr-none" : "bg-secondary text-foreground rounded-tl-none"
-                                    }`}>
-                                      {msg.content && <p className="whitespace-pre-wrap">{msg.content}</p>}
-                                      {msg.url && (
-                                        <div className="mt-2 pt-2 border-t border-current/20">
-                                          {msg.message_type === "image" ? (
-                                            <img src={msg.url} alt="Shared Image" className="rounded-lg max-h-48 object-cover" />
-                                          ) : msg.message_type === "voice" ? (
-                                            <div className="flex items-center gap-2">
-                                              <PlayAudioButton url={msg.url} />
-                                              <span className="text-xs opacity-80">Voice Note</span>
-                                            </div>
-                                          ) : (
-                                            <a href={msg.url} download target="_blank" rel="noreferrer" className="flex items-center gap-1.5 underline text-xs font-semibold">
-                                              <Download className="h-3.5 w-3.5" /> Download attachment
-                                            </a>
-                                          )}
-                                        </div>
-                                      )}
-                                    </div>
-                                  );
-                                })()}
-                                {isOwn && (
-                                  <div className="flex items-center gap-2 mt-1 text-[9px] text-muted-foreground opacity-60 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
-                                    <button
-                                      onClick={() => {
-                                        setEditingMsgId(msg.id);
-                                        setEditingMsgText(msg.content);
-                                      }}
-                                      className="hover:underline hover:text-foreground cursor-pointer"
-                                    >
-                                      Edit
-                                    </button>
-                                    <span>•</span>
-                                    <button
-                                      onClick={async () => {
-                                        if (confirm("Are you sure you want to delete this message?")) {
-                                          await ws.removeMessage(msg.id);
-                                          toast.success("Message deleted");
-                                        }
-                                      }}
-                                      className="hover:underline hover:text-destructive cursor-pointer"
-                                    >
-                                      Delete
-                                    </button>
-                                  </div>
-                                )}
-                              </>
-                            )}
-                          </div>
+                          {sender.initials}
                         </div>
-                      );
-                    })
-                  )}
-                </div>
-
-                {/* Typing Indicator */}
-                {typingMembers.length > 0 && (
-                  <p className="text-xs text-muted-foreground mb-1 italic">
-                    {typingMembers.join(", ")} {typingMembers.length === 1 ? "is" : "are"} typing...
-                  </p>
+                        <div className={`flex flex-col max-w-[85%] md:max-w-[70%] ${isOwn ? "items-end" : ""}`}>
+                          <div className="flex items-center gap-1.5 mb-1 text-xs text-muted-foreground">
+                            <span className="font-semibold text-foreground">{sender.name}</span>
+                            <span>•</span>
+                            <span>{new Date(msg.created_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</span>
+                          </div>
+                          {editingMsgId === msg.id ? (
+                            <div className="flex flex-col gap-1.5 min-w-[200px] bg-secondary/35 border border-border/80 rounded-xl p-3">
+                              <textarea
+                                value={editingMsgText}
+                                onChange={(e) => setEditingMsgText(e.target.value)}
+                                className="w-full bg-background border border-input rounded-lg p-2 text-xs focus:outline-none focus:ring-1 focus:ring-brand min-h-[60px]"
+                              />
+                              <div className="flex justify-end gap-1.5 mt-1">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-7 px-2 text-[10px] font-bold cursor-pointer"
+                                  onClick={() => setEditingMsgId(null)}
+                                >
+                                  Cancel
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  className="h-7 px-2 text-[10px] font-bold cursor-pointer"
+                                  onClick={async () => {
+                                    if (!editingMsgText.trim()) {
+                                      toast.error("Message content cannot be empty");
+                                      return;
+                                    }
+                                    await ws.updateMessage(msg.id, editingMsgText.trim());
+                                    setEditingMsgId(null);
+                                    toast.success("Message updated");
+                                  }}
+                                >
+                                  Save
+                                </Button>
+                              </div>
+                            </div>
+                          ) : (
+                            <>
+                              {(() => {
+                                const isSticker = msg.content && msg.content.startsWith("[sticker:") && msg.content.endsWith("]");
+                                const stickerVal = isSticker ? msg.content.slice(9, -1) : "";
+                                return isSticker ? (
+                                  <div className="text-5xl py-1 select-none hover:scale-110 active:scale-95 transition-all cursor-default duration-200" title="Sticker">
+                                    {stickerVal}
+                                  </div>
+                                ) : (
+                                  <div className={`p-3 rounded-2xl text-sm ${
+                                    isOwn ? "bg-brand text-brand-foreground rounded-tr-none" : "bg-secondary text-foreground rounded-tl-none"
+                                  }`}>
+                                    {msg.content && <p className="whitespace-pre-wrap">{msg.content}</p>}
+                                    {msg.url && (
+                                      <div className="mt-2 pt-2 border-t border-current/20">
+                                        {msg.message_type === "image" ? (
+                                          <img src={msg.url} alt="Shared Image" className="rounded-lg max-h-48 object-cover" />
+                                        ) : msg.message_type === "voice" ? (
+                                          <div className="flex items-center gap-2">
+                                            <PlayAudioButton url={msg.url} />
+                                            <span className="text-xs opacity-80">Voice Note</span>
+                                          </div>
+                                        ) : (
+                                          <a href={msg.url} download target="_blank" rel="noreferrer" className="flex items-center gap-1.5 underline text-xs font-semibold">
+                                            <Download className="h-3.5 w-3.5" /> Download attachment
+                                          </a>
+                                        )}
+                                      </div>
+                                    )}
+                                  </div>
+                                );
+                              })()}
+                              {isOwn && (
+                                <div className="flex items-center gap-2 mt-1 text-[9px] text-muted-foreground opacity-60 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
+                                  <button
+                                    onClick={() => {
+                                      setEditingMsgId(msg.id);
+                                      setEditingMsgText(msg.content);
+                                    }}
+                                    className="hover:underline hover:text-foreground cursor-pointer"
+                                  >
+                                    Edit
+                                  </button>
+                                  <span>•</span>
+                                  <button
+                                    onClick={async () => {
+                                      if (confirm("Are you sure you want to delete this message?")) {
+                                        await ws.removeMessage(msg.id);
+                                        toast.success("Message deleted");
+                                      }
+                                    }}
+                                    className="hover:underline hover:text-destructive cursor-pointer"
+                                  >
+                                    Delete
+                                  </button>
+                                </div>
+                              )}
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })
                 )}
+              </div>
 
-                {/* Input composer */}
-                <UniversalComposer
-                  placeholder="Type a message to the team..."
-                  onSend={handleSendMessage}
-                  onTyping={(isTyping) => activeConvId && ws.broadcastTyping(activeConvId, isTyping)}
-                />
-              </>
-            )}
+              {/* Typing Indicator */}
+              {typingMembers.length > 0 && (
+                <p className="text-xs text-muted-foreground mb-1 italic">
+                  {typingMembers.join(", ")} {typingMembers.length === 1 ? "is" : "are"} typing...
+                </p>
+              )}
+
+              {/* Input composer */}
+              <UniversalComposer
+                placeholder="Type a message to the team..."
+                onSend={handleSendMessage}
+                onTyping={(isTyping) => activeConvId && ws.broadcastTyping(activeConvId, isTyping)}
+              />
+            </>
           </Panel>
         )}
       </div>

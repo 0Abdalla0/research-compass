@@ -128,6 +128,7 @@ model Meeting {
   decisions    String   // JSON serialized string[]
   actionItems  String   // JSON serialized { text: string; ownerId: string }[]
   notes        String
+  link         String?
 }
 
 model CalEvent {
