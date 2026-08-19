@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
-import { Upload, FileText, Loader2, Github, Mail, Phone, Shield, Eye, ExternalLink, Linkedin } from "lucide-react";
+import { Upload, FileText, Loader2, Github, Mail, Phone, Shield, Eye, ExternalLink } from "lucide-react";
 import { uploadFile } from "@/lib/uploads";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -41,7 +41,6 @@ function SettingsPage() {
   const [profileUniEmail, setProfileUniEmail] = useState("");
   const [profilePrivateEmail, setProfilePrivateEmail] = useState("");
   const [profileGithubUsername, setProfileGithubUsername] = useState("");
-  const [profileLinkedinUrl, setProfileLinkedinUrl] = useState("");
   const [profileResponsibilities, setProfileResponsibilities] = useState("");
   const [profileCv, setProfileCv] = useState("");
   const [profileCvStoragePath, setProfileCvStoragePath] = useState("");
@@ -66,7 +65,6 @@ function SettingsPage() {
       setProfileUniEmail(ws.currentUser.uniEmail || "");
       setProfilePrivateEmail(ws.currentUser.privateEmail || "");
       setProfileGithubUsername(ws.currentUser.githubUsername || "");
-      setProfileLinkedinUrl(ws.currentUser.linkedinUrl || "");
       setProfileResponsibilities(ws.currentUser.responsibilities || "");
       setProfileCv(ws.currentUser.cv || "");
       setProfileCvStoragePath(ws.currentUser.cv_storage_path || "");
@@ -117,7 +115,6 @@ function SettingsPage() {
       uniEmail: profileUniEmail.trim() || undefined,
       privateEmail: profilePrivateEmail.trim() || undefined,
       githubUsername: profileGithubUsername.trim() || undefined,
-      linkedinUrl: profileLinkedinUrl.trim() || undefined,
       responsibilities: profileResponsibilities.trim(),
       cv: profileCv || undefined,
       cv_storage_path: profileCvStoragePath || undefined,
@@ -177,7 +174,7 @@ function SettingsPage() {
                       <Input value={profileUniEmail} onChange={(e) => setProfileUniEmail(e.target.value)} placeholder="e.g. name@uni.edu" />
                     </div>
                   </div>
-                   <div className="grid gap-3 sm:grid-cols-3">
+                  <div className="grid gap-3 sm:grid-cols-2">
                     <div>
                       <Label className="mb-1.5 block text-xs text-muted-foreground">Private Email</Label>
                       <Input value={profilePrivateEmail} onChange={(e) => setProfilePrivateEmail(e.target.value)} placeholder="e.g. personal@gmail.com" />
@@ -185,10 +182,6 @@ function SettingsPage() {
                     <div>
                       <Label className="mb-1.5 block text-xs text-muted-foreground">GitHub Username</Label>
                       <Input value={profileGithubUsername} onChange={(e) => setProfileGithubUsername(e.target.value)} placeholder="e.g. octocat" />
-                    </div>
-                    <div>
-                      <Label className="mb-1.5 block text-xs text-muted-foreground">LinkedIn Profile URL</Label>
-                      <Input value={profileLinkedinUrl} onChange={(e) => setProfileLinkedinUrl(e.target.value)} placeholder="e.g. https://linkedin.com/in/username" />
                     </div>
                   </div>
                   <div>
@@ -266,16 +259,14 @@ function SettingsPage() {
                       toast.success(`Switched to ${ws.theme === "light" ? "dark" : "light"} mode`);
                     }} 
                   />
-                </div>                 <div>
+                </div>
+
+                <div>
                   <Label className="mb-1.5 block text-xs text-muted-foreground">Dark Scheme Accent</Label>
                   <select 
                     className="w-full h-10 px-3 border border-border rounded-xl bg-card text-sm cursor-pointer"
-                    value={ws.darkAccent}
-                    onChange={(e) => {
-                      const val = e.target.value as any;
-                      ws.setDarkAccent(val);
-                      toast.success(`Dark scheme accent set to ${val}`);
-                    }}
+                    defaultValue="slate"
+                    onChange={(e) => toast.success(`Dark scheme set to ${e.target.value}`)}
                   >
                     <option value="slate">Slate Blue (Modern Slate)</option>
                     <option value="black">Jet Black (OLED Friendly)</option>
@@ -287,12 +278,8 @@ function SettingsPage() {
                   <Label className="mb-1.5 block text-xs text-muted-foreground">Sidebar Layout Density</Label>
                   <select 
                     className="w-full h-10 px-3 border border-border rounded-xl bg-card text-sm cursor-pointer"
-                    value={ws.sidebarDensity}
-                    onChange={(e) => {
-                      const val = e.target.value as any;
-                      ws.setSidebarDensity(val);
-                      toast.success(`Sidebar density set to ${val}`);
-                    }}
+                    defaultValue="relaxed"
+                    onChange={(e) => toast.success(`Sidebar density set to ${e.target.value}`)}
                   >
                     <option value="relaxed">Relaxed / Default spacing</option>
                     <option value="compact">Compact / List view</option>
@@ -303,12 +290,8 @@ function SettingsPage() {
                   <Label className="mb-1.5 block text-xs text-muted-foreground">Aesthetic Panels Effect</Label>
                   <select 
                     className="w-full h-10 px-3 border border-border rounded-xl bg-card text-sm cursor-pointer"
-                    value={ws.panelsEffect}
-                    onChange={(e) => {
-                      const val = e.target.value as any;
-                      ws.setPanelsEffect(val);
-                      toast.success(`Aesthetic effect set to ${val}`);
-                    }}
+                    defaultValue="glass"
+                    onChange={(e) => toast.success(`Aesthetic effect set to ${e.target.value}`)}
                   >
                     <option value="glass">Glassmorphism / Frosted Panels</option>
                     <option value="solid">Minimalist / Solid Flat Colors</option>
@@ -552,20 +535,6 @@ function SettingsPage() {
                         className="font-semibold text-brand hover:underline flex items-center gap-1"
                       >
                         <Github className="h-3.5 w-3.5" /> @{viewMember.githubUsername}
-                        <ExternalLink className="h-3 w-3 shrink-0" />
-                      </a>
-                    </div>
-                  )}
-                  {viewMember.linkedinUrl && (
-                    <div className="flex items-center justify-between">
-                      <span className="font-bold text-muted-foreground">LinkedIn Profile</span>
-                      <a 
-                        href={viewMember.linkedinUrl.startsWith("http") ? viewMember.linkedinUrl : `https://linkedin.com/in/${viewMember.linkedinUrl}`} 
-                        target="_blank" 
-                        rel="noreferrer" 
-                        className="font-semibold text-brand hover:underline flex items-center gap-1"
-                      >
-                        <Linkedin className="h-3.5 w-3.5" /> Profile Link
                         <ExternalLink className="h-3 w-3 shrink-0" />
                       </a>
                     </div>

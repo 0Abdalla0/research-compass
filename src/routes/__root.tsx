@@ -122,35 +122,6 @@ function RootShell({ children }: { children: ReactNode }) {
     <html lang="en">
       <head>
         <HeadContent />
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
-              (function() {
-                try {
-                  var theme = localStorage.getItem('research_hub_theme');
-                  var darkAccent = localStorage.getItem('research_hub_dark_accent') || 'slate';
-                  var sidebarDensity = localStorage.getItem('research_hub_sidebar_density') || 'relaxed';
-                  var panelsEffect = localStorage.getItem('research_hub_panels_effect') || 'glass';
-                  
-                  var doc = document.documentElement;
-                  
-                  if (theme === 'dark') {
-                    doc.classList.add('dark');
-                  } else {
-                    doc.classList.remove('dark');
-                  }
-                  
-                  // Clean existing classes to prevent duplicates
-                  doc.className = doc.className.replace(/\\b(accent-|density-|panels-)\\S+/g, '');
-                  
-                  doc.classList.add('accent-' + darkAccent);
-                  doc.classList.add('density-' + sidebarDensity);
-                  doc.classList.add('panels-' + panelsEffect);
-                } catch (e) {}
-              })();
-            `
-          }}
-        />
       </head>
       <body>
         {children}
