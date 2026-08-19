@@ -141,7 +141,8 @@ type Ctx = {
     cv_storage_path?: string,
     cv_mime_type?: string,
     cv_size_bytes?: number,
-    githubUsername?: string
+    githubUsername?: string,
+    linkedinUrl?: string
   ) => void;
   deleteMember: (memberId: string) => Promise<void>;
   updateProfile: (id: string, patch: Partial<Member>) => Promise<void>;
@@ -186,6 +187,12 @@ type Ctx = {
   markNotificationRead: (id: string) => void;
   theme: "light" | "dark";
   toggleTheme: () => void;
+  darkAccent: "slate" | "black" | "emerald";
+  setDarkAccent: (val: "slate" | "black" | "emerald") => void;
+  sidebarDensity: "relaxed" | "compact";
+  setSidebarDensity: (val: "relaxed" | "compact") => void;
+  panelsEffect: "glass" | "solid";
+  setPanelsEffect: (val: "glass" | "solid") => void;
   comments: Comment[];
   addComment: (c: Omit<Comment, "id" | "created_at" | "updated_at">) => Promise<void>;
   updateComment: (id: string, content: string) => Promise<void>;
@@ -241,6 +248,27 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       if (saved === "light" || saved === "dark") return saved;
     }
     return "light";
+  }) as any);
+  const [darkAccent, setDarkAccentState] = useState<"slate" | "black" | "emerald">((() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("research_hub_dark_accent");
+      if (saved === "slate" || saved === "black" || saved === "emerald") return saved;
+    }
+    return "slate";
+  }) as any);
+  const [sidebarDensity, setSidebarDensityState] = useState<"relaxed" | "compact">((() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("research_hub_sidebar_density");
+      if (saved === "relaxed" || saved === "compact") return saved;
+    }
+    return "relaxed";
+  }) as any);
+  const [panelsEffect, setPanelsEffectState] = useState<"glass" | "solid">((() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("research_hub_panels_effect");
+      if (saved === "glass" || saved === "solid") return saved;
+    }
+    return "glass";
   }) as any);
   const [currentUser, setCurrentUser] = useState<(typeof seed.members)[number] | null>(null);
   const [project, setProject] = useState<typeof seed.project>(seed.project);
@@ -328,22 +356,44 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  // Save members to localStorage when changed (only in offline/local mode)
+  useEffect(() => {
+    if (isLoaded && !hasSupabaseKeys && members.length > 0) {
+      localStorage.setItem("research_hub_members_local", JSON.stringify(members));
+    }
+  }, [members, isLoaded]);
+
   // Load from database on mount
   useEffect(() => {
     getWorkspaceDataServer()
       .then((data) => {
-        const rawMembers = data.members || [];
-        const isFake = (m: any) => m.email.endsWith("@uni.edu") || !!m.id.match(/^m[1-6]$/);
-        const fakes = rawMembers.filter(isFake);
-        const reals = rawMembers.filter((m) => !isFake(m));
+        let rawMembers = data.members || [];
+        
+        if (!hasSupabaseKeys) {
+          const savedMembers = localStorage.getItem("research_hub_members_local");
+          if (savedMembers) {
+            try {
+              rawMembers = JSON.parse(savedMembers);
+            } catch (e) {
+              console.error("Failed to parse local members:", e);
+            }
+          } else {
+            rawMembers = seed.members;
+          }
+        } else {
+          // Connected to live DB: filter out default fakes
+          const isFake = (m: any) => m.email.endsWith("@uni.edu") || !!m.id.match(/^m[1-6]$/);
+          const fakes = rawMembers.filter(isFake);
+          rawMembers = rawMembers.filter((m) => !isFake(m));
 
-        if (fakes.length > 0 && hasSupabaseKeys) {
-          Promise.all(fakes.map((fm) => supabase.from("members").delete().eq("id", fm.id)))
-            .then(() => console.info("Purged mock members from live database."))
-            .catch((err) => console.error("Error purging mock members:", err));
+          if (fakes.length > 0) {
+            Promise.all(fakes.map((fm) => supabase.from("members").delete().eq("id", fm.id)))
+              .then(() => console.info("Purged mock members from live database."))
+              .catch((err) => console.error("Error purging mock members:", err));
+          }
         }
 
-        setMembers(reals);
+        setMembers(rawMembers);
         setPapers(data.papers);
         setTasks(data.tasks);
         setNotes(data.notes);
@@ -376,8 +426,18 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    document.documentElement.classList.toggle("dark", theme === "dark");
-  }, [theme]);
+    if (typeof window !== "undefined") {
+      const doc = document.documentElement;
+      doc.classList.toggle("dark", theme === "dark");
+      
+      // Remove any existing theme-related classes to avoid duplicates
+      doc.className = doc.className.replace(/\b(accent-|density-|panels-)\S+/g, "");
+      
+      doc.classList.add(`accent-${darkAccent}`);
+      doc.classList.add(`density-${sidebarDensity}`);
+      doc.classList.add(`panels-${panelsEffect}`);
+    }
+  }, [theme, darkAccent, sidebarDensity, panelsEffect]);
 
   // Derived user-specific unread notifications list
   useEffect(() => {
@@ -635,7 +695,8 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
         cv_storage_path,
         cv_mime_type,
         cv_size_bytes,
-        githubUsername
+        githubUsername,
+        linkedinUrl
       ) => {
         const initials = name
           .split(" ")
@@ -660,6 +721,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
           cv: cv || undefined,
           privateEmail: privateEmail || undefined,
           githubUsername: githubUsername || undefined,
+          linkedinUrl: linkedinUrl || undefined,
           cv_storage_path: cv_storage_path || undefined,
           cv_mime_type: cv_mime_type || undefined,
           cv_size_bytes: cv_size_bytes || undefined,
@@ -1102,6 +1164,12 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
         localStorage.setItem("research_hub_theme", nextTheme);
         return nextTheme;
       }),
+      darkAccent,
+      setDarkAccent,
+      sidebarDensity,
+      setSidebarDensity,
+      panelsEffect,
+      setPanelsEffect,
       comments,
       conversations,
       conversationMembers,
@@ -1425,6 +1493,9 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       phases,
       activity,
       theme,
+      darkAccent,
+      sidebarDensity,
+      panelsEffect,
       currentUser,
       project,
       preferences,

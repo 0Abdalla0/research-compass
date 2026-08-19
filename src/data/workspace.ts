@@ -18,6 +18,7 @@ export type Member = {
   cv?: string | undefined;
   privateEmail?: string | undefined;
   githubUsername?: string | undefined;
+  linkedinUrl?: string | undefined;
   cv_storage_path?: string | undefined;
   cv_mime_type?: string | undefined;
   cv_size_bytes?: number | undefined;
@@ -249,7 +250,104 @@ export const project = {
   progress: 46,
 };
 
-export const members: Member[] = [];
+export const members: Member[] = [
+  {
+    id: "m1",
+    name: "Ahmed Kamal",
+    initials: "AK",
+    role: "Team Leader",
+    email: "ahmed.kamal@uni.edu",
+    responsibilities: "Literature review coordination, research gap analysis, paper writing",
+    color: "255",
+    password: "123456",
+    githubUsername: "ahmed-kamal",
+    linkedinUrl: "https://linkedin.com/in/ahmed-kamal",
+    phone: "+201012345678",
+    uniId: "20230101",
+    uniEmail: "ahmed.kamal@cis.asu.edu.eg",
+    privateEmail: "ahmed.k@gmail.com",
+  },
+  {
+    id: "m2",
+    name: "Abdalla Nasser",
+    initials: "AN",
+    role: "Team Leader", // Wait, Abdalla was Developer in prisma seed, but role enum is "Member" | "Supervisor" | "Team Leader". Let's use Team Leader or Member. Let's make him Team Leader or Member. In prisma/seed.js he was Developer, but role Role is Team Leader / Member / Supervisor. Let's make him Team Leader.
+    email: "abdalla.nasser@uni.edu",
+    responsibilities: "System architecture, API layer, ontology reasoning service",
+    color: "195",
+    password: "123456",
+    githubUsername: "abdalla-nasser",
+    linkedinUrl: "https://linkedin.com/in/abdalla-nasser",
+    phone: "+201023456789",
+    uniId: "20230102",
+    uniEmail: "abdalla.nasser@cis.asu.edu.eg",
+    privateEmail: "abdalla.n@gmail.com",
+  },
+  {
+    id: "m3",
+    name: "Maria Fahmy",
+    initials: "MF",
+    role: "Member",
+    email: "maria.fahmy@uni.edu",
+    responsibilities: "MIMIC-IV extraction, feature engineering, model benchmarking",
+    color: "155",
+    password: "123456",
+    githubUsername: "maria-fahmy",
+    linkedinUrl: "https://linkedin.com/in/maria-fahmy",
+    phone: "+201034567890",
+    uniId: "20230103",
+    uniEmail: "maria.fahmy@cis.asu.edu.eg",
+    privateEmail: "maria.f@gmail.com",
+  },
+  {
+    id: "m4",
+    name: "Jumana Saleh",
+    initials: "JS",
+    role: "Member",
+    email: "jumana.saleh@uni.edu",
+    responsibilities: "Clinical NLP survey, annotation guidelines, evaluation protocol",
+    color: "300",
+    password: "123456",
+    githubUsername: "jumana-saleh",
+    linkedinUrl: "https://linkedin.com/in/jumana-saleh",
+    phone: "+201045678901",
+    uniId: "20230104",
+    uniEmail: "jumana.saleh@cis.asu.edu.eg",
+    privateEmail: "jumana.s@gmail.com",
+  },
+  {
+    id: "m5",
+    name: "Ziad Hosny",
+    initials: "ZH",
+    role: "Member",
+    email: "ziad.hosny@uni.edu",
+    responsibilities: "Thesis document, figures, presentation decks, meeting minutes",
+    color: "70",
+    password: "123456",
+    githubUsername: "ziad-hosny",
+    linkedinUrl: "https://linkedin.com/in/ziad-hosny",
+    phone: "+201056789012",
+    uniId: "20230105",
+    uniEmail: "ziad.hosny@cis.asu.edu.eg",
+    privateEmail: "ziad.h@gmail.com",
+  },
+  {
+    id: "m6",
+    name: "Dr. Laila Mansour",
+    initials: "LM",
+    role: "Supervisor",
+    email: "l.mansour@uni.edu",
+    responsibilities: "Scientific supervision, methodology review, publication strategy",
+    color: "25",
+    password: "123456",
+    githubUsername: "laila-mansour",
+    linkedinUrl: "https://linkedin.com/in/laila-mansour",
+    phone: "+201067890123",
+    uniId: "20230106",
+    uniEmail: "l.mansour@cis.asu.edu.eg",
+    privateEmail: "laila.m@gmail.com",
+  },
+];
 
 const emptyAnalysis = {};
 

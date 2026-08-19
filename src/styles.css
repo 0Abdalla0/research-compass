@@ -243,3 +243,80 @@
   }
 }
 
+/* ==========================================================================
+   Antigravity Custom Theme and Preference Variations
+   ========================================================================== */
+
+/* 1. Dark Scheme Accent: Jet Black (OLED Friendly) */
+:root:is(.dark).accent-black {
+  --background: oklch(0 0 0);
+  --card: oklch(0.06 0 0);
+  --surface: oklch(0.06 0 0);
+  --popover: oklch(0.06 0 0);
+  --sidebar: oklch(0.06 0 0);
+  --border: oklch(1 0 0 / 8%);
+  --secondary: oklch(0.09 0 0);
+  --muted: oklch(0.09 0 0);
+  --surface-muted: oklch(0.09 0 0);
+  --gradient-surface: linear-gradient(160deg, oklch(0.06 0 0), oklch(0.03 0 0));
+}
+
+/* 2. Dark Scheme Accent: Emerald Green (Matrix vibe) */
+:root:is(.dark).accent-emerald {
+  --primary: oklch(0.72 0.16 150);
+  --brand: oklch(0.72 0.16 150);
+  --ring: oklch(0.72 0.16 150);
+  --gradient-brand: linear-gradient(135deg, oklch(0.5 0.12 150), oklch(0.75 0.18 150));
+}
+
+/* 3. Sidebar Layout Density: Compact spacing */
+.density-compact aside .pb-6 {
+  padding-bottom: 0.75rem !important;
+}
+.density-compact aside .mb-4 {
+  margin-bottom: 0.5rem !important;
+}
+.density-compact aside .pt-5 {
+  padding-top: 0.75rem !important;
+}
+.density-compact aside .mt-6 {
+  margin-top: 0.75rem !important;
+}
+.density-compact aside .p-3 {
+  padding: 0.5rem !important;
+}
+.density-compact aside .py-2 {
+  padding-top: 0.25rem !important;
+  padding-bottom: 0.25rem !important;
+}
+.density-compact aside .px-3 {
+  padding-left: 0.5rem !important;
+  padding-right: 0.5rem !important;
+}
+.density-compact aside .gap-3 {
+  gap: 0.5rem !important;
+}
+
+/* 4. Aesthetic Panels Effect: Glassmorphism / Frosted Panels vs Solid Flat Colors */
+:root {
+  --card-glass: oklch(1 0 0 / 75%);
+}
+:root:is(.dark) {
+  --card-glass: oklch(0.215 0.035 260 / 75%);
+}
+:root:is(.dark).accent-black {
+  --card-glass: oklch(0.06 0 0 / 75%);
+}
+
+.panels-glass .bg-card,
+.panels-glass .bg-sidebar {
+  background-color: var(--card-glass) !important;
+  backdrop-filter: blur(16px) !important;
+}
+
+.panels-solid .bg-card,
+.panels-solid .bg-sidebar {
+  background-color: var(--card) !important;
+  backdrop-filter: none !important;
+}
+
