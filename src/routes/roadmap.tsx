@@ -127,7 +127,7 @@ function RoadmapPage() {
                               ws.updatePhase(p.id, {
                                 progress: 100,
                                 deliverables: (p.deliverables || []).map((d) => {
-                                  const text = typeof d === "string" ? d : d.text;
+                                  const text = (d && typeof d === "object" && "text" in d) ? d.text : String(d || "");
                                   return { text, done: true };
                                 }),
                               });
@@ -173,7 +173,7 @@ function RoadmapPage() {
                     {/* Deliverables Checklist style */}
                     <div className="mt-3 flex flex-wrap gap-2">
                       {(p.deliverables || []).map((d, dIdx) => {
-                        const item = typeof d === "string" ? { text: d, done: false } : d;
+                        const item = (d && typeof d === "object" && "text" in d) ? (d as DeliverableItem) : { text: String(d || ""), done: false };
                         return (
                           <div 
                             key={dIdx} 
@@ -188,11 +188,11 @@ function RoadmapPage() {
                               checked={item.done}
                               onChange={(e) => {
                                 const updatedDeliverables = (p.deliverables || []).map((val, idx) => {
-                                  const txt = typeof val === "string" ? val : val.text;
+                                  const txt = (val && typeof val === "object" && "text" in val) ? val.text : String(val || "");
                                   if (idx === dIdx) {
                                     return { text: txt, done: e.target.checked };
                                   }
-                                  return typeof val === "string" ? { text: txt, done: false } : val;
+                                  return { text: txt, done: (val && typeof val === "object" && "done" in val) ? !!val.done : false };
                                 });
 
                                 // Auto-calculate progress based on completed items:
@@ -254,7 +254,7 @@ function PhaseDialog({ phase, targetIndex, trigger }: { phase?: Phase; targetInd
       setProgress(phase ? phase.progress : 0);
       
       if (phase) {
-        const deliverableTexts = (phase.deliverables || []).map((d) => typeof d === "string" ? d : d.text);
+        const deliverableTexts = (phase.deliverables || []).map((d) => (d && typeof d === "object" && "text" in d) ? d.text : String(d || ""));
         setDeliverables(deliverableTexts.join(", "));
         setDetails(phase.details || "");
       } else {
@@ -277,8 +277,8 @@ function PhaseDialog({ phase, targetIndex, trigger }: { phase?: Phase; targetInd
       .filter(Boolean)
       .map((text) => {
         // Find existing to preserve 'done' status if user is just editing deliverables
-        const existing = phase?.deliverables?.find((d) => (typeof d === "string" ? d : d.text) === text);
-        const done = existing ? (typeof existing === "string" ? false : existing.done) : false;
+        const existing = (phase?.deliverables || []).find((d) => ((d && typeof d === "object" && "text" in d) ? d.text : String(d || "")) === text);
+        const done = existing ? (typeof existing === "string" ? false : (existing.done ?? false)) : false;
         return { text, done };
       });
 
