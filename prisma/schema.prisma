@@ -150,6 +150,7 @@ model Phase {
   progress     Int
   members      String   // JSON serialized string[]
   deliverables String   // JSON serialized string[]
+  details      String?
 }
 
 model Activity {

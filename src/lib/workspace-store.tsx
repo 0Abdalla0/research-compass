@@ -1061,7 +1061,24 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       addPhase: (p) => {
         const id = uid();
         const newPhase = { ...p, id };
-        setPhases((prev) => [...prev, newPhase].sort((a, b) => a.index - b.index));
+
+        // Shifting logic:
+        // Any existing phase with index >= newPhase.index gets incremented by 1
+        const updatedPhases = phases.map((ph) => {
+          if (ph.index >= newPhase.index) {
+            // Update in DB too
+            updatePhaseServer({ data: { id: ph.id, patch: { index: ph.index + 1 } } }).catch((err) =>
+              console.error("Error shifting phase index in DB on insertion:", err),
+            );
+            return { ...ph, index: ph.index + 1 };
+          }
+          return ph;
+        });
+
+        updatedPhases.push(newPhase);
+        updatedPhases.sort((a, b) => a.index - b.index);
+
+        setPhases(updatedPhases);
         addPhaseServer({ data: newPhase }).catch((err) =>
           console.error("Error saving phase to DB:", err),
         );
@@ -1079,11 +1096,27 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       },
       removePhase: (id) => {
         const p = phases.find((x) => x.id === id);
-        setPhases((prev) => prev.filter((x) => x.id !== id));
-        removePhaseServer({ data: id }).catch((err) =>
-          console.error("Error deleting phase in DB:", err),
-        );
-        if (p) log("deleted phase", p.name, "task");
+        if (p) {
+          // Filter out the deleted phase and renumber sequentially starting at 1
+          const remaining = phases
+            .filter((x) => x.id !== id)
+            .sort((a, b) => a.index - b.index)
+            .map((ph, idx) => ({ ...ph, index: idx + 1 }));
+
+          setPhases(remaining);
+          removePhaseServer({ data: id }).catch((err) =>
+            console.error("Error deleting phase in DB:", err),
+          );
+
+          // Update index numbers in DB for remaining phases
+          remaining.forEach((ph) => {
+            updatePhaseServer({ data: { id: ph.id, patch: { index: ph.index } } }).catch((err) =>
+              console.error("Error updating remaining phase index in DB on deletion:", err),
+            );
+          });
+
+          log("deleted phase", p.name, "task");
+        }
       },
       project,
       updateProject: (name, topic, institution) => {

@@ -223,6 +223,11 @@ export type DbNotification = {
   created_at: string;
 };
 
+export type DeliverableItem = {
+  text: string;
+  done: boolean;
+};
+
 export type Phase = {
   id: string;
   index: number;
@@ -231,7 +236,8 @@ export type Phase = {
   end: string;
   progress: number;
   members: string[];
-  deliverables: string[];
+  deliverables: (string | DeliverableItem)[];
+  details?: string;
 };
 
 export type Activity = {

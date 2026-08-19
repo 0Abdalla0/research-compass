@@ -268,7 +268,6 @@ export default function ChatPage() {
                 <button
                   onClick={() => {
                     setActiveConvId(null);
-                    setActivePaperId(null);
                   }}
                   className="md:hidden p-1.5 hover:bg-secondary rounded-xl text-muted-foreground hover:text-foreground shrink-0"
                   aria-label="Back to chat list"
