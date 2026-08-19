@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Upload, FileText, Loader2, Github, Mail, Phone, Shield, Eye, ExternalLink, Linkedin } from "lucide-react";
 import { uploadFile } from "@/lib/uploads";
-import { formatLinkedinUrl } from "@/lib/utils";
+import { formatLinkedinUrl, getLinkedinUsername } from "@/lib/utils";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { supabase } from "@/lib/supabase";
@@ -568,7 +568,7 @@ function SettingsPage() {
                         rel="noreferrer" 
                         className="font-semibold text-brand hover:underline flex items-center gap-1"
                       >
-                        <Linkedin className="h-3.5 w-3.5" /> @{viewMember.linkedinUrl.split('/').pop()}
+                        <Linkedin className="h-3.5 w-3.5" /> @{getLinkedinUsername(viewMember.linkedinUrl)}
                         <ExternalLink className="h-3 w-3 shrink-0" />
                       </a>
                     </div>

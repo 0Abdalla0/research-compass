@@ -11,8 +11,12 @@ export function formatLinkedinUrl(urlOrUsername: string) {
   if (trimmed.startsWith("http://") || trimmed.startsWith("https://") || trimmed.startsWith("//")) {
     return trimmed;
   }
-  if (trimmed.startsWith("www.") || trimmed.startsWith("linkedin.com")) {
-    return `https://${trimmed}`;
-  }
-  return `https://linkedin.com/in/${trimmed}`;
+  return `https://${trimmed}`;
+}
+
+export function getLinkedinUsername(urlOrUsername: string) {
+  if (!urlOrUsername) return "";
+  const cleaned = urlOrUsername.trim().replace(/\/$/, "");
+  const lastPart = cleaned.split("/").pop();
+  return lastPart || cleaned;
 }

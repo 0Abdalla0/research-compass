@@ -3,7 +3,7 @@ import { useWorkspace } from "@/lib/workspace-store";
 import { Initials, PageHeader, Panel, Tag } from "@/components/ui-bits";
 import { FileText, KanbanSquare, Mail, Phone, BookOpen, Github, Linkedin } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { formatLinkedinUrl } from "@/lib/utils";
+import { formatLinkedinUrl, getLinkedinUsername } from "@/lib/utils";
 
 export const Route = createFileRoute("/team")({
   head: () => ({
@@ -139,7 +139,7 @@ function TeamPage() {
                     >
                       <Linkedin className="h-3.5 w-3.5 shrink-0" />
                       <span className="font-bold min-w-[70px]">LinkedIn:</span>
-                      <span>@{m.linkedinUrl.split('/').pop()}</span>
+                      <span>@{getLinkedinUsername(m.linkedinUrl)}</span>
                     </a>
                   )}
                   {m.cv && (

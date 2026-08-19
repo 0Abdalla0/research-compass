@@ -384,7 +384,10 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
           if (savedUserStr) {
             try {
               const savedUser = JSON.parse(savedUserStr);
-              if (!combined.some((m) => m.id === savedUser.id)) {
+              const existingIdx = combined.findIndex((m) => m.id === savedUser.id);
+              if (existingIdx !== -1) {
+                combined[existingIdx] = { ...combined[existingIdx], ...savedUser };
+              } else {
                 combined.push(savedUser);
               }
             } catch {}
