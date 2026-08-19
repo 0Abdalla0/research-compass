@@ -41,6 +41,7 @@ export function LoginScreen() {
   const [cvMimeType, setCvMimeType] = useState("");
   const [cvSizeBytes, setCvSizeBytes] = useState<number | undefined>(undefined);
   const [githubUsername, setGithubUsername] = useState("");
+  const [linkedinUrl, setLinkedinUrl] = useState("");
 
   const handleCvChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -113,7 +114,8 @@ export function LoginScreen() {
         cvStoragePath || undefined,
         cvMimeType || undefined,
         cvSizeBytes,
-        githubUsername
+        githubUsername,
+        linkedinUrl
       );
     } else {
       ws.registerUser(
@@ -129,7 +131,8 @@ export function LoginScreen() {
         undefined,
         undefined,
         undefined,
-        githubUsername
+        githubUsername,
+        linkedinUrl
       );
     }
 
@@ -149,6 +152,7 @@ export function LoginScreen() {
     setCvMimeType("");
     setCvSizeBytes(undefined);
     setGithubUsername("");
+    setLinkedinUrl("");
 
     toast.success(`Account created! Welcome to SehatMasr, ${regName}!`);
   };
@@ -383,18 +387,33 @@ export function LoginScreen() {
                   </div>
                 </div>
 
-                <div className="space-y-1">
-                  <label htmlFor="reg-github" className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-                    GitHub Username
-                  </label>
-                  <input
-                    id="reg-github"
-                    type="text"
-                    placeholder="e.g. octocat (Optional)"
-                    value={githubUsername}
-                    onChange={(e) => setGithubUsername(e.target.value)}
-                    className="w-full px-4 py-2.5 bg-background border border-border rounded-xl text-sm focus:outline-none focus:border-brand transition-colors text-foreground"
-                  />
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="space-y-1">
+                    <label htmlFor="reg-github" className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                      GitHub Username
+                    </label>
+                    <input
+                      id="reg-github"
+                      type="text"
+                      placeholder="e.g. octocat (Optional)"
+                      value={githubUsername}
+                      onChange={(e) => setGithubUsername(e.target.value)}
+                      className="w-full px-4 py-2.5 bg-background border border-border rounded-xl text-sm focus:outline-none focus:border-brand transition-colors text-foreground"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label htmlFor="reg-linkedin" className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                      LinkedIn Profile URL
+                    </label>
+                    <input
+                      id="reg-linkedin"
+                      type="url"
+                      placeholder="e.g. https://linkedin.com/in/username (Optional)"
+                      value={linkedinUrl}
+                      onChange={(e) => setLinkedinUrl(e.target.value)}
+                      className="w-full px-4 py-2.5 bg-background border border-border rounded-xl text-sm focus:outline-none focus:border-brand transition-colors text-foreground"
+                    />
+                  </div>
                 </div>
 
                 {/* Conditional Fields for Member role */}
