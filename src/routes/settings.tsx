@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Upload, FileText, Loader2, Github, Mail, Phone, Shield, Eye, ExternalLink, Linkedin } from "lucide-react";
 import { uploadFile } from "@/lib/uploads";
+import { formatLinkedinUrl } from "@/lib/utils";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { supabase } from "@/lib/supabase";
@@ -562,7 +563,7 @@ function SettingsPage() {
                     <div className="flex items-center justify-between">
                       <span className="font-bold text-muted-foreground">LinkedIn Profile</span>
                       <a 
-                        href={viewMember.linkedinUrl.startsWith("http") ? viewMember.linkedinUrl : `https://linkedin.com/in/${viewMember.linkedinUrl}`} 
+                        href={formatLinkedinUrl(viewMember.linkedinUrl)} 
                         target="_blank" 
                         rel="noreferrer" 
                         className="font-semibold text-brand hover:underline flex items-center gap-1"

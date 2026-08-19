@@ -3,6 +3,7 @@ import { useWorkspace } from "@/lib/workspace-store";
 import { Initials, PageHeader, Panel, Tag } from "@/components/ui-bits";
 import { FileText, KanbanSquare, Mail, Phone, BookOpen, Github, Linkedin } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { formatLinkedinUrl } from "@/lib/utils";
 
 export const Route = createFileRoute("/team")({
   head: () => ({
@@ -131,7 +132,7 @@ function TeamPage() {
                   )}
                   {m.linkedinUrl && (
                     <a 
-                      href={m.linkedinUrl.startsWith("http") ? m.linkedinUrl : `https://linkedin.com/in/${m.linkedinUrl}`} 
+                      href={formatLinkedinUrl(m.linkedinUrl)} 
                       target="_blank" 
                       rel="noreferrer" 
                       className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-brand transition-colors"
