@@ -22,6 +22,24 @@ export const Route = createFileRoute("/roadmap")({
   component: RoadmapPage,
 });
 
+function TimelineSeparator({ targetIndex }: { targetIndex: number }) {
+  return (
+    <div className="group relative flex items-center gap-4 pl-0 py-1.5">
+      <div className="z-10 grid h-6 w-10 shrink-0 place-items-center md:w-12">
+        <PhaseDialog
+          targetIndex={targetIndex}
+          trigger={
+            <button className="flex h-5 w-5 items-center justify-center rounded-full border border-border bg-card hover:bg-brand/10 hover:border-brand hover:text-brand transition-all cursor-pointer shadow-sm opacity-35 group-hover:opacity-100" title="Insert Phase Here">
+              <Plus className="h-3.5 w-3.5" />
+            </button>
+          }
+        />
+      </div>
+      <div className="flex-1 h-px bg-border/40 group-hover:bg-brand/35 transition-colors" />
+    </div>
+  );
+}
+
 function RoadmapPage() {
   const ws = useWorkspace();
   const [draggingId, setDraggingId] = useState<string | null>(null);
@@ -39,11 +57,11 @@ function RoadmapPage() {
     e.preventDefault();
     if (!draggingId || draggingId === targetId) return;
 
-    const sourceIdx = ws.phases.findIndex((x) => x.id === draggingId);
-    const targetIdx = ws.phases.findIndex((x) => x.id === targetId);
+    const sourceIdx = (ws.phases || []).findIndex((x) => x.id === draggingId);
+    const targetIdx = (ws.phases || []).findIndex((x) => x.id === targetId);
 
     if (sourceIdx !== -1 && targetIdx !== -1) {
-      const reordered = [...ws.phases];
+      const reordered = [...(ws.phases || [])];
       const [removed] = reordered.splice(sourceIdx, 1);
       reordered.splice(targetIdx, 0, removed);
 
@@ -59,28 +77,11 @@ function RoadmapPage() {
     setDraggingId(null);
   };
 
-  // Timeline separator between indices
-  const TimelineSeparator = ({ targetIndex }: { targetIndex: number }) => (
-    <div className="group relative flex items-center gap-4 pl-0 py-1.5">
-      <div className="z-10 grid h-6 w-10 shrink-0 place-items-center md:w-12">
-        <PhaseDialog
-          targetIndex={targetIndex}
-          trigger={
-            <button className="flex h-5 w-5 items-center justify-center rounded-full border border-border bg-card hover:bg-brand/10 hover:border-brand hover:text-brand transition-all cursor-pointer shadow-sm opacity-35 group-hover:opacity-100" title="Insert Phase Here">
-              <Plus className="h-3.5 w-3.5" />
-            </button>
-          }
-        />
-      </div>
-      <div className="flex-1 h-px bg-border/40 group-hover:bg-brand/35 transition-colors" />
-    </div>
-  );
-
   return (
     <div className="space-y-6">
       <PageHeader 
         title="Research Roadmap" 
-        subtitle={`${ws.phases.length} phases from literature review to final defense`} 
+        subtitle={`${(ws.phases || []).length} phases from literature review to final defense`} 
         actions={
           <PhaseDialog 
             trigger={
@@ -92,7 +93,7 @@ function RoadmapPage() {
         }
       />
       <div className="relative space-y-2 before:absolute before:left-[19px] before:top-4 before:h-[calc(100%-2rem)] before:w-px before:bg-border md:before:left-6">
-        {ws.phases.map((p, idx) => (
+        {(ws.phases || []).map((p, idx) => (
           <div key={p.id}>
             {/* Show an insertion spacer if not the first item */}
             {idx > 0 && <TimelineSeparator targetIndex={p.index} />}
@@ -125,7 +126,7 @@ function RoadmapPage() {
                             onClick={() => {
                               ws.updatePhase(p.id, {
                                 progress: 100,
-                                deliverables: p.deliverables.map((d) => {
+                                deliverables: (p.deliverables || []).map((d) => {
                                   const text = typeof d === "string" ? d : d.text;
                                   return { text, done: true };
                                 }),
@@ -171,7 +172,7 @@ function RoadmapPage() {
 
                     {/* Deliverables Checklist style */}
                     <div className="mt-3 flex flex-wrap gap-2">
-                      {p.deliverables.map((d, dIdx) => {
+                      {(p.deliverables || []).map((d, dIdx) => {
                         const item = typeof d === "string" ? { text: d, done: false } : d;
                         return (
                           <div 
@@ -186,7 +187,7 @@ function RoadmapPage() {
                               type="checkbox"
                               checked={item.done}
                               onChange={(e) => {
-                                const updatedDeliverables = p.deliverables.map((val, idx) => {
+                                const updatedDeliverables = (p.deliverables || []).map((val, idx) => {
                                   const txt = typeof val === "string" ? val : val.text;
                                   if (idx === dIdx) {
                                     return { text: txt, done: e.target.checked };
@@ -213,8 +214,8 @@ function RoadmapPage() {
                     </div>
 
                     <div className="mt-3 flex items-center gap-3">
-                      <Stack ids={p.members} members={ws.members} />
-                      <span className="text-xs text-muted-foreground">{ws.tasks.filter((t) => t.phaseId === p.id).length} linked tasks</span>
+                      <Stack ids={p.members || []} members={ws.members} />
+                      <span className="text-xs text-muted-foreground">{(ws.tasks || []).filter((t) => t.phaseId === p.id).length} linked tasks</span>
                     </div>
                   </div>
                   <div>
@@ -234,7 +235,7 @@ function RoadmapPage() {
 function PhaseDialog({ phase, targetIndex, trigger }: { phase?: Phase; targetIndex?: number; trigger: ReactNode }) {
   const ws = useWorkspace();
   const [open, setOpen] = useState(false);
-  const [index, setIndex] = useState(phase ? phase.index : (targetIndex !== undefined ? targetIndex : ws.phases.length + 1));
+  const [index, setIndex] = useState(phase ? phase.index : (targetIndex !== undefined ? targetIndex : (ws.phases || []).length + 1));
   const [name, setName] = useState(phase ? phase.name : "");
   const [start, setStart] = useState(phase ? phase.start : "");
   const [end, setEnd] = useState(phase ? phase.end : "");
@@ -246,14 +247,14 @@ function PhaseDialog({ phase, targetIndex, trigger }: { phase?: Phase; targetInd
   // Update states on open/change
   useEffect(() => {
     if (open) {
-      setIndex(phase ? phase.index : (targetIndex !== undefined ? targetIndex : ws.phases.length + 1));
+      setIndex(phase ? phase.index : (targetIndex !== undefined ? targetIndex : (ws.phases || []).length + 1));
       setName(phase ? phase.name : "");
       setStart(phase ? phase.start : "");
       setEnd(phase ? phase.end : "");
       setProgress(phase ? phase.progress : 0);
       
       if (phase) {
-        const deliverableTexts = phase.deliverables.map((d) => typeof d === "string" ? d : d.text);
+        const deliverableTexts = (phase.deliverables || []).map((d) => typeof d === "string" ? d : d.text);
         setDeliverables(deliverableTexts.join(", "));
         setDetails(phase.details || "");
       } else {
@@ -262,7 +263,7 @@ function PhaseDialog({ phase, targetIndex, trigger }: { phase?: Phase; targetInd
       }
       setSelectedMembers(phase ? phase.members : []);
     }
-  }, [open, phase, targetIndex, ws.phases.length]);
+  }, [open, phase, targetIndex, ws.phases]);
 
   const handleSave = () => {
     if (!name.trim()) {
