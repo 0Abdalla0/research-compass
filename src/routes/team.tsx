@@ -23,7 +23,7 @@ function TeamPage() {
     <div className="space-y-6">
       <PageHeader
         title="Team"
-        subtitle={`${ws.members.length} members · researchers, leaders and supervisors`}
+        subtitle={`${ws.members.length} members · researchers and supervisors`}
       />
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         {ws.members.map((m) => {
