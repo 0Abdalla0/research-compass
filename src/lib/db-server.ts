@@ -1077,3 +1077,19 @@ export const clearAllWorkspaceDataServer = createServerFn({ method: "POST" })
     }
   });
 
+export const sendTestEmailServer = createServerFn({ method: "POST" })
+  .validator((toEmail: string) => toEmail)
+  .handler(async ({ data: toEmail }) => {
+    try {
+      await sendEmailNotification(
+        toEmail,
+        "Test Email from Research Compass",
+        "Hello! This is a test email sent from the Research Compass workspace to verify that your email integration (Gemini, Resend, and/or SMTP) is configured and working correctly."
+      );
+      return { success: true };
+    } catch (e: any) {
+      console.error("Test email failed:", e);
+      return { success: false, error: e.message || String(e) };
+    }
+  });
+

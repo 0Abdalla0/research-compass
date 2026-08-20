@@ -15,6 +15,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { supabase } from "@/lib/supabase";
 import type { Member } from "@/data/workspace";
+import { sendTestEmailServer } from "@/lib/db-server";
 
 export const Route = createFileRoute("/settings")({
   head: () => ({
@@ -51,6 +52,9 @@ function SettingsPage() {
   const [uploadingCv, setUploadingCv] = useState(false);
   const [viewMember, setViewMember] = useState<Member | null>(null);
 
+  const [testEmailAddress, setTestEmailAddress] = useState("");
+  const [sendingTestEmail, setSendingTestEmail] = useState(false);
+
   // Sync inputs with workspace context values
   useEffect(() => {
     setName(ws.project.name);
@@ -73,6 +77,7 @@ function SettingsPage() {
       setProfileCvStoragePath(ws.currentUser.cv_storage_path || "");
       setProfileCvMimeType(ws.currentUser.cv_mime_type || "");
       setProfileCvSizeBytes(ws.currentUser.cv_size_bytes);
+      setTestEmailAddress(ws.currentUser.email || "");
     }
   }, [ws.currentUser]);
 
@@ -126,6 +131,27 @@ function SettingsPage() {
       cv_size_bytes: profileCvSizeBytes || undefined,
     });
     toast.success("Profile saved successfully!");
+  };
+
+  const handleSendTestEmail = async () => {
+    if (!testEmailAddress.trim()) {
+      toast.error("Please enter a recipient email address.");
+      return;
+    }
+    setSendingTestEmail(true);
+    const toastId = toast.loading("Sending test email...");
+    try {
+      const res = await sendTestEmailServer({ data: testEmailAddress.trim() });
+      if (res.success) {
+        toast.success("Test email dispatched successfully! Check your inbox or server logs.", { id: toastId });
+      } else {
+        toast.error(`Failed to send email: ${res.error || "Unknown error"}`, { id: toastId });
+      }
+    } catch (err: any) {
+      toast.error(`Error sending test email: ${err.message || String(err)}`, { id: toastId });
+    } finally {
+      setSendingTestEmail(false);
+    }
   };
 
   const dynamicTags = Array.from(
@@ -460,6 +486,45 @@ function SettingsPage() {
                     toast.success("Preference updated");
                   }}
                 />
+              </div>
+            </Panel>
+
+            {/* Email Notification Integration */}
+            <Panel className="p-5">
+              <h2 className="font-display text-sm font-semibold flex items-center gap-1.5">
+                <Mail className="h-4 w-4 text-brand" />
+                Email Notification Integration
+              </h2>
+              <p className="text-xs text-muted-foreground mt-0.5 mb-3">
+                Send a test notification to verify that Gemini API formatting, Resend, or SMTP email drivers are functional.
+              </p>
+              <div className="space-y-3">
+                <div>
+                  <Label className="mb-1.5 block text-xs text-muted-foreground">Recipient Email Address</Label>
+                  <Input 
+                    type="email" 
+                    placeholder="e.g. name@example.com" 
+                    value={testEmailAddress} 
+                    onChange={(e) => setTestEmailAddress(e.target.value)} 
+                  />
+                </div>
+                <Button 
+                  onClick={handleSendTestEmail} 
+                  disabled={sendingTestEmail}
+                  className="flex items-center gap-1.5 cursor-pointer font-bold"
+                >
+                  {sendingTestEmail ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Sending test email...
+                    </>
+                  ) : (
+                    <>
+                      <Mail className="h-4 w-4" />
+                      Send Test Email
+                    </>
+                  )}
+                </Button>
               </div>
             </Panel>
           </div>
