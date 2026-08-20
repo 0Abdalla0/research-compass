@@ -1,4 +1,4 @@
-import { supabase, hasSupabaseKeys } from "./supabase";
+import { supabase, hasSupabaseKeys, getEnv } from "./supabase";
 import * as seed from "@/data/workspace";
 
 /**
@@ -25,7 +25,7 @@ function isPlaceholder(val: string | undefined): boolean {
  * otherwise falls back to a clean template.
  */
 async function draftEmailWithGemini(subject: string, rawBody: string): Promise<string> {
-  const apiKey = process.env["GEMINI_API_KEY"];
+  const apiKey = getEnv("GEMINI_API_KEY");
   if (isPlaceholder(apiKey)) {
     return getFallbackHtml(subject, rawBody);
   }
@@ -133,17 +133,17 @@ function getFallbackHtml(subject: string, rawBody: string): string {
 export async function sendEmailNotification(toEmail: string, subject: string, bodyText: string): Promise<void> {
   const htmlBody = await draftEmailWithGemini(subject, bodyText);
 
-  const resendApiKey = process.env["RESEND_API_KEY"];
-  const smtpHost = process.env["SMTP_HOST"];
-  const smtpUser = process.env["SMTP_USER"];
-  const smtpPass = process.env["SMTP_PASS"];
+  const resendApiKey = getEnv("RESEND_API_KEY");
+  const smtpHost = getEnv("SMTP_HOST");
+  const smtpUser = getEnv("SMTP_USER");
+  const smtpPass = getEnv("SMTP_PASS");
 
   const hasResend = !isPlaceholder(resendApiKey);
   const hasSmtp = !isPlaceholder(smtpHost) && !isPlaceholder(smtpUser) && !isPlaceholder(smtpPass);
 
   if (hasResend) {
     try {
-      const fromEmail = process.env["RESEND_FROM_EMAIL"] || "onboarding@resend.dev";
+      const fromEmail = getEnv("RESEND_FROM_EMAIL") || "onboarding@resend.dev";
       const response = await fetch("https://api.resend.com/emails", {
         method: "POST",
         headers: {
@@ -173,7 +173,7 @@ export async function sendEmailNotification(toEmail: string, subject: string, bo
   if (hasSmtp) {
     try {
       const nodemailer = await import("nodemailer");
-      const smtpPort = parseInt(process.env["SMTP_PORT"] || "587");
+      const smtpPort = parseInt(getEnv("SMTP_PORT") || "587");
       
       const transporter = nodemailer.createTransport({
         host: smtpHost,
@@ -185,7 +185,7 @@ export async function sendEmailNotification(toEmail: string, subject: string, bo
         },
       });
 
-      const fromEmail = process.env["SMTP_FROM_EMAIL"] || `"Research Compass" <${smtpUser}>`;
+      const fromEmail = getEnv("SMTP_FROM_EMAIL") || `"Research Compass" <${smtpUser}>`;
 
       await transporter.sendMail({
         from: fromEmail,

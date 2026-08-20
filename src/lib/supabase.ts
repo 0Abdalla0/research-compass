@@ -1,6 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 
-const getEnv = (key: string): string => {
+export const getEnv = (key: string): string => {
   if (typeof import.meta !== "undefined" && import.meta.env && import.meta.env[key]) {
     return import.meta.env[key];
   }
@@ -14,7 +14,7 @@ let supabaseUrl = getEnv("VITE_SUPABASE_URL");
 let supabaseAnonKey = getEnv("VITE_SUPABASE_ANON_KEY");
 
 // Synchronous filesystem loader on server side to guarantee keys are loaded during SSR
-if (typeof window === "undefined" && (!supabaseUrl || !supabaseAnonKey)) {
+if (typeof window === "undefined") {
   try {
     const fsLib = "fs";
     const pathLib = "path";
@@ -29,8 +29,11 @@ if (typeof window === "undefined" && (!supabaseUrl || !supabaseAnonKey)) {
         const parts = line.split("=");
         const k = parts[0].trim();
         const v = parts.slice(1).join("=").trim().replace(/^['"]|['"]$/g, "");
-        if (k === "VITE_SUPABASE_URL") supabaseUrl = v;
-        if (k === "VITE_SUPABASE_ANON_KEY") supabaseAnonKey = v;
+        if (k) {
+          process.env[k] = v;
+          if (k === "VITE_SUPABASE_URL") supabaseUrl = v;
+          if (k === "VITE_SUPABASE_ANON_KEY") supabaseAnonKey = v;
+        }
       }
     }
   } catch (e) {
