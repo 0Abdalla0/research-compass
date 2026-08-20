@@ -2,12 +2,31 @@ import { supabase, hasSupabaseKeys } from "./supabase";
 import * as seed from "@/data/workspace";
 
 /**
+ * Helper to identify placeholder values in environment variables.
+ */
+function isPlaceholder(val: string | undefined): boolean {
+  if (!val) return true;
+  const lower = val.toLowerCase().trim();
+  return (
+    lower.length === 0 ||
+    lower.includes("placeholder") ||
+    lower.includes("your_") ||
+    lower.includes("your-") ||
+    lower.includes("your_email") ||
+    lower.includes("your_app_password") ||
+    lower.includes("your_gemini_api_key") ||
+    lower.includes("your_resend_api_key") ||
+    lower.includes("your_email@gmail.com")
+  );
+}
+
+/**
  * Drafts a professional notification email using Gemini API if configured,
  * otherwise falls back to a clean template.
  */
 async function draftEmailWithGemini(subject: string, rawBody: string): Promise<string> {
   const apiKey = process.env["GEMINI_API_KEY"];
-  if (!apiKey) {
+  if (isPlaceholder(apiKey)) {
     return getFallbackHtml(subject, rawBody);
   }
 
@@ -119,7 +138,10 @@ export async function sendEmailNotification(toEmail: string, subject: string, bo
   const smtpUser = process.env["SMTP_USER"];
   const smtpPass = process.env["SMTP_PASS"];
 
-  if (resendApiKey) {
+  const hasResend = !isPlaceholder(resendApiKey);
+  const hasSmtp = !isPlaceholder(smtpHost) && !isPlaceholder(smtpUser) && !isPlaceholder(smtpPass);
+
+  if (hasResend) {
     try {
       const fromEmail = process.env["RESEND_FROM_EMAIL"] || "onboarding@resend.dev";
       const response = await fetch("https://api.resend.com/emails", {
@@ -148,7 +170,7 @@ export async function sendEmailNotification(toEmail: string, subject: string, bo
     }
   }
 
-  if (smtpHost && smtpUser && smtpPass) {
+  if (hasSmtp) {
     try {
       const nodemailer = await import("nodemailer");
       const smtpPort = parseInt(process.env["SMTP_PORT"] || "587");

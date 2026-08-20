@@ -79,7 +79,7 @@ function PapersPage() {
     <div className="space-y-6">
       <PageHeader
         title="Research Papers"
-        subtitle={`${ws.papers.length} papers in the SehatMasr library · ${ws.papers.filter((p) => p.status === "Completed").length} fully analyzed`}
+        subtitle={`${ws.papers.length} papers in the ${ws.project.name || "Research"} library · ${ws.papers.filter((p) => p.status === "Completed").length} fully analyzed`}
         actions={
           <>
             <div className="flex rounded-lg border border-border p-0.5">
