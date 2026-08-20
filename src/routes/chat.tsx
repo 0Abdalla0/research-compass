@@ -254,9 +254,9 @@ export default function ChatPage() {
         {!activeConvId ? (
           <Panel className={`flex-1 flex flex-col items-center justify-center text-center p-8 bg-card/65 backdrop-blur-md border-border/80 min-h-0 ${ activeConvId ? 'flex' : 'hidden md:flex' }`}>
             <MessageSquare className="h-16 w-16 text-brand mb-4 opacity-75 animate-bounce" />
-            <h2 className="text-xl font-bold font-display">{ws.project.name || "Research"} Communication Center</h2>
+            <h2 className="text-xl font-bold font-display">SehatMasr Communication Center</h2>
             <p className="text-sm text-muted-foreground max-w-md mt-2 leading-relaxed">
-              Select any direct message or channel from the sidebar to start discussing {ws.project.topic || "research topic"} in real-time.
+              Select any direct message or channel from the sidebar to start discussing ontology-driven clinical NLP in real-time.
             </p>
           </Panel>
         ) : (

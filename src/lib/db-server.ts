@@ -1,7 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { supabase, hasSupabaseKeys } from "./supabase";
 import * as seed from "@/data/workspace";
-import { sendEmailNotification } from "./mailer";
 import type {
   Activity,
   CalEvent,
@@ -958,19 +957,27 @@ export const addNotificationServer = createServerFn({ method: "POST" })
   .validator((n: any) => n)
   .handler(async ({ data }) => {
     if (!hasSupabaseKeys) {
-      const seedMember = seed.members.find((m) => m.id === data.user_id);
-      const email = seedMember?.email || "mock-user@example.com";
-      await sendEmailNotification(email, data.title, data.description).catch(console.error);
+      console.log("\n============================================================");
+      console.log("✉️  [SIMULATED EMAIL DISPATCH (OFFLINE MOCK)]");
+      console.log(`To:      (Recipient member id: ${data.user_id})`);
+      console.log(`Subject: ${data.title}`);
+      console.log(`Body:    ${data.description}`);
+      console.log("============================================================\n");
       return data;
     }
     try {
       const { data: res, error } = await supabase.from("notifications").insert([data]).select();
       if (error) throw error;
 
-      // Automatically retrieve recipient email and trigger email dispatch
+      // Automatically retrieve recipient email and trigger simulated email dispatch
       const { data: memberData } = await supabase.from("members").select("email").eq("id", data.user_id).single();
       if (memberData?.email) {
-        await sendEmailNotification(memberData.email, data.title, data.description).catch(console.error);
+        console.log("\n============================================================");
+        console.log("✉️  [SIMULATED EMAIL DISPATCH]");
+        console.log(`To:      ${memberData.email}`);
+        console.log(`Subject: ${data.title}`);
+        console.log(`Body:    ${data.description}`);
+        console.log("============================================================\n");
       }
 
       return res?.[0] || data;
