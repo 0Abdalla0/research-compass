@@ -83,8 +83,8 @@ export function AppShell({ children }: { children: ReactNode }) {
   const isActive = (to: string) => (to === "/" ? pathname === "/" : pathname.startsWith(to));
 
   const sidebar = (
-    <div className="flex h-full flex-col gap-1 overflow-y-auto px-3 pb-6">
-      <Link to="/" className="mb-4 flex items-center gap-2.5 px-2 pt-5">
+    <div className="flex h-full flex-col gap-1 overflow-y-auto px-3 pb-6" data-sidebar="menu">
+      <Link to="/" className="mb-4 flex items-center gap-2.5 px-2 pt-5" data-sidebar="logo">
         <span
           className="grid h-9 w-9 shrink-0 place-items-center rounded-xl text-sm font-black text-white"
           style={{ background: "var(--gradient-brand)" }}
@@ -103,6 +103,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         <Link
           key={item.to}
           to={item.to}
+          data-sidebar="menu-button"
           className={cn(
             "group flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium transition-all",
             isActive(item.to)

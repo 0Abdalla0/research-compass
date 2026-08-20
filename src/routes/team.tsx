@@ -1,8 +1,9 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useWorkspace } from "@/lib/workspace-store";
 import { Initials, PageHeader, Panel, Tag } from "@/components/ui-bits";
-import { FileText, KanbanSquare, Mail, Phone, BookOpen, Github } from "lucide-react";
+import { FileText, KanbanSquare, Mail, Phone, BookOpen, Github, Linkedin } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { formatLinkedinUrl, getLinkedinUsername } from "@/lib/utils";
 
 export const Route = createFileRoute("/team")({
   head: () => ({
@@ -22,7 +23,7 @@ function TeamPage() {
     <div className="space-y-6">
       <PageHeader
         title="Team"
-        subtitle={`${ws.members.length} members · researchers, leaders and supervisors`}
+        subtitle={`${ws.members.length} members · researchers and supervisors`}
       />
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         {ws.members.map((m) => {
@@ -80,17 +81,41 @@ function TeamPage() {
                 <Stat label="Meetings" v={meetings.length} />
               </div>
 
-              {/* Contact info */}
-              {(m.email || m.phone || m.githubUsername) && (
-                <div className="flex flex-col gap-1 border-t border-border/50 pt-3">
+              {/* Contact and Profile Details */}
+              {(m.uniId || m.email || m.uniEmail || m.privateEmail || m.phone || m.githubUsername || m.linkedinUrl || m.cv) && (
+                <div className="flex flex-col gap-2 border-t border-border/50 pt-3">
+                  {m.uniId && (
+                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                      <span className="font-bold text-muted-foreground min-w-[70px]">Uni ID:</span>
+                      <span className="font-semibold text-foreground">{m.uniId}</span>
+                    </div>
+                  )}
                   {m.email && (
                     <a href={`mailto:${m.email}`} className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-brand transition-colors">
-                      <Mail className="h-3.5 w-3.5 shrink-0" />{m.email}
+                      <Mail className="h-3.5 w-3.5 shrink-0" />
+                      <span className="font-bold min-w-[70px]">Login Email:</span>
+                      <span className="truncate">{m.email}</span>
+                    </a>
+                  )}
+                  {m.uniEmail && (
+                    <a href={`mailto:${m.uniEmail}`} className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-brand transition-colors">
+                      <Mail className="h-3.5 w-3.5 shrink-0" />
+                      <span className="font-bold min-w-[70px]">Uni Email:</span>
+                      <span className="truncate">{m.uniEmail}</span>
+                    </a>
+                  )}
+                  {m.privateEmail && (
+                    <a href={`mailto:${m.privateEmail}`} className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-brand transition-colors">
+                      <Mail className="h-3.5 w-3.5 shrink-0" />
+                      <span className="font-bold min-w-[70px]">Private Email:</span>
+                      <span className="truncate">{m.privateEmail}</span>
                     </a>
                   )}
                   {m.phone && (
                     <a href={`tel:${m.phone}`} className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-brand transition-colors">
-                      <Phone className="h-3.5 w-3.5 shrink-0" />{m.phone}
+                      <Phone className="h-3.5 w-3.5 shrink-0" />
+                      <span className="font-bold min-w-[70px]">Phone:</span>
+                      <span>{m.phone}</span>
                     </a>
                   )}
                   {m.githubUsername && (
@@ -100,8 +125,35 @@ function TeamPage() {
                       rel="noreferrer" 
                       className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-brand transition-colors"
                     >
-                      <Github className="h-3.5 w-3.5 shrink-0" />@{m.githubUsername}
+                      <Github className="h-3.5 w-3.5 shrink-0" />
+                      <span className="font-bold min-w-[70px]">GitHub:</span>
+                      <span>@{m.githubUsername}</span>
                     </a>
+                  )}
+                  {m.linkedinUrl && (
+                    <a 
+                      href={formatLinkedinUrl(m.linkedinUrl)} 
+                      target="_blank" 
+                      rel="noreferrer" 
+                      className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-brand transition-colors"
+                    >
+                      <Linkedin className="h-3.5 w-3.5 shrink-0" />
+                      <span className="font-bold min-w-[70px]">LinkedIn:</span>
+                      <span>@{getLinkedinUsername(m.linkedinUrl)}</span>
+                    </a>
+                  )}
+                  {m.cv && (
+                    <div className="mt-1">
+                      <a 
+                        href={m.cv}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-1.5 rounded-lg border border-brand/20 bg-brand/5 px-2.5 py-1.5 text-xs font-bold text-brand hover:bg-brand/10 transition-colors w-full justify-center"
+                      >
+                        <FileText className="h-3.5 w-3.5 shrink-0" />
+                        View / Download CV
+                      </a>
+                    </div>
                   )}
                 </div>
               )}

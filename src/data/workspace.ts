@@ -18,6 +18,7 @@ export type Member = {
   cv?: string | undefined;
   privateEmail?: string | undefined;
   githubUsername?: string | undefined;
+  linkedinUrl?: string | undefined;
   cv_storage_path?: string | undefined;
   cv_mime_type?: string | undefined;
   cv_size_bytes?: number | undefined;
@@ -145,6 +146,7 @@ export type Meeting = {
   decisions: string[];
   actionItems: { text: string; ownerId: string }[];
   notes: string;
+  link?: string;
 };
 
 export type EventKind = "meeting" | "deadline" | "milestone" | "personal";
@@ -221,6 +223,11 @@ export type DbNotification = {
   created_at: string;
 };
 
+export type DeliverableItem = {
+  text: string;
+  done: boolean;
+};
+
 export type Phase = {
   id: string;
   index: number;
@@ -229,7 +236,8 @@ export type Phase = {
   end: string;
   progress: number;
   members: string[];
-  deliverables: string[];
+  deliverables: (string | DeliverableItem)[];
+  details?: string;
 };
 
 export type Activity = {
@@ -249,7 +257,104 @@ export const project = {
   progress: 46,
 };
 
-export const members: Member[] = [];
+export const members: Member[] = [
+  {
+    id: "m1",
+    name: "Ahmed Kamal",
+    initials: "AK",
+    role: "Team Leader",
+    email: "ahmed.kamal@uni.edu",
+    responsibilities: "Literature review coordination, research gap analysis, paper writing",
+    color: "255",
+    uniId: "2026001",
+    phone: "+201012345671",
+    uniEmail: "ahmed.kamal@uni.edu",
+    privateEmail: "ahmed.kamal@gmail.com",
+    githubUsername: "ahmedkamal",
+    linkedinUrl: "https://linkedin.com/in/ahmedkamal",
+    cv: "/favicon.ico",
+  },
+  {
+    id: "m2",
+    name: "Abdalla Nasser",
+    initials: "AN",
+    role: "Developer",
+    email: "abdalla.nasser@uni.edu",
+    responsibilities: "System architecture, API layer, ontology reasoning service",
+    color: "195",
+    uniId: "2026002",
+    phone: "+201012345672",
+    uniEmail: "abdalla.nasser@uni.edu",
+    privateEmail: "abdalla.nasser@gmail.com",
+    githubUsername: "abdallanasser",
+    linkedinUrl: "https://linkedin.com/in/abdallanasser",
+    cv: "/favicon.ico",
+  },
+  {
+    id: "m3",
+    name: "Maria Fahmy",
+    initials: "MF",
+    role: "Data Scientist",
+    email: "maria.fahmy@uni.edu",
+    responsibilities: "MIMIC-IV extraction, feature engineering, model benchmarking",
+    color: "155",
+    uniId: "2026003",
+    phone: "+201012345673",
+    uniEmail: "maria.fahmy@uni.edu",
+    privateEmail: "maria.fahmy@gmail.com",
+    githubUsername: "mariafahmy",
+    linkedinUrl: "https://linkedin.com/in/mariafahmy",
+    cv: "/favicon.ico",
+  },
+  {
+    id: "m4",
+    name: "Jumana Saleh",
+    initials: "JS",
+    role: "Member",
+    email: "jumana.saleh@uni.edu",
+    responsibilities: "Clinical NLP survey, annotation guidelines, evaluation protocol",
+    color: "300",
+    uniId: "2026004",
+    phone: "+201012345674",
+    uniEmail: "jumana.saleh@uni.edu",
+    privateEmail: "jumana.saleh@gmail.com",
+    githubUsername: "jumanasaleh",
+    linkedinUrl: "https://linkedin.com/in/jumanasaleh",
+    cv: "/favicon.ico",
+  },
+  {
+    id: "m5",
+    name: "Ziad Hosny",
+    initials: "ZH",
+    role: "Documentation",
+    email: "ziad.hosny@uni.edu",
+    responsibilities: "Thesis document, figures, presentation decks, meeting minutes",
+    color: "70",
+    uniId: "2026005",
+    phone: "+201012345675",
+    uniEmail: "ziad.hosny@uni.edu",
+    privateEmail: "ziad.hosny@gmail.com",
+    githubUsername: "ziadhosny",
+    linkedinUrl: "https://linkedin.com/in/ziadhosny",
+    cv: "/favicon.ico",
+  },
+  {
+    id: "m6",
+    name: "Dr. Laila Mansour",
+    initials: "LM",
+    role: "Supervisor",
+    email: "l.mansour@uni.edu",
+    responsibilities: "Scientific supervision, methodology review, publication strategy",
+    color: "25",
+    uniId: "2026006",
+    phone: "+201012345676",
+    uniEmail: "l.mansour@uni.edu",
+    privateEmail: "l.mansour@gmail.com",
+    githubUsername: "lailamansour",
+    linkedinUrl: "https://linkedin.com/in/lailamansour",
+    cv: "/favicon.ico",
+  },
+];
 
 const emptyAnalysis = {};
 

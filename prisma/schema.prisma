@@ -15,6 +15,17 @@ model Member {
   email            String
   responsibilities String
   color            String
+  password         String?
+  uniId            String?
+  phone            String?
+  uniEmail         String?
+  cv               String?
+  privateEmail     String?
+  githubUsername   String?
+  linkedinUrl      String?
+  cv_storage_path  String?
+  cv_mime_type     String?
+  cv_size_bytes    Int?
 }
 
 model Paper {
@@ -117,6 +128,7 @@ model Meeting {
   decisions    String   // JSON serialized string[]
   actionItems  String   // JSON serialized { text: string; ownerId: string }[]
   notes        String
+  link         String?
 }
 
 model CalEvent {
@@ -138,6 +150,7 @@ model Phase {
   progress     Int
   members      String   // JSON serialized string[]
   deliverables String   // JSON serialized string[]
+  details      String?
 }
 
 model Activity {

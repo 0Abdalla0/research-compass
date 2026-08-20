@@ -68,13 +68,19 @@ function Dashboard() {
     return timeStr;
   };
 
+  const todayStr = new Date().toISOString().slice(0, 10);
   const done = ws.tasks.filter((t) => t.status === "done").length;
   const progress = ws.tasks.filter((t) => t.status === "progress").length;
-  const overdue = ws.tasks.filter((t) => t.status !== "done" && t.due < "2026-08-10").length;
+  const overdue = ws.tasks.filter((t) => t.status !== "done" && t.due < todayStr).length;
   const reviewing = ws.papers.filter((p) => p.status === "Reading" || p.status === "Analyzing").length;
   const analyzed = ws.papers.filter((p) => p.status === "Completed" || p.status === "Important").length;
   const upcoming = [...ws.events].sort((a, b) => a.date.localeCompare(b.date)).slice(0, 5);
-  const todays = ws.tasks.filter((t) => t.status === "progress" || t.status === "review").slice(0, 5);
+
+  const urgentTasks = ws.tasks.filter((t) => t.status !== "done" && t.due <= todayStr);
+  const otherActiveTasks = ws.tasks.filter((t) => t.status !== "done" && t.due > todayStr && (t.status === "progress" || t.status === "review"));
+  const todays = [...urgentTasks, ...otherActiveTasks]
+    .sort((a, b) => a.due.localeCompare(b.due))
+    .slice(0, 5);
 
   const totalPapers = ws.papers.length;
   const totalTasks = ws.tasks.length;

@@ -141,7 +141,8 @@ type Ctx = {
     cv_storage_path?: string,
     cv_mime_type?: string,
     cv_size_bytes?: number,
-    githubUsername?: string
+    githubUsername?: string,
+    linkedinUrl?: string
   ) => void;
   deleteMember: (memberId: string) => Promise<void>;
   updateProfile: (id: string, patch: Partial<Member>) => Promise<void>;
@@ -186,6 +187,12 @@ type Ctx = {
   markNotificationRead: (id: string) => void;
   theme: "light" | "dark";
   toggleTheme: () => void;
+  darkAccent: "slate" | "black" | "emerald";
+  setDarkAccent: (val: "slate" | "black" | "emerald") => void;
+  sidebarDensity: "relaxed" | "compact";
+  setSidebarDensity: (val: "relaxed" | "compact") => void;
+  panelEffect: "glass" | "solid";
+  setPanelEffect: (val: "glass" | "solid") => void;
   comments: Comment[];
   addComment: (c: Omit<Comment, "id" | "created_at" | "updated_at">) => Promise<void>;
   updateComment: (id: string, content: string) => Promise<void>;
@@ -242,6 +249,31 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     }
     return "light";
   }) as any);
+
+  const [darkAccent, setDarkAccent] = useState<"slate" | "black" | "emerald">((() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("research_hub_dark_accent");
+      if (saved === "slate" || saved === "black" || saved === "emerald") return saved;
+    }
+    return "slate";
+  }) as any);
+
+  const [sidebarDensity, setSidebarDensity] = useState<"relaxed" | "compact">((() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("research_hub_sidebar_density");
+      if (saved === "relaxed" || saved === "compact") return saved;
+    }
+    return "relaxed";
+  }) as any);
+
+  const [panelEffect, setPanelEffect] = useState<"glass" | "solid">((() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("research_hub_panel_effect");
+      if (saved === "glass" || saved === "solid") return saved;
+    }
+    return "glass";
+  }) as any);
+
   const [currentUser, setCurrentUser] = useState<(typeof seed.members)[number] | null>(null);
   const [project, setProject] = useState<typeof seed.project>(seed.project);
   const [notifications, setNotifications] = useState<NotificationItem[]>([]);
@@ -333,17 +365,35 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     getWorkspaceDataServer()
       .then((data) => {
         const rawMembers = data.members || [];
-        const isFake = (m: any) => m.email.endsWith("@uni.edu") || !!m.id.match(/^m[1-6]$/);
-        const fakes = rawMembers.filter(isFake);
-        const reals = rawMembers.filter((m) => !isFake(m));
+        let reals = rawMembers;
+        if (hasSupabaseKeys) {
+          const isFake = (m: any) => m.email.endsWith("@uni.edu") || !!m.id.match(/^m[1-6]$/);
+          const fakes = rawMembers.filter(isFake);
+          reals = rawMembers.filter((m) => !isFake(m));
 
-        if (fakes.length > 0 && hasSupabaseKeys) {
-          Promise.all(fakes.map((fm) => supabase.from("members").delete().eq("id", fm.id)))
-            .then(() => console.info("Purged mock members from live database."))
-            .catch((err) => console.error("Error purging mock members:", err));
+          if (fakes.length > 0) {
+            Promise.all(fakes.map((fm) => supabase.from("members").delete().eq("id", fm.id)))
+              .then(() => console.info("Purged mock members from live database."))
+              .catch((err) => console.error("Error purging mock members:", err));
+          }
         }
 
-        setMembers(reals);
+        setMembers(() => {
+          const combined = [...reals];
+          const savedUserStr = localStorage.getItem("research_hub_user");
+          if (savedUserStr) {
+            try {
+              const savedUser = JSON.parse(savedUserStr);
+              const existingIdx = combined.findIndex((m) => m.id === savedUser.id);
+              if (existingIdx !== -1) {
+                combined[existingIdx] = { ...combined[existingIdx], ...savedUser };
+              } else {
+                combined.push(savedUser);
+              }
+            } catch {}
+          }
+          return combined;
+        });
         setPapers(data.papers);
         setTasks(data.tasks);
         setNotes(data.notes);
@@ -378,6 +428,24 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     document.documentElement.classList.toggle("dark", theme === "dark");
   }, [theme]);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      document.documentElement.setAttribute("data-dark-accent", darkAccent);
+    }
+  }, [darkAccent]);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      document.documentElement.setAttribute("data-sidebar-density", sidebarDensity);
+    }
+  }, [sidebarDensity]);
+
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      document.documentElement.setAttribute("data-panel-effect", panelEffect);
+    }
+  }, [panelEffect]);
 
   // Derived user-specific unread notifications list
   useEffect(() => {
@@ -635,7 +703,8 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
         cv_storage_path,
         cv_mime_type,
         cv_size_bytes,
-        githubUsername
+        githubUsername,
+        linkedinUrl
       ) => {
         const initials = name
           .split(" ")
@@ -660,6 +729,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
           cv: cv || undefined,
           privateEmail: privateEmail || undefined,
           githubUsername: githubUsername || undefined,
+          linkedinUrl: linkedinUrl || undefined,
           cv_storage_path: cv_storage_path || undefined,
           cv_mime_type: cv_mime_type || undefined,
           cv_size_bytes: cv_size_bytes || undefined,
@@ -668,6 +738,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
         setCurrentUser(newUser);
         localStorage.setItem("research_hub_user", JSON.stringify(newUser));
         log("joined the research team", name, "comment");
+        log("logged in", name, "comment");
 
         // Insert to live DB if enabled
         if (hasSupabaseKeys) {
@@ -990,7 +1061,24 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       addPhase: (p) => {
         const id = uid();
         const newPhase = { ...p, id };
-        setPhases((prev) => [...prev, newPhase].sort((a, b) => a.index - b.index));
+
+        // Shifting logic:
+        // Any existing phase with index >= newPhase.index gets incremented by 1
+        const updatedPhases = phases.map((ph) => {
+          if (ph.index >= newPhase.index) {
+            // Update in DB too
+            updatePhaseServer({ data: { id: ph.id, patch: { index: ph.index + 1 } } }).catch((err) =>
+              console.error("Error shifting phase index in DB on insertion:", err),
+            );
+            return { ...ph, index: ph.index + 1 };
+          }
+          return ph;
+        });
+
+        updatedPhases.push(newPhase);
+        updatedPhases.sort((a, b) => a.index - b.index);
+
+        setPhases(updatedPhases);
         addPhaseServer({ data: newPhase }).catch((err) =>
           console.error("Error saving phase to DB:", err),
         );
@@ -1008,11 +1096,27 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       },
       removePhase: (id) => {
         const p = phases.find((x) => x.id === id);
-        setPhases((prev) => prev.filter((x) => x.id !== id));
-        removePhaseServer({ data: id }).catch((err) =>
-          console.error("Error deleting phase in DB:", err),
-        );
-        if (p) log("deleted phase", p.name, "task");
+        if (p) {
+          // Filter out the deleted phase and renumber sequentially starting at 1
+          const remaining = phases
+            .filter((x) => x.id !== id)
+            .sort((a, b) => a.index - b.index)
+            .map((ph, idx) => ({ ...ph, index: idx + 1 }));
+
+          setPhases(remaining);
+          removePhaseServer({ data: id }).catch((err) =>
+            console.error("Error deleting phase in DB:", err),
+          );
+
+          // Update index numbers in DB for remaining phases
+          remaining.forEach((ph) => {
+            updatePhaseServer({ data: { id: ph.id, patch: { index: ph.index } } }).catch((err) =>
+              console.error("Error updating remaining phase index in DB on deletion:", err),
+            );
+          });
+
+          log("deleted phase", p.name, "task");
+        }
       },
       project,
       updateProject: (name, topic, institution) => {
@@ -1102,6 +1206,21 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
         localStorage.setItem("research_hub_theme", nextTheme);
         return nextTheme;
       }),
+      darkAccent,
+      setDarkAccent: (val: "slate" | "black" | "emerald") => {
+        setDarkAccent(val);
+        localStorage.setItem("research_hub_dark_accent", val);
+      },
+      sidebarDensity,
+      setSidebarDensity: (val: "relaxed" | "compact") => {
+        setSidebarDensity(val);
+        localStorage.setItem("research_hub_sidebar_density", val);
+      },
+      panelEffect,
+      setPanelEffect: (val: "glass" | "solid") => {
+        setPanelEffect(val);
+        localStorage.setItem("research_hub_panel_effect", val);
+      },
       comments,
       conversations,
       conversationMembers,
@@ -1350,6 +1469,10 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
         }
       },
       updateMessage: async (id, content) => {
+        const msg = messages.find((m) => m.id === id);
+        if (msg) {
+          log("edited message in chat", msg.content.slice(0, 30), "comment");
+        }
         setMessages((prev) =>
           prev.map((m) => (m.id === id ? { ...m, content, updated_at: new Date().toISOString() } : m))
         );
@@ -1360,6 +1483,10 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
         }
       },
       removeMessage: async (id) => {
+        const msg = messages.find((m) => m.id === id);
+        if (msg) {
+          log("deleted message from chat", msg.content.slice(0, 30), "comment");
+        }
         setMessages((prev) =>
           prev.map((x) => (x.id === id ? { ...x, deleted_at: new Date().toISOString() } : x))
         );
@@ -1425,6 +1552,9 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       phases,
       activity,
       theme,
+      darkAccent,
+      sidebarDensity,
+      panelEffect,
       currentUser,
       project,
       preferences,

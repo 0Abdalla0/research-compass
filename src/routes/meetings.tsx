@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState, type ReactNode } from "react";
 import { toast } from "sonner";
-import { Edit3, Plus, Trash2, Video } from "lucide-react";
+import { Edit3, Plus, Trash2, Video, ExternalLink } from "lucide-react";
 import { useWorkspace } from "@/lib/workspace-store";
 import { Initials, PageHeader, Panel, Stack } from "@/components/ui-bits";
 import { Button } from "@/components/ui/button";
@@ -73,7 +73,20 @@ function MeetingsPage() {
                   </button>
                 </div>
               </div>
-              <div className="mt-3"><Stack ids={m.participants} members={ws.members} /></div>
+              <div className="mt-3 flex flex-wrap items-center gap-3">
+                <Stack ids={m.participants} members={ws.members} />
+                {m.link && (
+                  <a 
+                    href={m.link.startsWith("http") ? m.link : `https://${m.link}`} 
+                    target="_blank" 
+                    rel="noreferrer" 
+                    className="inline-flex items-center gap-1 text-xs font-bold text-brand hover:underline shrink-0"
+                  >
+                    <ExternalLink className="h-3.5 w-3.5" />
+                    Join Meeting
+                  </a>
+                )}
+              </div>
               
               {m.agenda.length > 0 && <Section title="Agenda" items={m.agenda} />}
               {m.decisions.length > 0 && <Section title="Decisions" items={m.decisions} />}
@@ -129,6 +142,7 @@ function MeetingDialog({ meeting, trigger }: { meeting?: Meeting; trigger: React
   const [decisions, setDecisions] = useState(meeting ? meeting.decisions.join("\n") : "");
   const [actionItems, setActionItems] = useState(meeting ? meeting.actionItems.map(a => a.text).join("\n") : "");
   const [notes, setNotes] = useState(meeting ? meeting.notes || "" : "");
+  const [link, setLink] = useState(meeting ? meeting.link || "" : "");
 
   const handleSave = () => {
     if (!title.trim()) {
@@ -152,6 +166,7 @@ function MeetingDialog({ meeting, trigger }: { meeting?: Meeting; trigger: React
       decisions: decisionsList,
       actionItems: actionItemsList,
       notes: notes.trim(),
+      link: link.trim() || undefined,
     };
 
     if (meeting) {
@@ -176,6 +191,11 @@ function MeetingDialog({ meeting, trigger }: { meeting?: Meeting; trigger: React
           <div>
             <Label className="mb-1.5 block text-xs font-semibold text-muted-foreground">Meeting Title</Label>
             <Input placeholder="e.g. Sepsis Dataset Review" value={title} onChange={(e) => setTitle(e.target.value)} />
+          </div>
+
+          <div>
+            <Label className="mb-1.5 block text-xs font-semibold text-muted-foreground">Meeting Link / URL (Optional)</Label>
+            <Input placeholder="e.g. https://meet.google.com/abc-defg-hij" value={link} onChange={(e) => setLink(e.target.value)} />
           </div>
 
           <div className="grid grid-cols-2 gap-4">

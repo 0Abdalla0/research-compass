@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { getWorkspaceDataServer, addFileServer, removeFileServer } from "@/lib/db-server";
 import { uploadFile, removeStorageObject } from "@/lib/uploads";
 import type { ResearchFile } from "@/data/workspace";
+import { useWorkspace } from "@/lib/workspace-store";
 
 /**
  * Stable query key for files data.
@@ -37,6 +38,7 @@ const today = () => new Date().toISOString().split("T")[0]!;
  */
 export function useFileUploadMutation() {
   const queryClient = useQueryClient();
+  const ws = useWorkspace();
 
   return useMutation({
     mutationFn: async (params: {
@@ -87,9 +89,10 @@ export function useFileUploadMutation() {
 
       return newFile;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       // Step 3: Invalidate query so the list re-fetches from DB
       queryClient.invalidateQueries({ queryKey: [...FILES_QUERY_KEY] });
+      ws.log("uploaded", data.name, "file");
     },
   });
 }
@@ -99,9 +102,10 @@ export function useFileUploadMutation() {
  */
 export function useDeleteFileMutation() {
   const queryClient = useQueryClient();
+  const ws = useWorkspace();
 
   return useMutation({
-    mutationFn: async (file: { id: string; storage_path?: string | undefined }) => {
+    mutationFn: async (file: ResearchFile) => {
       // Step 1: Delete from database
       await removeFileServer({ data: file.id });
 
@@ -112,11 +116,12 @@ export function useDeleteFileMutation() {
         );
       }
 
-      return file.id;
+      return file;
     },
-    onSuccess: () => {
+    onSuccess: (file) => {
       // Step 3: Invalidate query so the list re-fetches from DB
       queryClient.invalidateQueries({ queryKey: [...FILES_QUERY_KEY] });
+      ws.log("deleted file", file.name, "file");
     },
   });
 }

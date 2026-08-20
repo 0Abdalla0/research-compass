@@ -232,6 +232,7 @@ export const getWorkspaceDataServer = createServerFn({ method: "GET" })
         cv: m.cv ?? undefined,
         privateEmail: m.privateEmail ?? undefined,
         githubUsername: m.githubUsername ?? undefined,
+        linkedinUrl: m.linkedinUrl ?? undefined,
       }));
 
       const formattedPapers: Paper[] = papers.map((p: any) => ({
