@@ -378,6 +378,11 @@ export const getWorkspaceDataServer = createServerFn({ method: "GET" })
         events: seed.events,
         activity: seed.activity,
         phases: seed.phases,
+        comments: [],
+        conversations: [],
+        conversationMembers: [],
+        messages: [],
+        notifications: [],
       };
     }
   });
