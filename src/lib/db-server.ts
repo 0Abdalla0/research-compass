@@ -1,5 +1,17 @@
 import { createServerFn } from "@tanstack/react-start";
-import { supabase, hasSupabaseKeys } from "./supabase";
+import { db, hasFirebaseKeys } from "./firebase";
+import { 
+  collection, 
+  doc, 
+  getDocs, 
+  setDoc, 
+  updateDoc, 
+  deleteDoc, 
+  query, 
+  orderBy, 
+  runTransaction, 
+  writeBatch 
+} from "firebase/firestore";
 import * as seed from "@/data/workspace";
 import { sendEmailNotification } from "./mailer";
 import type {
@@ -26,6 +38,8 @@ import type {
   DbNotification,
 } from "@/data/workspace";
 
+const hasSupabaseKeys = hasFirebaseKeys;
+
 function cleanOptional<T extends object>(obj: T): any {
   const result = { ...obj } as any;
   Object.keys(result).forEach((key) => {
@@ -36,17 +50,48 @@ function cleanOptional<T extends object>(obj: T): any {
   return result;
 }
 
-const parseJSONB = (val: any, fallback: any = []) => {
-  if (val === null || val === undefined) return fallback;
-  if (typeof val === "string") {
-    try {
-      return JSON.parse(val);
-    } catch {
-      return fallback;
+const getFirestoreCollection = async (name: string, orderField?: string, direction: "asc" | "desc" = "asc") => {
+  try {
+    const colRef = collection(db, name);
+    let q = query(colRef);
+    if (orderField) {
+      q = query(colRef, orderBy(orderField, direction));
     }
+    const snap = await getDocs(q);
+    return snap.docs.map((docVal) => ({ id: docVal.id, ...docVal.data() } as any));
+  } catch (e) {
+    console.error(`Firebase error reading collection [${name}]:`, e);
+    return [];
   }
-  return val;
 };
+
+const firestoreInsert = async (colName: string, data: any) => {
+  const id = data.id || doc(collection(db, colName)).id;
+  const docRef = doc(db, colName, id);
+  const cleaned = cleanOptional({ ...data, id });
+  await setDoc(docRef, cleaned);
+  return { id, ...data };
+};
+
+const firestoreUpdate = async (colName: string, id: string, patch: any) => {
+  const docRef = doc(db, colName, id);
+  await updateDoc(docRef, cleanOptional(patch));
+};
+
+const firestoreDelete = async (colName: string, id: string) => {
+  const docRef = doc(db, colName, id);
+  await deleteDoc(docRef);
+};
+
+async function deleteCollection(collectionName: string) {
+  const colRef = collection(db, collectionName);
+  const snapshot = await getDocs(colRef);
+  const batch = writeBatch(db);
+  snapshot.docs.forEach((d) => {
+    batch.delete(doc(db, collectionName, d.id));
+  });
+  await batch.commit();
+}
 
 export const getWorkspaceDataServer = createServerFn({ method: "GET" })
   .handler(async () => {
@@ -95,52 +140,44 @@ export const getWorkspaceDataServer = createServerFn({ method: "GET" })
         messagesRes,
         notificationsRes,
       ] = await Promise.all([
-        supabase.from("project").select("*"),
-        supabase.from("members").select("*"),
-        supabase.from("papers").select("*").order("created_at", { ascending: false }),
-        supabase.from("tasks").select("*").order("created_at", { ascending: false }),
-        supabase.from("notes").select("*").order("updated_at", { ascending: false }),
-        supabase.from("shots").select("*").order("created_at", { ascending: false }),
-        supabase.from("voiceNotes").select("*").order("created_at", { ascending: false }),
-        supabase.from("files").select("*").order("created_at", { ascending: false }),
-        supabase.from("links").select("*").order("created_at", { ascending: false }),
-        supabase.from("meetings").select("*").order("created_at", { ascending: false }),
-        supabase.from("events").select("*").order("date", { ascending: true }),
-        supabase.from("recent_activity").select("*"),
-        supabase.from("phases").select("*").order("index", { ascending: true }),
-        supabase.from("comments").select("*").order("created_at", { ascending: true }),
-        supabase.from("conversations").select("*").order("created_at", { ascending: false }),
-        supabase.from("conversation_members").select("*"),
-        supabase.from("messages").select("*").order("created_at", { ascending: true }),
-        supabase.from("notifications").select("*").order("created_at", { ascending: false }),
+        getFirestoreCollection("project"),
+        getFirestoreCollection("members"),
+        getFirestoreCollection("papers", "created_at", "desc"),
+        getFirestoreCollection("tasks", "created_at", "desc"),
+        getFirestoreCollection("notes", "updated_at", "desc"),
+        getFirestoreCollection("shots", "created_at", "desc"),
+        getFirestoreCollection("voiceNotes", "created_at", "desc"),
+        getFirestoreCollection("files", "created_at", "desc"),
+        getFirestoreCollection("links", "created_at", "desc"),
+        getFirestoreCollection("meetings", "created_at", "desc"),
+        getFirestoreCollection("events", "date", "asc"),
+        getFirestoreCollection("activity"),
+        getFirestoreCollection("phases", "index", "asc"),
+        getFirestoreCollection("comments", "created_at", "asc"),
+        getFirestoreCollection("conversations", "created_at", "desc"),
+        getFirestoreCollection("conversation_members"),
+        getFirestoreCollection("messages", "created_at", "asc"),
+        getFirestoreCollection("notifications", "created_at", "desc"),
       ]);
 
-      const logAndGetData = (name: string, res: any, fallback: any = []) => {
-        if (res.error) {
-          console.error(`Supabase error loading table [${name}]:`, res.error);
-          return fallback;
-        }
-        return res.data || fallback;
-      };
-
-      let projectData = logAndGetData("project", projectRes, null);
-      let members = logAndGetData("members", membersRes, []);
-      const papers = logAndGetData("papers", papersRes, []);
-      const tasks = logAndGetData("tasks", tasksRes, []);
-      const notes = logAndGetData("notes", notesRes, []);
-      const shots = logAndGetData("shots", shotsRes, []);
-      const voiceNotes = logAndGetData("voiceNotes", voiceNotesRes, []);
-      const files = logAndGetData("files", filesRes, []);
-      const links = logAndGetData("links", linksRes, []);
-      const meetings = logAndGetData("meetings", meetingsRes, []);
-      const events = logAndGetData("events", eventsRes, []);
-      const activity = logAndGetData("recent_activity", activityRes, []);
-      let phases = logAndGetData("phases", phasesRes, []);
-      const comments = logAndGetData("comments", commentsRes, []);
-      const conversations = logAndGetData("conversations", conversationsRes, []);
-      const conversationMembers = logAndGetData("conversation_members", conversationMembersRes, []);
-      const messages = logAndGetData("messages", messagesRes, []);
-      const notifications = logAndGetData("notifications", notificationsRes, []);
+      let projectData = projectRes[0] || null;
+      let members = membersRes;
+      const papers = papersRes;
+      const tasks = tasksRes;
+      const notes = notesRes;
+      const shots = shotsRes;
+      const voiceNotes = voiceNotesRes;
+      const files = filesRes;
+      const links = linksRes;
+      const meetings = meetingsRes;
+      const events = eventsRes;
+      const activity = activityRes;
+      let phases = phasesRes;
+      const comments = commentsRes;
+      const conversations = conversationsRes;
+      const conversationMembers = conversationMembersRes;
+      const messages = messagesRes;
+      const notifications = notificationsRes;
 
       // Auto-seed members if empty
       if (hasSupabaseKeys && members.length === 0) {
@@ -155,13 +192,10 @@ export const getWorkspaceDataServer = createServerFn({ method: "GET" })
             color: m.color,
             password: m.password || "123456"
           }));
-          const { data: inserted, error: insertErr } = await supabase
-            .from("members")
-            .insert(membersToInsert)
-            .select();
-          if (!insertErr && inserted) {
-            members = inserted;
+          for (const m of membersToInsert) {
+            await firestoreInsert("members", m);
           }
+          members = membersToInsert;
         } catch (err) {
           console.error("Failed to auto-seed members:", err);
         }
@@ -177,32 +211,22 @@ export const getWorkspaceDataServer = createServerFn({ method: "GET" })
             start: p.start,
             end: p.end,
             progress: p.progress,
-            deliverables: JSON.stringify(p.deliverables),
-            members: JSON.stringify(p.members),
+            deliverables: p.deliverables,
+            members: p.members,
           }));
-          const { data: inserted, error: insertErr } = await supabase
-            .from("phases")
-            .insert(phasesToInsert)
-            .select();
-          if (!insertErr && inserted) {
-            phases = inserted;
+          for (const p of phasesToInsert) {
+            await firestoreInsert("phases", p);
           }
+          phases = phasesToInsert;
         } catch (err) {
           console.error("Failed to auto-seed phases:", err);
         }
       }
 
       // Auto-seed project if empty
-      projectData = projectData || projectRes.data?.[0];
       if (hasSupabaseKeys && !projectData) {
         try {
-          const { data: inserted, error: insertErr } = await supabase
-            .from("project")
-            .insert([{ id: "default", ...seed.project }])
-            .select();
-          if (!insertErr && inserted) {
-            projectData = inserted[0];
-          }
+          projectData = await firestoreInsert("project", { id: "default", ...seed.project });
         } catch (err) {
           console.error("Failed to auto-seed project:", err);
         }
@@ -223,16 +247,16 @@ export const getWorkspaceDataServer = createServerFn({ method: "GET" })
       const formattedPapers: Paper[] = papers.map((p: any) => ({
         ...p,
         status: p.status as PaperStatus,
-        keywords: parseJSONB(p.keywords, []),
-        analysis: parseJSONB(p.analysis, {}),
+        keywords: p.keywords || [],
+        analysis: p.analysis || {},
       }));
 
       const formattedTasks: Task[] = tasks.map((t: any) => cleanOptional({
         ...t,
         status: t.status as TaskStatus,
         priority: t.priority as Priority,
-        labels: parseJSONB(t.labels, []),
-        checklist: parseJSONB(t.checklist, []),
+        labels: t.labels || [],
+        checklist: t.checklist || [],
         paperId: t.paperId ?? undefined,
         phaseId: t.phaseId ?? undefined,
       }));
@@ -240,17 +264,17 @@ export const getWorkspaceDataServer = createServerFn({ method: "GET" })
       const formattedNotes: Note[] = notes.map((n: any) => cleanOptional({
         ...n,
         type: n.type as Note["type"],
-        tags: parseJSONB(n.tags, []),
+        tags: n.tags || [],
         paperId: n.paperId ?? undefined,
         taskId: n.taskId ?? undefined,
       }));
 
       const formattedShots: Shot[] = shots.map((s: any) => cleanOptional({
         ...s,
-        tags: parseJSONB(s.tags, []),
-        comments: parseJSONB(s.comments, []),
+        tags: s.tags || [],
+        comments: s.comments || [],
         paperId: s.paperId ?? undefined,
-        url: s.url || (s.storage_path ? supabase.storage.from("documents").getPublicUrl(s.storage_path).data.publicUrl : undefined),
+        url: s.url || undefined,
       }));
 
       const formattedVoiceNotes: VoiceNote[] = voiceNotes.map((v: any) => cleanOptional({
@@ -258,27 +282,27 @@ export const getWorkspaceDataServer = createServerFn({ method: "GET" })
         paperId: v.paperId ?? undefined,
         taskId: v.taskId ?? undefined,
         meetingId: v.meetingId ?? undefined,
-        url: v.url || (v.storage_path ? supabase.storage.from("documents").getPublicUrl(v.storage_path).data.publicUrl : undefined),
+        url: v.url || undefined,
       }));
 
       const formattedLinks: ResourceLink[] = links.map((l: any) => cleanOptional({
         ...l,
-        tags: parseJSONB(l.tags, []),
+        tags: l.tags || [],
         paperId: l.paperId ?? undefined,
       }));
 
       const formattedMeetings: Meeting[] = meetings.map((m: any) => ({
         ...m,
-        participants: parseJSONB(m.participants, []),
-        agenda: parseJSONB(m.agenda, []),
-        decisions: parseJSONB(m.decisions, []),
-        actionItems: parseJSONB(m.actionItems, []),
+        participants: m.participants || [],
+        agenda: m.agenda || [],
+        decisions: m.decisions || [],
+        actionItems: m.actionItems || [],
       }));
 
       const formattedEvents: CalEvent[] = events.map((e: any) => ({
         ...e,
         kind: e.kind as EventKind,
-        attendees: parseJSONB(e.attendees, []),
+        attendees: e.attendees || [],
       }));
 
       const formattedActivity: Activity[] = activity
@@ -310,8 +334,8 @@ export const getWorkspaceDataServer = createServerFn({ method: "GET" })
       const formattedPhases: Phase[] = phases
         .map((p: any) => ({
           ...p,
-          deliverables: parseJSONB(p.deliverables, []),
-          members: parseJSONB(p.members, []),
+          deliverables: p.deliverables || [],
+          members: p.members || [],
         }))
         .sort((a: any, b: any) => a.index - b.index);
 
@@ -325,7 +349,7 @@ export const getWorkspaceDataServer = createServerFn({ method: "GET" })
         files: files.map((f: any) => cleanOptional({
           ...f,
           paperId: f.paperId ?? undefined,
-          url: f.url || (f.storage_path ? supabase.storage.from("documents").getPublicUrl(f.storage_path).data.publicUrl : undefined),
+          url: f.url || undefined,
         })) as ResearchFile[],
         project: projectData || seed.project,
         links: formattedLinks,
@@ -340,7 +364,7 @@ export const getWorkspaceDataServer = createServerFn({ method: "GET" })
         notifications: notifications as DbNotification[],
       };
     } catch (e) {
-      console.error("Supabase failed, returning static mock data:", e);
+      console.error("Firebase load failed, returning static mock data:", e);
       return {
         members: seed.members,
         papers: seed.papers,
@@ -363,11 +387,9 @@ export const addPaperServer = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     if (!hasSupabaseKeys) return data;
     try {
-      const { data: res, error } = await supabase.from("papers").insert([data]).select();
-      if (error) throw error;
-      return res?.[0] || data;
+      return await firestoreInsert("papers", data);
     } catch (e) {
-      console.error("Supabase insert paper error:", e);
+      console.error("Firebase insert paper error:", e);
       throw e;
     }
   });
@@ -377,10 +399,9 @@ export const updatePaperServer = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     if (!hasSupabaseKeys) return;
     try {
-      const { error } = await supabase.from("papers").update(data.patch).eq("id", data.id);
-      if (error) throw error;
+      await firestoreUpdate("papers", data.id, data.patch);
     } catch (e) {
-      console.error("Supabase update paper error:", e);
+      console.error("Firebase update paper error:", e);
     }
   });
 
@@ -389,15 +410,12 @@ export const setAnalysisServer = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     if (!hasSupabaseKeys) return;
     try {
-      // Use atomic DB function — eliminates read-then-write N+1
-      const { error } = await supabase.rpc("set_paper_analysis", {
-        p_paper_id: data.paperId,
-        p_section: data.section,
-        p_value: data.value,
+      const docRef = doc(db, "papers", data.paperId);
+      await updateDoc(docRef, {
+        [`analysis.${data.section}`]: data.value
       });
-      if (error) throw error;
     } catch (e) {
-      console.error("Supabase setAnalysis error:", e);
+      console.error("Firebase setAnalysis error:", e);
     }
   });
 
@@ -406,11 +424,9 @@ export const addTaskServer = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     if (!hasSupabaseKeys) return data;
     try {
-      const { data: res, error } = await supabase.from("tasks").insert([data]).select();
-      if (error) throw error;
-      return res?.[0] || data;
+      return await firestoreInsert("tasks", data);
     } catch (e) {
-      console.error("Supabase insert task error:", e);
+      console.error("Firebase insert task error:", e);
       return data;
     }
   });
@@ -420,10 +436,9 @@ export const moveTaskServer = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     if (!hasSupabaseKeys) return;
     try {
-      const { error } = await supabase.from("tasks").update({ status: data.status }).eq("id", data.id);
-      if (error) throw error;
+      await firestoreUpdate("tasks", data.id, { status: data.status });
     } catch (e) {
-      console.error("Supabase moveTask error:", e);
+      console.error("Firebase moveTask error:", e);
     }
   });
 
@@ -432,10 +447,9 @@ export const updateTaskServer = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     if (!hasSupabaseKeys) return;
     try {
-      const { error } = await supabase.from("tasks").update(data.patch).eq("id", data.id);
-      if (error) throw error;
+      await firestoreUpdate("tasks", data.id, data.patch);
     } catch (e) {
-      console.error("Supabase updateTask error:", e);
+      console.error("Firebase updateTask error:", e);
     }
   });
 
@@ -444,14 +458,20 @@ export const toggleCheckServer = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     if (!hasSupabaseKeys) return;
     try {
-      // Use atomic DB function — eliminates read-then-write N+1
-      const { error } = await supabase.rpc("toggle_checklist_item", {
-        p_task_id: data.taskId,
-        p_index: data.index,
+      await runTransaction(db, async (transaction) => {
+        const taskRef = doc(db, "tasks", data.taskId);
+        const taskDoc = await transaction.get(taskRef);
+        if (taskDoc.exists()) {
+          const taskData = taskDoc.data() as { checklist?: any[] };
+          const checklist = [...(taskData?.checklist || [])];
+          if (checklist[data.index]) {
+            checklist[data.index].done = !checklist[data.index].done;
+            transaction.update(taskRef, { checklist });
+          }
+        }
       });
-      if (error) throw error;
     } catch (e) {
-      console.error("Supabase toggleCheck error:", e);
+      console.error("Firebase toggleCheck error:", e);
     }
   });
 
@@ -460,11 +480,9 @@ export const addNoteServer = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     if (!hasSupabaseKeys) return data;
     try {
-      const { data: res, error } = await supabase.from("notes").insert([data]).select();
-      if (error) throw error;
-      return res?.[0] || data;
+      return await firestoreInsert("notes", data);
     } catch (e) {
-      console.error("Supabase insert note error:", e);
+      console.error("Firebase addNote error:", e);
       return data;
     }
   });
@@ -474,10 +492,9 @@ export const updateNoteServer = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     if (!hasSupabaseKeys) return;
     try {
-      const { error } = await supabase.from("notes").update(data.patch).eq("id", data.id);
-      if (error) throw error;
+      await firestoreUpdate("notes", data.id, data.patch);
     } catch (e) {
-      console.error("Supabase updateNote error:", e);
+      console.error("Firebase updateNote error:", e);
     }
   });
 
@@ -486,41 +503,10 @@ export const addShotServer = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     if (!hasSupabaseKeys) return data;
     try {
-      const { url, ...dbPayload } = data;
-      const { data: res, error } = await supabase.from("shots").insert([dbPayload]).select();
-      if (error) throw error;
-      return {
-        ...data,
-        ...(res?.[0] || {})
-      };
+      return await firestoreInsert("shots", data);
     } catch (e) {
-      console.error("Supabase insert screenshot error:", e);
-      throw e;
-    }
-  });
-
-export const commentShotServer = createServerFn({ method: "POST" })
-  .validator((d: { id: string; comment: { author: string; text: string } }) => d)
-  .handler(async ({ data }) => {
-    if (!hasSupabaseKeys) return;
-    try {
-      const { data: shotRes, error: fetchErr } = await supabase
-        .from("shots")
-        .select("comments")
-        .eq("id", data.id)
-        .single();
-      if (fetchErr || !shotRes) throw fetchErr || new Error("Screenshot not found");
-
-      const comments = parseJSONB(shotRes.comments, []);
-      comments.push(data.comment);
-
-      const { error: updateErr } = await supabase
-        .from("shots")
-        .update({ comments })
-        .eq("id", data.id);
-      if (updateErr) throw updateErr;
-    } catch (e) {
-      console.error("Supabase commentShot error:", e);
+      console.error("Firebase addShot error:", e);
+      return data;
     }
   });
 
@@ -529,40 +515,10 @@ export const addVoiceNoteServer = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     if (!hasSupabaseKeys) return data;
     try {
-      const { url, ...dbPayload } = data;
-      const { data: res, error } = await supabase.from("voiceNotes").insert([dbPayload]).select();
-      if (error) throw error;
-      return {
-        ...data,
-        ...(res?.[0] || {})
-      };
+      return await firestoreInsert("voiceNotes", data);
     } catch (e) {
-      console.error("Supabase insert voiceNote error:", e);
-      throw e;
-    }
-  });
-
-export const removeVoiceNoteServer = createServerFn({ method: "POST" })
-  .validator((id: string) => id)
-  .handler(async ({ data: id }) => {
-    if (!hasSupabaseKeys) return;
-    try {
-      const { error } = await supabase.from("voiceNotes").delete().eq("id", id);
-      if (error) throw error;
-    } catch (e) {
-      console.error("Supabase delete voiceNote error:", e);
-    }
-  });
-
-export const renameVoiceNoteServer = createServerFn({ method: "POST" })
-  .validator((d: { id: string; title: string }) => d)
-  .handler(async ({ data }) => {
-    if (!hasSupabaseKeys) return;
-    try {
-      const { error } = await supabase.from("voiceNotes").update({ title: data.title }).eq("id", data.id);
-      if (error) throw error;
-    } catch (e) {
-      console.error("Supabase rename voiceNote error:", e);
+      console.error("Firebase addVoiceNote error:", e);
+      return data;
     }
   });
 
@@ -571,29 +527,10 @@ export const addFileServer = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     if (!hasSupabaseKeys) return data;
     try {
-      const { url, ...dbPayload } = data;
-      const { data: res, error } = await supabase.from("files").insert([dbPayload]).select();
-      if (error) throw error;
-      return {
-        ...data,
-        ...(res?.[0] || {})
-      };
+      return await firestoreInsert("files", data);
     } catch (e) {
-      console.error("Supabase insert file error:", e);
-      throw e;
-    }
-  });
-
-export const removeFileServer = createServerFn({ method: "POST" })
-  .validator((id: string) => id)
-  .handler(async ({ data: id }) => {
-    if (!hasSupabaseKeys) return;
-    try {
-      const { error } = await supabase.from("files").delete().eq("id", id);
-      if (error) throw error;
-    } catch (e) {
-      console.error("Supabase delete file error:", e);
-      throw e;
+      console.error("Firebase addFile error:", e);
+      return data;
     }
   });
 
@@ -602,11 +539,21 @@ export const addLinkServer = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     if (!hasSupabaseKeys) return data;
     try {
-      const { data: res, error } = await supabase.from("links").insert([data]).select();
-      if (error) throw error;
-      return res?.[0] || data;
+      return await firestoreInsert("links", data);
     } catch (e) {
-      console.error("Supabase insert resource link error:", e);
+      console.error("Firebase addLink error:", e);
+      return data;
+    }
+  });
+
+export const addMeetingServer = createServerFn({ method: "POST" })
+  .validator((d: any) => d)
+  .handler(async ({ data }) => {
+    if (!hasSupabaseKeys) return data;
+    try {
+      return await firestoreInsert("meetings", data);
+    } catch (e) {
+      console.error("Firebase addMeeting error:", e);
       return data;
     }
   });
@@ -616,62 +563,10 @@ export const addEventServer = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     if (!hasSupabaseKeys) return data;
     try {
-      const { data: res, error } = await supabase.from("events").insert([data]).select();
-      if (error) throw error;
-      return res?.[0] || data;
+      return await firestoreInsert("events", data);
     } catch (e) {
-      console.error("Supabase insert event error:", e);
+      console.error("Firebase addEvent error:", e);
       return data;
-    }
-  });
-
-export const updateEventServer = createServerFn({ method: "POST" })
-  .validator((d: { id: string; patch: any }) => d)
-  .handler(async ({ data }) => {
-    if (!hasSupabaseKeys) return;
-    try {
-      const { error } = await supabase.from("events").update(data.patch).eq("id", data.id);
-      if (error) throw error;
-    } catch (e) {
-      console.error("Supabase updateEvent error:", e);
-    }
-  });
-
-export const removeEventServer = createServerFn({ method: "POST" })
-  .validator((id: string) => id)
-  .handler(async ({ data: id }) => {
-    if (!hasSupabaseKeys) return;
-    try {
-      const { error } = await supabase.from("events").delete().eq("id", id);
-      if (error) throw error;
-    } catch (e) {
-      console.error("Supabase delete event error:", e);
-    }
-  });
-
-export const addMeetingServer = createServerFn({ method: "POST" })
-  .validator((d: any) => d)
-  .handler(async ({ data }) => {
-    if (!hasSupabaseKeys) return data;
-    try {
-      const { data: res, error } = await supabase.from("meetings").insert([data]).select();
-      if (error) throw error;
-      return res?.[0] || data;
-    } catch (e) {
-      console.error("Supabase insert meeting error:", e);
-      return data;
-    }
-  });
-
-export const updateMeetingServer = createServerFn({ method: "POST" })
-  .validator((d: { id: string; patch: any }) => d)
-  .handler(async ({ data }) => {
-    if (!hasSupabaseKeys) return;
-    try {
-      const { error } = await supabase.from("meetings").update(data.patch).eq("id", data.id);
-      if (error) throw error;
-    } catch (e) {
-      console.error("Supabase updateMeeting error:", e);
     }
   });
 
@@ -680,84 +575,98 @@ export const addActivityServer = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     if (!hasSupabaseKeys) return data;
     try {
-      const { data: res, error } = await supabase.from("activity").insert([data]).select();
-      if (error) throw error;
-      return res?.[0] || data;
+      return await firestoreInsert("activity", data);
     } catch (e) {
-      console.error("Supabase insert activity error:", e);
+      console.error("Firebase addActivity error:", e);
       return data;
+    }
+  });
+
+export const updateProjectServer = createServerFn({ method: "POST" })
+  .validator((d: any) => d)
+  .handler(async ({ data }) => {
+    if (!hasSupabaseKeys) return;
+    try {
+      await firestoreUpdate("project", "default", data);
+    } catch (e) {
+      console.error("Firebase updateProject error:", e);
     }
   });
 
 export const removePaperServer = createServerFn({ method: "POST" })
   .validator((id: string) => id)
-  .handler(async ({ data: id }) => {
+  .handler(async ({ data }) => {
     if (!hasSupabaseKeys) return;
     try {
-      const { error } = await supabase.from("papers").delete().eq("id", id);
-      if (error) throw error;
+      await firestoreDelete("papers", data);
     } catch (e) {
-      console.error("Supabase delete paper error:", e);
+      console.error("Firebase removePaper error:", e);
     }
   });
 
 export const removeTaskServer = createServerFn({ method: "POST" })
   .validator((id: string) => id)
-  .handler(async ({ data: id }) => {
+  .handler(async ({ data }) => {
     if (!hasSupabaseKeys) return;
     try {
-      const { error } = await supabase.from("tasks").delete().eq("id", id);
-      if (error) throw error;
+      await firestoreDelete("tasks", data);
     } catch (e) {
-      console.error("Supabase delete task error:", e);
+      console.error("Firebase removeTask error:", e);
     }
   });
 
 export const removeNoteServer = createServerFn({ method: "POST" })
   .validator((id: string) => id)
-  .handler(async ({ data: id }) => {
+  .handler(async ({ data }) => {
     if (!hasSupabaseKeys) return;
     try {
-      const { error } = await supabase.from("notes").delete().eq("id", id);
-      if (error) throw error;
+      await firestoreDelete("notes", data);
     } catch (e) {
-      console.error("Supabase delete note error:", e);
+      console.error("Firebase removeNote error:", e);
     }
   });
 
 export const removeShotServer = createServerFn({ method: "POST" })
   .validator((id: string) => id)
-  .handler(async ({ data: id }) => {
+  .handler(async ({ data }) => {
     if (!hasSupabaseKeys) return;
     try {
-      const { error } = await supabase.from("shots").delete().eq("id", id);
-      if (error) throw error;
+      await firestoreDelete("shots", data);
     } catch (e) {
-      console.error("Supabase delete screenshot error:", e);
+      console.error("Firebase removeShot error:", e);
+    }
+  });
+
+export const removeFileServer = createServerFn({ method: "POST" })
+  .validator((id: string) => id)
+  .handler(async ({ data }) => {
+    if (!hasSupabaseKeys) return;
+    try {
+      await firestoreDelete("files", data);
+    } catch (e) {
+      console.error("Firebase removeFile error:", e);
     }
   });
 
 export const removeLinkServer = createServerFn({ method: "POST" })
   .validator((id: string) => id)
-  .handler(async ({ data: id }) => {
+  .handler(async ({ data }) => {
     if (!hasSupabaseKeys) return;
     try {
-      const { error } = await supabase.from("links").delete().eq("id", id);
-      if (error) throw error;
+      await firestoreDelete("links", data);
     } catch (e) {
-      console.error("Supabase delete resource link error:", e);
+      console.error("Firebase removeLink error:", e);
     }
   });
 
 export const removeMeetingServer = createServerFn({ method: "POST" })
   .validator((id: string) => id)
-  .handler(async ({ data: id }) => {
+  .handler(async ({ data }) => {
     if (!hasSupabaseKeys) return;
     try {
-      const { error } = await supabase.from("meetings").delete().eq("id", id);
-      if (error) throw error;
+      await firestoreDelete("meetings", data);
     } catch (e) {
-      console.error("Supabase delete meeting error:", e);
+      console.error("Firebase removeMeeting error:", e);
     }
   });
 
@@ -766,23 +675,31 @@ export const updateLinkServer = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     if (!hasSupabaseKeys) return;
     try {
-      const { error } = await supabase.from("links").update(data.patch).eq("id", data.id);
-      if (error) throw error;
+      await firestoreUpdate("links", data.id, data.patch);
     } catch (e) {
-      console.error("Supabase updateLink error:", e);
+      console.error("Firebase updateLink error:", e);
+    }
+  });
+
+export const updateMeetingServer = createServerFn({ method: "POST" })
+  .validator((d: { id: string; patch: any }) => d)
+  .handler(async ({ data }) => {
+    if (!hasSupabaseKeys) return;
+    try {
+      await firestoreUpdate("meetings", data.id, data.patch);
+    } catch (e) {
+      console.error("Firebase updateMeeting error:", e);
     }
   });
 
 export const addPhaseServer = createServerFn({ method: "POST" })
-  .validator((p: any) => p)
+  .validator((d: any) => d)
   .handler(async ({ data }) => {
     if (!hasSupabaseKeys) return data;
     try {
-      const { data: res, error } = await supabase.from("phases").insert([data]).select();
-      if (error) throw error;
-      return res?.[0] || data;
+      return await firestoreInsert("phases", data);
     } catch (e) {
-      console.error("Supabase addPhase error:", e);
+      console.error("Firebase addPhase error:", e);
       return data;
     }
   });
@@ -792,35 +709,31 @@ export const updatePhaseServer = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     if (!hasSupabaseKeys) return;
     try {
-      const { error } = await supabase.from("phases").update(data.patch).eq("id", data.id);
-      if (error) throw error;
+      await firestoreUpdate("phases", data.id, data.patch);
     } catch (e) {
-      console.error("Supabase updatePhase error:", e);
+      console.error("Firebase updatePhase error:", e);
     }
   });
 
 export const removePhaseServer = createServerFn({ method: "POST" })
   .validator((id: string) => id)
-  .handler(async ({ data: id }) => {
+  .handler(async ({ data }) => {
     if (!hasSupabaseKeys) return;
     try {
-      const { error } = await supabase.from("phases").delete().eq("id", id);
-      if (error) throw error;
+      await firestoreDelete("phases", data);
     } catch (e) {
-      console.error("Supabase removePhase error:", e);
+      console.error("Firebase removePhase error:", e);
     }
   });
 
 export const addCommentServer = createServerFn({ method: "POST" })
-  .validator((c: any) => c)
+  .validator((d: any) => d)
   .handler(async ({ data }) => {
     if (!hasSupabaseKeys) return data;
     try {
-      const { data: res, error } = await supabase.from("comments").insert([data]).select();
-      if (error) throw error;
-      return res?.[0] || data;
+      return await firestoreInsert("comments", data);
     } catch (e) {
-      console.error("Supabase addComment error:", e);
+      console.error("Firebase addComment error:", e);
       return data;
     }
   });
@@ -830,50 +743,47 @@ export const updateCommentServer = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     if (!hasSupabaseKeys) return;
     try {
-      const { error } = await supabase.from("comments").update(data.patch).eq("id", data.id);
-      if (error) throw error;
+      await firestoreUpdate("comments", data.id, data.patch);
     } catch (e) {
-      console.error("Supabase updateComment error:", e);
+      console.error("Firebase updateComment error:", e);
     }
   });
 
 export const removeCommentServer = createServerFn({ method: "POST" })
   .validator((id: string) => id)
-  .handler(async ({ data: id }) => {
+  .handler(async ({ data }) => {
     if (!hasSupabaseKeys) return;
     try {
-      const { error } = await supabase.from("comments").delete().eq("id", id);
-      if (error) throw error;
+      await firestoreDelete("comments", data);
     } catch (e) {
-      console.error("Supabase removeComment error:", e);
+      console.error("Firebase removeComment error:", e);
     }
   });
 
 export const addConversationServer = createServerFn({ method: "POST" })
-  .validator((c: any) => c)
+  .validator((d: any) => d)
   .handler(async ({ data }) => {
     if (!hasSupabaseKeys) return data;
     try {
-      const { data: res, error } = await supabase.from("conversations").insert([data]).select();
-      if (error) throw error;
-      return res?.[0] || data;
+      return await firestoreInsert("conversations", data);
     } catch (e) {
-      console.error("Supabase addConversation error:", e);
+      console.error("Firebase addConversation error:", e);
       return data;
     }
   });
 
+export const createConversationServer = addConversationServer;
+
 export const addConversationMembersServer = createServerFn({ method: "POST" })
-  .validator((m: any[]) => m)
+  .validator((d: any[]) => d)
   .handler(async ({ data }) => {
-    if (!hasSupabaseKeys) return data;
+    if (!hasSupabaseKeys) return;
     try {
-      const { data: res, error } = await supabase.from("conversation_members").insert(data).select();
-      if (error) throw error;
-      return res || data;
+      for (const m of data) {
+        await firestoreInsert("conversation_members", m);
+      }
     } catch (e) {
-      console.error("Supabase addConversationMembers error:", e);
-      return data;
+      console.error("Firebase addConversationMembers error:", e);
     }
   });
 
@@ -882,85 +792,82 @@ export const updateConversationServer = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     if (!hasSupabaseKeys) return;
     try {
-      const { error } = await supabase.from("conversations").update(data.patch).eq("id", data.id);
-      if (error) throw error;
+      await firestoreUpdate("conversations", data.id, data.patch);
     } catch (e) {
-      console.error("Supabase updateConversation error:", e);
+      console.error("Firebase updateConversation error:", e);
     }
   });
 
 export const removeConversationServer = createServerFn({ method: "POST" })
   .validator((id: string) => id)
-  .handler(async ({ data: id }) => {
+  .handler(async ({ data }) => {
     if (!hasSupabaseKeys) return;
     try {
-      const { error } = await supabase.from("conversations").delete().eq("id", id);
-      if (error) throw error;
+      await firestoreDelete("conversations", data);
     } catch (e) {
-      console.error("Supabase removeConversation error:", e);
+      console.error("Firebase removeConversation error:", e);
     }
   });
 
 export const addMessageServer = createServerFn({ method: "POST" })
-  .validator((m: any) => m)
+  .validator((d: any) => d)
   .handler(async ({ data }) => {
     if (!hasSupabaseKeys) return data;
     try {
-      const { data: res, error } = await supabase.from("messages").insert([data]).select();
-      if (error) throw error;
-      return res?.[0] || data;
+      return await firestoreInsert("messages", data);
     } catch (e) {
-      console.error("Supabase addMessage error:", e);
+      console.error("Firebase addMessage error:", e);
       return data;
     }
   });
+
+export const sendMessageServer = addMessageServer;
 
 export const updateMessageServer = createServerFn({ method: "POST" })
   .validator((d: { id: string; patch: any }) => d)
   .handler(async ({ data }) => {
     if (!hasSupabaseKeys) return;
     try {
-      const { error } = await supabase.from("messages").update(data.patch).eq("id", data.id);
-      if (error) throw error;
+      await firestoreUpdate("messages", data.id, data.patch);
     } catch (e) {
-      console.error("Supabase updateMessage error:", e);
+      console.error("Firebase updateMessage error:", e);
     }
   });
 
 export const removeMessageServer = createServerFn({ method: "POST" })
   .validator((id: string) => id)
-  .handler(async ({ data: id }) => {
+  .handler(async ({ data }) => {
     if (!hasSupabaseKeys) return;
     try {
-      const { error } = await supabase.from("messages").update({ deleted_at: new Date().toISOString() }).eq("id", id);
-      if (error) throw error;
+      await firestoreUpdate("messages", data, { deleted_at: new Date().toISOString() });
     } catch (e) {
-      console.error("Supabase removeMessage error:", e);
+      console.error("Firebase removeMessage error:", e);
     }
   });
 
 export const addNotificationServer = createServerFn({ method: "POST" })
-  .validator((n: any) => n)
+  .validator((d: any) => d)
   .handler(async ({ data }) => {
-    if (!hasSupabaseKeys) {
-      const seedMember = seed.members.find((m) => m.id === data.user_id);
-      const email = seedMember?.email || "mock-user@example.com";
-      await sendEmailNotification(email, data.title, data.description).catch(console.error);
-      return data;
-    }
+    if (!hasSupabaseKeys) return data;
     try {
-      const { data: res, error } = await supabase.from("notifications").insert([data]).select();
-      if (error) throw error;
-
-      // Automatically retrieve recipient email and trigger email dispatch
-      const { data: memberData } = await supabase.from("members").select("email").eq("id", data.user_id).single();
-      if (memberData?.email) {
-        await sendEmailNotification(memberData.email, data.title, data.description).catch(console.error);
+      const payload = data as { user_id: string; type: string; description: string };
+      const saved = await firestoreInsert("notifications", payload);
+      
+      // Dispatch email notification in background
+      try {
+        const { data: memberData } = await firestoreInsert("members", { id: payload.user_id });
+        if (memberData && (memberData as any).email) {
+          sendEmailNotification((memberData as any).email, payload.type, payload.description)
+            .then(() => console.log(`Dispatched notification email to ${(memberData as any).email}`))
+            .catch((mailErr) => console.error("SMTP/Resend notification dispatch error:", mailErr));
+        }
+      } catch (mailLookupErr) {
+        console.warn("Could not retrieve notification recipient email:", mailLookupErr);
       }
 
-      return res?.[0] || data;
+      return saved;
     } catch (e) {
-      console.error("Supabase addNotification error:", e);
+      console.error("Firebase addNotification error:", e);
       return data;
     }
   });
@@ -970,10 +877,9 @@ export const markNotificationReadServer = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     if (!hasSupabaseKeys) return;
     try {
-      const { error } = await supabase.from("notifications").update({ is_read: data.is_read }).eq("id", data.id);
-      if (error) throw error;
+      await firestoreUpdate("notifications", data.id, { is_read: data.is_read });
     } catch (e) {
-      console.error("Supabase markNotificationRead error:", e);
+      console.error("Firebase markNotificationRead error:", e);
     }
   });
 
@@ -982,22 +888,18 @@ export const clearNotificationsServer = createServerFn({ method: "POST" })
   .handler(async ({ data: userId }) => {
     if (!hasSupabaseKeys) return;
     try {
-      const { error } = await supabase.from("notifications").delete().eq("user_id", userId);
-      if (error) throw error;
+      const colRef = collection(db, "notifications");
+      const snap = await getDocs(colRef);
+      const batch = writeBatch(db);
+      snap.docs.forEach((d) => {
+        const docData = d.data() as { user_id?: string };
+        if (docData && docData.user_id === userId) {
+          batch.delete(d.ref);
+        }
+      });
+      await batch.commit();
     } catch (e) {
-      console.error("Supabase clearNotifications error:", e);
-    }
-  });
-
-export const updateProjectServer = createServerFn({ method: "POST" })
-  .validator((data: any) => data)
-  .handler(async ({ data }) => {
-    if (!hasSupabaseKeys) return;
-    try {
-      const { error } = await supabase.from("project").upsert({ id: "default", ...data });
-      if (error) throw error;
-    } catch (e) {
-      console.error("Supabase updateProject error:", e);
+      console.error("Firebase clearNotifications error:", e);
     }
   });
 
@@ -1005,59 +907,38 @@ export const clearAllWorkspaceDataServer = createServerFn({ method: "POST" })
   .handler(async () => {
     if (!hasSupabaseKeys) return { success: true };
     try {
-      // Delete in cascade order of dependencies
-      await supabase.from("notifications").delete().neq("id", "");
-      await supabase.from("recent_activity").delete().neq("id", "");
-      await supabase.from("messages").delete().neq("id", "");
-      await supabase.from("comments").delete().neq("id", "");
-      await supabase.from("conversationMembers").delete().neq("conversation_id", "");
-      await supabase.from("conversations").delete().neq("id", "");
-      await supabase.from("tasks").delete().neq("id", "");
-      await supabase.from("papers").delete().neq("id", "");
-      await supabase.from("notes").delete().neq("id", "");
-      await supabase.from("shots").delete().neq("id", "");
-      await supabase.from("voiceNotes").delete().neq("id", "");
-      await supabase.from("files").delete().neq("id", "");
-      await supabase.from("links").delete().neq("id", "");
-      await supabase.from("meetings").delete().neq("id", "");
-      await supabase.from("events").delete().neq("id", "");
-      await supabase.from("phase_members").delete().neq("phase_id", "");
-      await supabase.from("phases").delete().neq("id", "");
-      await supabase.from("members").delete().neq("id", "");
-      await supabase.from("project").delete().neq("id", "");
+      const collections = [
+        "files", "links", "meetings", "events", "phase_members", "phases", 
+        "members", "project", "papers", "tasks", "notes", "shots", "voiceNotes", 
+        "activity", "comments", "conversations", "conversation_members", "messages", "notifications"
+      ];
+      for (const col of collections) {
+        await deleteCollection(col);
+      }
 
       // Re-seed default project
-      await supabase.from("project").insert([{ id: "default", ...seed.project }]);
+      await setDoc(doc(db, "project", "default"), cleanOptional(seed.project));
 
       // Re-seed default members
-      const membersToInsert = seed.members.map((m) => ({
-        id: m.id,
-        name: m.name,
-        initials: m.initials,
-        role: m.role,
-        email: m.email,
-        responsibilities: m.responsibilities,
-        color: m.color,
-        password: m.password || "123456"
-      }));
-      await supabase.from("members").insert(membersToInsert);
+      for (const m of seed.members) {
+        await setDoc(doc(db, "members", m.id), cleanOptional({
+          ...m,
+          password: m.password || "123456"
+        }));
+      }
 
       // Re-seed default phases
-      const phasesToInsert = seed.phases.map((p) => ({
-        id: p.id,
-        index: p.index,
-        name: p.name,
-        start: p.start,
-        end: p.end,
-        progress: p.progress,
-        deliverables: JSON.stringify(p.deliverables),
-        members: JSON.stringify(p.members),
-      }));
-      await supabase.from("phases").insert(phasesToInsert);
+      for (const p of seed.phases) {
+        await setDoc(doc(db, "phases", p.id), cleanOptional({
+          ...p,
+          deliverables: p.deliverables,
+          members: p.members
+        }));
+      }
 
       return { success: true };
     } catch (e) {
-      console.error("Supabase clearAllWorkspaceData error:", e);
+      console.error("Firebase clearAllWorkspaceData error:", e);
       throw e;
     }
   });
@@ -1078,3 +959,65 @@ export const sendTestEmailServer = createServerFn({ method: "POST" })
     }
   });
 
+export const commentShotServer = createServerFn({ method: "POST" })
+  .validator((d: { shotId: string; comment: any }) => d)
+  .handler(async ({ data }) => {
+    if (!hasSupabaseKeys) return;
+    try {
+      await runTransaction(db, async (transaction) => {
+        const shotRef = doc(db, "shots", data.shotId);
+        const shotDoc = await transaction.get(shotRef);
+        if (shotDoc.exists()) {
+          const comments = [...((shotDoc.data() as any).comments || [])];
+          comments.push(data.comment);
+          transaction.update(shotRef, { comments });
+        }
+      });
+    } catch (e) {
+      console.error("Firebase commentShot error:", e);
+    }
+  });
+
+export const removeVoiceNoteServer = createServerFn({ method: "POST" })
+  .validator((id: string) => id)
+  .handler(async ({ data }) => {
+    if (!hasSupabaseKeys) return;
+    try {
+      await firestoreDelete("voiceNotes", data);
+    } catch (e) {
+      console.error("Firebase removeVoiceNote error:", e);
+    }
+  });
+
+export const renameVoiceNoteServer = createServerFn({ method: "POST" })
+  .validator((d: { id: string; title: string }) => d)
+  .handler(async ({ data }) => {
+    if (!hasSupabaseKeys) return;
+    try {
+      await firestoreUpdate("voiceNotes", data.id, { title: data.title });
+    } catch (e) {
+      console.error("Firebase renameVoiceNote error:", e);
+    }
+  });
+
+export const updateEventServer = createServerFn({ method: "POST" })
+  .validator((d: { id: string; patch: any }) => d)
+  .handler(async ({ data }) => {
+    if (!hasSupabaseKeys) return;
+    try {
+      await firestoreUpdate("events", data.id, data.patch);
+    } catch (e) {
+      console.error("Firebase updateEvent error:", e);
+    }
+  });
+
+export const removeEventServer = createServerFn({ method: "POST" })
+  .validator((id: string) => id)
+  .handler(async ({ data }) => {
+    if (!hasSupabaseKeys) return;
+    try {
+      await firestoreDelete("events", data);
+    } catch (e) {
+      console.error("Firebase removeEvent error:", e);
+    }
+  });

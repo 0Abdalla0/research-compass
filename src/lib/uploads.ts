@@ -1,4 +1,5 @@
-import { supabase, hasSupabaseKeys } from "./supabase";
+import { storage, hasFirebaseKeys } from "./firebase";
+import { ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
 
 export interface UploadedFileDetails {
   url: string;
@@ -8,12 +9,7 @@ export interface UploadedFileDetails {
 }
 
 /**
- * Uploads a file or blob to Supabase Storage, or falls back to a Base64 Data URL if offline or if upload fails.
- * 
- * @param file The file or blob to upload
- * @param name The original filename or a friendly name
- * @param folder The storage folder prefix (e.g. "files", "media", "voice", "cvs")
- * @param options Additional options (e.g. accept type filter)
+ * Uploads a file or blob to Firebase Storage, or falls back to a Base64 Data URL if offline.
  */
 export async function uploadFile(
   file: File | Blob,
@@ -24,7 +20,7 @@ export async function uploadFile(
   const mimeType = file.type || "application/octet-stream";
   const sizeBytes = file.size;
 
-  if (!hasSupabaseKeys) {
+  if (!hasFirebaseKeys) {
     console.info("Offline mode: converting upload to Base64 Data URL");
     const url = await convertToBase64(file);
     return {
@@ -36,42 +32,26 @@ export async function uploadFile(
   }
 
   try {
-    // Automatically create/verify bucket exists (fails cleanly if exists)
-    await supabase.storage.createBucket("documents", {
-      public: true,
-      fileSizeLimit: 52428800, // 50MB
-    }).catch(() => {});
-
     const fileExt = name.split(".").pop() || "bin";
     const cleanFolder = folder.replace(/\/+$/, "");
     const uniqueId = typeof crypto !== "undefined" && crypto.randomUUID
       ? crypto.randomUUID()
       : Math.random().toString(36).substring(2, 15);
+    // Construct storage path
     const storagePath = `${cleanFolder}/${uniqueId}_${Date.now()}.${fileExt}`;
 
-    const { error } = await supabase.storage
-      .from("documents")
-      .upload(storagePath, file, {
-        cacheControl: "3600",
-        upsert: false,
-        contentType: mimeType,
-      });
-
-    if (error) throw error;
-
-    // Get public URL
-    const { data: urlData } = supabase.storage
-      .from("documents")
-      .getPublicUrl(storagePath);
+    const storageRef = ref(storage, storagePath);
+    await uploadBytes(storageRef, file, { contentType: mimeType });
+    const url = await getDownloadURL(storageRef);
 
     return {
-      url: urlData.publicUrl,
+      url,
       storage_path: storagePath,
       mime_type: mimeType,
       size_bytes: sizeBytes,
     };
   } catch (err) {
-    console.error("Supabase storage upload failed:", err);
+    console.error("Firebase storage upload failed:", err);
     throw new Error(
       `File upload failed: ${err instanceof Error ? err.message : "Unknown storage error"}. Please check your connection and try again.`
     );
@@ -79,28 +59,25 @@ export async function uploadFile(
 }
 
 /**
- * Removes a file from Supabase Storage bucket.
- * 
- * @param storagePath The path of the file inside the bucket
+ * Removes a file from Firebase Storage bucket.
  */
 export async function removeStorageObject(storagePath: string): Promise<void> {
-  if (!hasSupabaseKeys || !storagePath || storagePath.startsWith("offline/") || storagePath.startsWith("fallback/")) {
+  if (!hasFirebaseKeys || !storagePath || storagePath.startsWith("offline/") || storagePath.startsWith("fallback/")) {
     return;
   }
   try {
-    const { error } = await supabase.storage
-      .from("documents")
-      .remove([storagePath]);
-    if (error) throw error;
+    const storageRef = ref(storage, storagePath);
+    await deleteObject(storageRef);
   } catch (err) {
-    console.error(`Failed to delete storage path "${storagePath}":`, err);
+    console.error(`Failed to delete Firebase storage path "${storagePath}":`, err);
   }
 }
 
 function convertToBase64(file: File | Blob): Promise<string> {
-  return new Promise((resolve) => {
+  return new Promise((resolve, reject) => {
     const reader = new FileReader();
-    reader.onloadend = () => resolve(reader.result as string);
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = (e) => reject(e);
     reader.readAsDataURL(file);
   });
 }
