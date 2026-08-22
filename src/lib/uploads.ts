@@ -42,7 +42,13 @@ const uploadFileServer = createServerFn({ method: "POST" })
         storagePath,
       };
     } catch (e: any) {
-      console.error("Server-side Firebase Storage upload failed:", e);
+      console.error("🔥 STORAGE ERROR");
+      console.error("code:", e?.code);
+      console.error("message:", e?.message);
+      console.error("serverResponse:", e?.serverResponse);
+      console.error("customData:", e?.customData);
+      console.error("name:", e?.name);
+      console.error("full:", e);
       throw new Error(e.message || String(e));
     }
   });
