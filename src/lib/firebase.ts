@@ -3,6 +3,11 @@ import { getFirestore } from "firebase/firestore";
 import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
 
 export const getEnv = (key: string): string => {
+  if (typeof window === "undefined") {
+    if (typeof process !== "undefined" && process.env && process.env[key]) {
+      return process.env[key];
+    }
+  }
   if (typeof import.meta !== "undefined" && import.meta.env && import.meta.env[key]) {
     return import.meta.env[key];
   }
@@ -47,6 +52,11 @@ const firebaseConfig = {
   appId: getEnv("VITE_FIREBASE_APP_ID"),
   measurementId: getEnv("VITE_FIREBASE_MEASUREMENT_ID"),
 };
+
+if (typeof window === "undefined") {
+  console.log("🔥 Firebase project:", firebaseConfig.projectId);
+  console.log("🔥 Firebase storage bucket:", firebaseConfig.storageBucket);
+}
 
 export const hasFirebaseKeys = !!(
   firebaseConfig.apiKey &&
