@@ -115,47 +115,32 @@ export const getWorkspaceDataServer = createServerFn({ method: "GET" })
         supabase.from("notifications").select("*").order("created_at", { ascending: false }),
       ]);
 
-      if (
-        projectRes.error ||
-        membersRes.error ||
-        papersRes.error ||
-        tasksRes.error ||
-        notesRes.error ||
-        shotsRes.error ||
-        voiceNotesRes.error ||
-        filesRes.error ||
-        linksRes.error ||
-        meetingsRes.error ||
-        eventsRes.error ||
-        activityRes.error ||
-        phasesRes.error ||
-        commentsRes.error ||
-        conversationsRes.error ||
-        conversationMembersRes.error ||
-        messagesRes.error ||
-        notificationsRes.error
-      ) {
-        console.error("Error fetching from Supabase, falling back to static seed data.");
-        throw new Error("Supabase response error");
-      }
+      const logAndGetData = (name: string, res: any, fallback: any = []) => {
+        if (res.error) {
+          console.error(`Supabase error loading table [${name}]:`, res.error);
+          return fallback;
+        }
+        return res.data || fallback;
+      };
 
-      let members = membersRes.data || [];
-      const papers = papersRes.data || [];
-      const tasks = tasksRes.data || [];
-      const notes = notesRes.data || [];
-      const shots = shotsRes.data || [];
-      const voiceNotes = voiceNotesRes.data || [];
-      const files = filesRes.data || [];
-      const links = linksRes.data || [];
-      const meetings = meetingsRes.data || [];
-      const events = eventsRes.data || [];
-      const activity = activityRes.data || [];
-      let phases = phasesRes.data || [];
-      const comments = commentsRes.data || [];
-      const conversations = conversationsRes.data || [];
-      const conversationMembers = conversationMembersRes.data || [];
-      const messages = messagesRes.data || [];
-      const notifications = notificationsRes.data || [];
+      let projectData = logAndGetData("project", projectRes, null);
+      let members = logAndGetData("members", membersRes, []);
+      const papers = logAndGetData("papers", papersRes, []);
+      const tasks = logAndGetData("tasks", tasksRes, []);
+      const notes = logAndGetData("notes", notesRes, []);
+      const shots = logAndGetData("shots", shotsRes, []);
+      const voiceNotes = logAndGetData("voiceNotes", voiceNotesRes, []);
+      const files = logAndGetData("files", filesRes, []);
+      const links = logAndGetData("links", linksRes, []);
+      const meetings = logAndGetData("meetings", meetingsRes, []);
+      const events = logAndGetData("events", eventsRes, []);
+      const activity = logAndGetData("recent_activity", activityRes, []);
+      let phases = logAndGetData("phases", phasesRes, []);
+      const comments = logAndGetData("comments", commentsRes, []);
+      const conversations = logAndGetData("conversations", conversationsRes, []);
+      const conversationMembers = logAndGetData("conversation_members", conversationMembersRes, []);
+      const messages = logAndGetData("messages", messagesRes, []);
+      const notifications = logAndGetData("notifications", notificationsRes, []);
 
       // Auto-seed members if empty
       if (hasSupabaseKeys && members.length === 0) {
@@ -208,7 +193,7 @@ export const getWorkspaceDataServer = createServerFn({ method: "GET" })
       }
 
       // Auto-seed project if empty
-      let projectData = projectRes.data?.[0];
+      projectData = projectData || projectRes.data?.[0];
       if (hasSupabaseKeys && !projectData) {
         try {
           const { data: inserted, error: insertErr } = await supabase
