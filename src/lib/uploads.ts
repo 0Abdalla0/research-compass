@@ -1,3 +1,4 @@
+import { createServerFn } from "@tanstack/react-start";
 import { storage, hasFirebaseKeys } from "./firebase";
 import { ref, uploadBytes, getDownloadURL, deleteObject } from "firebase/storage";
 
@@ -8,8 +9,60 @@ export interface UploadedFileDetails {
   size_bytes: number;
 }
 
+// Server-side upload handler to completely bypass client CORS restrictions
+const uploadFileServer = createServerFn({ method: "POST" })
+  .validator((d: { base64Data: string; name: string; folder: string; mimeType: string }) => d)
+  .handler(async ({ data }) => {
+    if (!hasFirebaseKeys) {
+      throw new Error("Firebase configuration keys are missing on the server.");
+    }
+
+    try {
+      const base64Content = data.base64Data.split(";base64,").pop() || data.base64Data;
+      const binaryString = atob(base64Content);
+      const len = binaryString.length;
+      const bytes = new Uint8Array(len);
+      for (let i = 0; i < len; i++) {
+        bytes[i] = binaryString.charCodeAt(i);
+      }
+
+      const fileExt = data.name.split(".").pop() || "bin";
+      const cleanFolder = data.folder.replace(/\/+$/, "");
+      const uniqueId = typeof crypto !== "undefined" && crypto.randomUUID
+        ? crypto.randomUUID()
+        : Math.random().toString(36).substring(2, 15);
+      const storagePath = `${cleanFolder}/${uniqueId}_${Date.now()}.${fileExt}`;
+
+      const storageRef = ref(storage, storagePath);
+      await uploadBytes(storageRef, bytes, { contentType: data.mimeType });
+      const url = await getDownloadURL(storageRef);
+
+      return {
+        url,
+        storagePath,
+      };
+    } catch (e: any) {
+      console.error("Server-side Firebase Storage upload failed:", e);
+      throw new Error(e.message || String(e));
+    }
+  });
+
+// Server-side delete handler
+const removeStorageObjectServer = createServerFn({ method: "POST" })
+  .validator((storagePath: string) => storagePath)
+  .handler(async ({ data: storagePath }) => {
+    if (!hasFirebaseKeys) return;
+    try {
+      const storageRef = ref(storage, storagePath);
+      await deleteObject(storageRef);
+    } catch (e: any) {
+      console.error("Server-side Firebase Storage delete failed:", e);
+      throw new Error(e.message || String(e));
+    }
+  });
+
 /**
- * Uploads a file or blob to Firebase Storage, or falls back to a Base64 Data URL if offline.
+ * Uploads a file or blob by transferring it to the server and uploading to Firebase Storage.
  */
 export async function uploadFile(
   file: File | Blob,
@@ -32,21 +85,12 @@ export async function uploadFile(
   }
 
   try {
-    const fileExt = name.split(".").pop() || "bin";
-    const cleanFolder = folder.replace(/\/+$/, "");
-    const uniqueId = typeof crypto !== "undefined" && crypto.randomUUID
-      ? crypto.randomUUID()
-      : Math.random().toString(36).substring(2, 15);
-    // Construct storage path
-    const storagePath = `${cleanFolder}/${uniqueId}_${Date.now()}.${fileExt}`;
-
-    const storageRef = ref(storage, storagePath);
-    await uploadBytes(storageRef, file, { contentType: mimeType });
-    const url = await getDownloadURL(storageRef);
+    const base64Data = await convertToBase64(file);
+    const res = await uploadFileServer({ data: { base64Data, name, folder, mimeType } });
 
     return {
-      url,
-      storage_path: storagePath,
+      url: res.url,
+      storage_path: res.storagePath,
       mime_type: mimeType,
       size_bytes: sizeBytes,
     };
@@ -59,15 +103,14 @@ export async function uploadFile(
 }
 
 /**
- * Removes a file from Firebase Storage bucket.
+ * Removes a file from Firebase Storage bucket server-side.
  */
 export async function removeStorageObject(storagePath: string): Promise<void> {
   if (!hasFirebaseKeys || !storagePath || storagePath.startsWith("offline/") || storagePath.startsWith("fallback/")) {
     return;
   }
   try {
-    const storageRef = ref(storage, storagePath);
-    await deleteObject(storageRef);
+    await removeStorageObjectServer({ data: storagePath });
   } catch (err) {
     console.error(`Failed to delete Firebase storage path "${storagePath}":`, err);
   }
